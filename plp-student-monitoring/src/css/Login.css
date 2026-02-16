@@ -127,6 +127,24 @@
   background-color: #1f4220;
 }
 
+.forgot-password-button {
+  background: none;        /* no background at all */
+  border: none;            /* remove border */
+  padding: 0;              /* remove default padding */
+  margin-top: 0.5rem;      /* small spacing from login button */
+  font-size: 0.8rem;       /* smaller text but still visible */
+  cursor: pointer;         /* pointer on hover */
+}
+
+.forgot-password-button a {
+  color: #007bff;         
+  text-decoration: underline
+}
+
+.forgot-password-button:hover a {
+  color: #0056b3;       
+  text-decoration: underline;}
+
 .footer-text {
   position: fixed;
   bottom: 20px;            

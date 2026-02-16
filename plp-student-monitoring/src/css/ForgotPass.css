@@ -1,0 +1,254 @@
+.login-container {
+  min-height: 100vh;
+  width: 100vw;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background-image: url('../assets/MAIN.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.top-left-icon {
+  position: absolute; 
+  top: 20px;         
+  left: 20px;        
+  font-size: 3rem;  
+  color: #fff;       
+  cursor: pointer;   
+  z-index: 10;     
+}
+
+.top-left-icon:hover {
+  color: #d99201;       
+}
+
+.login-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logined {
+  margin-top: 10px;
+  text-align: center;
+}
+
+.login-icon {
+  display: block;
+  max-width: 300px;
+  height: auto;
+  margin: 0 auto;
+}
+
+.login-header h1 {
+  font-size: 5rem;
+  color: #fafafa;
+  margin: -80px 0 20px;
+  font-family: 'Oswald', sans-serif;
+}
+
+.login-box {
+  width: 450px;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.login-form {
+  width: 100%;
+}
+
+.login-form input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+.input-group label {
+  font-size: 0.8rem;
+  color: #1f4220;
+  margin-bottom: 0.25rem;
+  text-align: left;
+}
+
+.input-group-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding-bottom: 1rem;
+}
+
+.email-input {
+  flex: 3;  /* Takes 75% of the space */
+  padding: 0.75rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  height: 48px;
+  box-sizing: border-box;
+  margin-bottom: 0 !important; /* Override the margin-bottom from .login-form input */
+}
+
+.send-code-button {
+  flex: 1;  /* Takes 25% of the space */
+  background-color: #2b5a2b;
+  color: white;
+  font-size: 0.9rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  padding: 0 10px;
+  height: 48px;
+  min-width: 80px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.send-code-button:hover {
+  background-color: #1f4220;
+}
+
+.login-form button[type="submit"] {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background-color: #2b5a2b;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-form button[type="submit"]:hover {
+  background-color: #1f4220;
+}
+
+.back-to-home {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.back-to-home a {
+  color: #007bff;
+  text-decoration: underline;
+}
+
+.back-to-home a:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.footer-text {
+  position: fixed;
+  bottom: 20px;            
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: #999;
+  text-align: center;
+}
+
+
+/* Add these styles to your existing ForgotPass.css */
+
+.password-input-wrapper {
+  width: 100%;
+  position: relative;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.checkbox-group {
+  display: flex;
+  align-items: center;
+  margin: 15px 0;
+  text-align: left;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin-right: 8px;
+  margin-bottom: 0;
+  cursor: pointer;
+  accent-color: #2b5a2b; /* Makes checkbox match your theme color */
+}
+
+.checkbox-text {
+  user-select: none;
+}
+
+.confirm-button {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background-color: #2b5a2b;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-top: 10px;
+}
+
+.confirm-button:hover {
+  background-color: #1f4220;
+}
+
+/* Optional: Add eye icon for password visibility (if you want to use icons instead of checkbox) */
+.password-input-wrapper {
+  position: relative;
+}
+
+.eye-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #666;
+  font-size: 1.2rem;
+}
+
+.eye-icon:hover {
+  color: #2b5a2b;
+}

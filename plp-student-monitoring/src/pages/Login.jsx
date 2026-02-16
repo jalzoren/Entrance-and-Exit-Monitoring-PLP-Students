@@ -51,6 +51,9 @@ export default function Login() {
 
   <button type="submit">LOGIN</button>
 </form>
+    <button type="button" className="forgot-password-button">
+    <a href="/forgot-password">Forgot Password?</a>
+    </button>
 
 
           <p className="footer-text">
