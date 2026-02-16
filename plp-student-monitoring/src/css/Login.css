@@ -1,0 +1,139 @@
+
+.login-container {
+  min-height: 100vh;
+  width: 100vw;
+
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+
+  background-image: url('../assets/MAIN.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.top-left-icon {
+  position: absolute; 
+  top: 20px;         
+  left: 20px;        
+  font-size: 3rem;  
+  color: #fff;       
+  cursor: pointer;   
+  z-index: 10;     
+}
+
+.top-left-icon:hover {
+  position: absolute; 
+  top: 20px;         
+  left: 20px;        
+  font-size: 3rem;  
+  color: #d99201;       
+  cursor: pointer;   
+  z-index: 10;     
+}
+
+
+
+.login-content {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo + title wrapper */
+.logined {
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* Logo image */
+.login-icon {
+  display: block;
+  max-width: 300px;
+  height: auto;
+  margin: 0 auto;
+}
+
+/* Header */
+.login-header h1 {
+  font-size: 5rem;
+  color: #fafafa;
+  margin: -80px 0 20px; /* overlap logo cleanly */
+  font-family: 'Oswald', sans-serif;
+}
+
+/* Login box */
+.login-box {
+  width: 450px;
+  padding: 1rem;
+  border-radius: 12px;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Inputs */
+.login-form input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 1rem;
+  gap: 10px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  font-size: 0.8rem;
+  color: #1f4220;
+  margin-bottom: 0.25rem;
+  text-align: left;
+}
+
+
+/* Password container */
+.password-container {
+  position: relative;
+}
+
+.show-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+/* Button */
+.login-form button {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background-color: #2b5a2b;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.login-form button:hover {
+  background-color: #1f4220;
+}
+
+.footer-text {
+  position: fixed;
+  bottom: 20px;            
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 0.75rem;
+  color: #999;
+  text-align: center;
+}
