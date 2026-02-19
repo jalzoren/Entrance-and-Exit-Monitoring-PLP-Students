@@ -1,55 +1,64 @@
-/* ForgotPass.css – should be very similar to Login.css */
+/* ForgotPass.css */
 
 .login-container {
   min-height: 100vh;
   width: 100vw;
-  background-image: url("../assets/MAIN.png");
+  display: flex;
+  justify-content: center;
+  align-items: flex-start; /* or center if you want vertical center */
+  background-image: url('../assets/MAIN.png');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  display: flex;
-  justify-content: center;
-  align-items: center;
   position: relative;
   padding: 20px;
+  box-sizing: border-box;
 }
 
 .top-left-icon {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  font-size: 3.2rem;
-  color: white;
+  top: 20px;
+  left: 20px;
+  font-size: 3rem;
+  color: #fff;
   cursor: pointer;
   z-index: 10;
-  transition: color 0.25s;
+  transition: color 0.3s;
 }
 
 .top-left-icon:hover {
   color: #d99201;
 }
 
-.login-wrapper {
+/* ──────────────────────────────────────────────── */
+
+.login-content {
   width: 100%;
   max-width: 480px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2rem;
 }
 
-.login-header-container {
+/* Logo + title wrapper */
+.logined {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.2rem;               /* space between logo and title */
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
+  width: 100%;
 }
 
 .login-icon {
-  max-width: 180px;          /* ← adjust this value to your preference */
+  max-width: 280px;
   height: auto;
+  margin-bottom: 1.2rem;
   display: block;
+}
+
+.login-header {
+  text-align: center;
+  width: 100%;
 }
 
 .logintext {
@@ -58,48 +67,26 @@
   font-weight: 700;
   color: #ffffff;
   margin: 0;
-  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.65);
-  letter-spacing: 1.5px;
-  line-height: 1.1;
-}
-.login-icon {
-  max-width: 220px;
-  height: auto;
-  margin-bottom: 1.2rem;
-}
-
-.logintext {
-  font-family: "Oswald", sans-serif;
-  font-size: 3.5rem;
-  font-weight: 700;
-  color: #ffffff;
-  margin: 0;
   text-shadow: 0 4px 12px rgba(0,0,0,0.65);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
+  line-height: 1.05;
 }
 
-.login-card {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  padding: 2.5rem 2rem;
+/* ──────────────────────────────────────────────── */
+
+.login-box {
   width: 100%;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.22);
-  border: 1px solid rgba(255,255,255,0.25);
-}
-
-.form-description {
+  max-width: 420px;
+  border-radius: 14px;
+  padding: 2.2rem 1.8rem;
   text-align: center;
-  color: #4b5563;
-  margin: 0 0 1.8rem 0;
-  font-size: 1rem;
-  line-height: 1.5;
 }
 
+/* Form */
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1rem;
 }
 
 .input-group {
@@ -111,90 +98,71 @@
 .input-group label {
   font-size: 0.95rem;
   color: #1f4220;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.45rem;
   font-weight: 500;
 }
 
-.input-group input {
-  width: 100%;
-  padding: 0.9rem 1.1rem;
-  border: 1px solid #c4d1c4;
-  border-radius: 10px;
-  font-size: 1rem;
-  background: #f9fafb;
-}
-
-.input-group input:focus {
-  outline: none;
-  border-color: #2b5a2b;
-  box-shadow: 0 0 0 3px rgba(43,90,43,0.15);
-}
-
-/* ── Send code row ── */
-.input-with-button {
+/* Email + Send button row */
+.input-group-row {
   display: flex;
   gap: 10px;
 }
 
-.input-with-button input {
+.email-input,
+.input-group input {
   flex: 1;
+  padding: 0.85rem 1rem;
+  border: 1px solid #c4d1c4;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #f9fafb;
+}
+
+.email-input:focus,
+.input-group input:focus {
+  outline: none;
+  border-color: #2b5a2b;
+  box-shadow: 0 0 0 3px rgba(43,90,43,0.12);
 }
 
 .send-code-button {
-  padding: 0 1.5rem;
+  padding: 0 1.4rem;
   background: #548772;
   color: white;
   border: none;
-  border-radius: 10px;
+  border-radius: 8px;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background 0.25s;
 }
 
 .send-code-button:hover {
   background: #3e6a5a;
 }
 
-/* ── Password with eye icon ── */
-.password-input-wrapper {
-  position: relative;
-}
-
-.show-password-btn {
-  position: absolute;
-  right: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #6b7280;
-  font-size: 1.2rem;
-  cursor: pointer;
-  padding: 0;
-}
-
-.confirm-button {
-  margin-top: 1.2rem;
-  padding: 1rem;
+/* Submit button */
+.submit-button {
+  width: 100%;
+  padding: 0.95rem;
+  margin-top: 1rem;
   background: #2b5a2b;
   color: white;
   border: none;
-  border-radius: 10px;
-  font-size: 1.1rem;
+  border-radius: 8px;
+  font-size: 1.05rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.3s;
 }
 
-.confirm-button:hover {
+.submit-button:hover {
   background: #1f4220;
 }
 
-.form-footer {
-  margin-top: 2rem;
-  text-align: center;
-}
-
-.back-to-login {
+/* Back link */
+.back-to-home {
+  margin-top: 1.5rem;
   background: none;
   border: none;
   color: #2563eb;
@@ -203,7 +171,11 @@
   padding: 0;
 }
 
-.back-to-login a {
+.back-to-home a {
   color: inherit;
   text-decoration: underline;
+}
+
+.back-to-home:hover {
+  color: #1e40af;
 }

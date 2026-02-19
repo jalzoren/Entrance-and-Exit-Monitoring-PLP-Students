@@ -55,7 +55,7 @@
 
 .logintext {
   font-family: 'Oswald', sans-serif;
-  font-size: 3.8rem;
+  font-size: 3.5rem;
   font-weight: 700;
   color: #ffffff;
   margin: 0;
@@ -67,13 +67,10 @@
 
 /* Card-like form container */
 .login-card {
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  
   border-radius: 16px;
   padding: 2.5rem 2rem;
   width: 100%;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255,255,255,0.25);
 }
 
 /* Form elements */
