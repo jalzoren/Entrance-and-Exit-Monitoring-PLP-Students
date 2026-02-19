@@ -1,35 +1,34 @@
-// src/App.jsx
+// src/App.tsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import DashboardLayout from './components/DashboardLayout';
 
-// Pages (create these or use placeholders)
-import Dashboard from './pages/Dashboard';
-/* import Monitor from './pages/Monitor';
-import Records from './pages/Records';
-import Students from './pages/Students';
-import Analytics from './pages/Analytics'; */
-
-// Optional: Login page without layout
+import DashboardLayout from './components/DashboardLayout'; // contains Sidebar
 import Login from './pages/Login';
+import Dashboard from './adminpages/Dashboard';
+import Monitor from './adminpages/Monitor';
+import Records from './adminpages/Records';
+import Students from './adminpages/Students';
+import Analytics from './adminpages/Analytics';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes (no sidebar) */}
+        {/* Public route */}
         <Route path="/login" element={<Login />} />
 
-        {/* Protected routes with sidebar */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-       {/*}   <Route path="/monitor" element={<Monitor />} />
-          <Route path="/records" element={<Records />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/analytics" element={<Analytics />} />
-
-          {/* Optional: redirect or home */}
-          <Route path="/" element={<Dashboard />} />
+        {/* Protected routes */}
+        <Route>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/monitor" element={<Monitor />} />
+            <Route path="/records" element={<Records />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/analytics" element={<Analytics />} />
+          </Route>
         </Route>
+
+        {/* Optional 404 */}
+        <Route path="*" element={<div>404 - Not Found</div>} />
       </Routes>
     </BrowserRouter>
   );
