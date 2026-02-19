@@ -1,0 +1,365 @@
+/* src/pages/Dashboard.css */
+:root {
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Oswald:wght@200..700&display=swap');
+  --color-bg-main: #fcfbf4;
+  --color-primary: #548772;
+  --color-primary-dark: #01311d;
+  --color-accent: #d99201;
+  --color-accent-hover: #58761b;
+  --color-text-dark: #01311d;
+    --color-text-black: #0f0f0f;
+
+  --color-text-light: #fafafa;
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-shadow-soft: rgba(0, 0, 0, 0.1);
+
+  --sidebar-collapsed: 0px; 
+  --sidebar-open: 260px;
+  --transition: 0.28s ease;
+}
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+overflow: hidden;
+}
+
+.dashboard-wrapper {
+  background: url("../assets/MAIN.png") no-repeat center center;
+  background-size:cover;   
+  
+  color: white;
+  min-height: 100vh;
+
+  width: 100vw;         
+  margin: 0;
+  box-sizing: border-box;   
+  
+}
+
+.dashb{
+      margin-top: 100px;
+}
+.campus-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+}
+.university-emblem .seal-placeholder {
+  width: 64px;             
+  height: 70px;
+  flex-shrink: 0;
+  display: block;          
+}
+
+
+.university-info h1 {
+  font-size: 1.45rem;
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-text-light);
+  line-height: 1.15;
+  font-family: "Cinzel", serif;
+}
+
+.university-info p {
+  margin-top: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--color-text-light);
+  opacity: 0.92;
+  font-family: "Montserrat", sans-serif;
+}
+
+.current-datetime {
+  text-align: right;
+  font-family: 'Oswald', sans-serif;
+}
+
+.day {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #6ee7b7;
+}
+
+.date-time {
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: white;
+}
+
+.date-time span {
+  color: #a7f3d0;
+}
+
+/* ────────────────────────────────────────────────
+   Stats Cards (large tiles)
+───────────────────────────────────────────────── */
+.stats-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  width: 100%;
+  overflow-y: hidden;
+}
+
+@media (min-width: 640px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .stats-row {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.25rem;
+  }
+}
+
+.stat-card.large {
+  background: #1a4d3a;
+  border-radius: 12px;
+  padding: 1.75rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.28);
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  width: 100%;
+}
+
+.stat-card.large:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.35);
+}
+
+.primary  { background: #1e5240; }
+.success  { background: #1f5a3e; }
+.info     { background: #1a4d3a; }
+
+.stat-label {
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: #a7f3d0;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 3.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: white;
+  margin-bottom: 0.25rem;
+  overflow-y: hidden;
+}
+
+.stat-unit {
+  font-size: 1rem;
+  color: #6ee7b7;
+  opacity: 0.9;
+}
+
+.stat-icon {
+  position: absolute;
+  bottom: 1.25rem;
+  right: 1.5rem;
+  font-size: 4rem;
+  opacity: 0.14;
+  color: #d1fae5;
+}
+
+/* ────────────────────────────────────────────────
+   Charts Grid
+───────────────────────────────────────────────── */
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .charts-grid {
+    grid-template-columns: 2fr 1fr;
+    gap: 1.75rem;
+  }
+}
+
+.chart-card {
+  background: #1a4d3a;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+  width: 100%;
+}
+
+.chart-header {
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #2a6b52;
+  background: #164233;
+}
+
+.chart-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: #d1fae5;
+}
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+  color: #a7f3d0;
+}
+
+.dropdown-btn {
+  background: none;
+  border: none;
+  color: #6ee7b7;
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.chart-placeholder {
+  padding: 2.5rem 1.5rem;
+  min-height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9fe8c9;
+  font-style: italic;
+  background: linear-gradient(180deg, #1e5240 0%, #164233 100%);
+  font-size: 1.1rem;
+  text-align: center;
+  width: 100%;
+}
+
+.large {
+  min-height: 380px;
+}
+
+.pie-placeholder {
+  min-height: 340px;
+}
+
+.chart-footer,
+.pie-legend {
+  padding: 1rem 1.5rem;
+  font-size: 0.9rem;
+  color: #a7f3d0;
+  background: #164233;
+}
+
+.mini-legend {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  margin-top: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.legend-entries { 
+  display: inline-block; 
+  width: 12px; 
+  height: 12px; 
+  background: #4ade80; 
+  border-radius: 3px; 
+  margin-right: 6px; 
+}
+
+.legend-exits { 
+  display: inline-block; 
+  width: 12px; 
+  height: 12px; 
+  background: #fbbf24; 
+  border-radius: 3px; 
+  margin-right: 6px; 
+}
+
+/* Pie legend colors */
+.pie-legend div {
+  margin: 0.45rem 0;
+}
+
+.color {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  margin-right: 8px;
+}
+
+.css   { background: #60a5fa; }
+.gas   { background: #f472b6; }
+.con   { background: #fbbf24; }
+.cba   { background: #34d399; }
+.coed  { background: #a78bfa; }
+.ccs   { background: #f87171; }
+
+/* ────────────────────────────────────────────────
+   Responsive adjustments
+───────────────────────────────────────────────── */
+@media (min-width: 640px) {
+  .dashboard-wrapper {
+    padding: 1.75rem 2rem;
+  }
+
+  .stat-value {
+    font-size: 3.6rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .dashboard-wrapper {
+    padding: 2.5rem 3rem;
+  }
+
+  .stat-value {
+    font-size: 4rem;
+  }
+
+  .chart-placeholder {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stat-value {
+    font-size: 2.8rem;
+  }
+
+  .date-time {
+    font-size: 1.5rem;
+  }
+
+  .campus-header {
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .current-datetime {
+    text-align: left;
+  }
+
+  .dashboard-wrapper {
+    padding: 1rem 0.75rem;
+  }
+}
