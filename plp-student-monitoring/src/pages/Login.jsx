@@ -10,55 +10,67 @@ export default function Login() {
   const handleLogin = (e) => {
     e.preventDefault();
     console.log({ username, password });
+    // Later: call real login API here
   };
 
   return (
     <div className="login-container">
-      <LuScanFace   title="Go To Entry-Exit Students" className="top-left-icon"/>
+      {/* Floating top-left icon */}
+      <LuScanFace
+        title="Go To Entry-Exit Students"
+        className="top-left-icon"
+      />
 
-      <div className="login-content">
-        <div className="logined">
-          <img src={logo} alt="Logo" className="login-icon" />
-          <div className="login-header">
-            <h1>LOG IN</h1>
-          </div>
+      {/* Main centered content wrapper */}
+      <div className="login-wrapper">
+        {/* Logo + Title section */}
+        <div className="login-header-container">
+          <img src={logo} alt="System Logo" className="login-icon" />
+          <h1 className="logintext">LOG IN</h1>
         </div>
 
-        <div className="login-box">
-         <form className="login-form" onSubmit={handleLogin}>
-  <div className="input-group">
-    <label htmlFor="username">Email</label>
-    <input
-      id="username"
-      type="text"
-      placeholder="example@gmail.com"
-      value={username}
-      onChange={(e) => setUsername(e.target.value)}
-    />
-  </div>
+        {/* Form card */}
+        <div className="login-card">
+          <form className="login-form" onSubmit={handleLogin}>
+            <div className="input-group">
+              <label htmlFor="username">Email</label>
+              <input
+                id="username"
+                type="email"          // ← changed to type="email" (better validation)
+                placeholder="example@gmail.com"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
 
-  <div className="input-group password-container">
-    <label htmlFor="password">Password</label>
-    <input
-      id="password"
-      type="password"
-      placeholder="Password"
-      value={password}
-      onChange={(e) => setPassword(e.target.value)}
-    />
-    <span className="show-password"></span>
-  </div>
+            <div className="input-group password-container">
+              <label htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <span className="show-password"></span>
+            </div>
 
-  <button type="submit">LOGIN</button>
-</form>
-    <button type="button" className="forgot-password-button">
-    <a href="/forgot-password">Forgot Password?</a>
-    </button>
+            <button type="submit" className="login-button">
+              LOGIN
+            </button>
+          </form>
 
+          <div className="form-footer">
+            <button type="button" className="forgot-password-button">
+              <a href="/forgotpass">Forgot Password?</a>
+            </button>
 
-          <p className="footer-text">
-            ENTRANCE AND EXIT MONITORING SYSTEM
-          </p>
+            <p className="footer-text">
+              ENTRANCE AND EXIT MONITORING SYSTEM
+            </p>
+          </div>
         </div>
       </div>
     </div>

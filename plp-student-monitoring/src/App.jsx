@@ -9,12 +9,17 @@ import Records from './adminpages/Records';
 import Students from './adminpages/Students';
 import Analytics from './adminpages/Analytics';
 
+
+import Forgot from './pages/ForgotPass';
+import Forgot2 from './pages/ForgotPass2';
 function App() {
   return (
     <BrowserRouter>
       <Routes>
         {/* Public route */}
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/forgotpass" element={<Forgot />} />
+        <Route path="/forgotpass2" element={<Forgot2 />} />
 
         {/* Protected routes */}
         <Route>

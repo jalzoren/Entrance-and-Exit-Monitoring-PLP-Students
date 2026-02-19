@@ -1,254 +1,209 @@
+/* ForgotPass.css – should be very similar to Login.css */
+
 .login-container {
   min-height: 100vh;
   width: 100vw;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  background-image: url('../assets/MAIN.png');
+  background-image: url("../assets/MAIN.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  padding: 20px;
 }
 
 .top-left-icon {
-  position: absolute; 
-  top: 20px;         
-  left: 20px;        
-  font-size: 3rem;  
-  color: #fff;       
-  cursor: pointer;   
-  z-index: 10;     
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  font-size: 3.2rem;
+  color: white;
+  cursor: pointer;
+  z-index: 10;
+  transition: color 0.25s;
 }
 
 .top-left-icon:hover {
-  color: #d99201;       
+  color: #d99201;
 }
 
-.login-content {
+.login-wrapper {
   width: 100%;
+  max-width: 480px;
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 2rem;
 }
 
-.logined {
-  margin-top: 10px;
-  text-align: center;
+.login-header-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;               /* space between logo and title */
+  margin-bottom: 2.5rem;
 }
 
 .login-icon {
-  display: block;
-  max-width: 300px;
+  max-width: 180px;          /* ← adjust this value to your preference */
   height: auto;
-  margin: 0 auto;
+  display: block;
 }
 
-.login-header h1 {
-  font-size: 5rem;
-  color: #fafafa;
-  margin: -80px 0 20px;
+.logintext {
   font-family: 'Oswald', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 4px 12px rgba(0, 0, 0, 0.65);
+  letter-spacing: 1.5px;
+  line-height: 1.1;
+}
+.login-icon {
+  max-width: 220px;
+  height: auto;
+  margin-bottom: 1.2rem;
 }
 
-.login-box {
-  width: 450px;
-  padding: 1rem;
-  border-radius: 12px;
+.logintext {
+  font-family: "Oswald", sans-serif;
+  font-size: 3.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.65);
+  letter-spacing: 1px;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  padding: 2.5rem 2rem;
+  width: 100%;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.22);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+
+.form-description {
   text-align: center;
-  margin-top: 10px;
+  color: #4b5563;
+  margin: 0 0 1.8rem 0;
+  font-size: 1rem;
+  line-height: 1.5;
 }
 
 .login-form {
-  width: 100%;
-}
-
-.login-form input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
 }
 
 .input-group {
   display: flex;
   flex-direction: column;
-  width: 100%;
-  margin-bottom: 1rem;
+  text-align: left;
 }
 
 .input-group label {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
   color: #1f4220;
-  margin-bottom: 0.25rem;
-  text-align: left;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
-.input-group-row {
+.input-group input {
+  width: 100%;
+  padding: 0.9rem 1.1rem;
+  border: 1px solid #c4d1c4;
+  border-radius: 10px;
+  font-size: 1rem;
+  background: #f9fafb;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #2b5a2b;
+  box-shadow: 0 0 0 3px rgba(43,90,43,0.15);
+}
+
+/* ── Send code row ── */
+.input-with-button {
   display: flex;
   gap: 10px;
-  align-items: center;
-  width: 100%;
-  padding-bottom: 1rem;
 }
 
-.email-input {
-  flex: 3;  /* Takes 75% of the space */
-  padding: 0.75rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
-  height: 48px;
-  box-sizing: border-box;
-  margin-bottom: 0 !important; /* Override the margin-bottom from .login-form input */
+.input-with-button input {
+  flex: 1;
 }
 
 .send-code-button {
-  flex: 1;  /* Takes 25% of the space */
-  background-color: #2b5a2b;
+  padding: 0 1.5rem;
+  background: #548772;
   color: white;
-  font-size: 0.9rem;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.3s;
-  padding: 0 10px;
-  height: 48px;
-  min-width: 80px;
   white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-sizing: border-box;
 }
 
 .send-code-button:hover {
-  background-color: #1f4220;
+  background: #3e6a5a;
 }
 
-.login-form button[type="submit"] {
-  width: 100%;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 8px;
-  background-color: #2b5a2b;
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.login-form button[type="submit"]:hover {
-  background-color: #1f4220;
-}
-
-.back-to-home {
-  background: none;
-  border: none;
-  padding: 0;
-  margin-top: 0.5rem;
-  font-size: 0.8rem;
-  cursor: pointer;
-}
-
-.back-to-home a {
-  color: #007bff;
-  text-decoration: underline;
-}
-
-.back-to-home a:hover {
-  color: #0056b3;
-  text-decoration: underline;
-}
-
-.footer-text {
-  position: fixed;
-  bottom: 20px;            
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 0.75rem;
-  color: #999;
-  text-align: center;
-}
-
-
-/* Add these styles to your existing ForgotPass.css */
-
-.password-input-wrapper {
-  width: 100%;
-  position: relative;
-}
-
-.password-input-wrapper input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
-  box-sizing: border-box;
-}
-
-.checkbox-group {
-  display: flex;
-  align-items: center;
-  margin: 15px 0;
-  text-align: left;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  color: #333;
-  font-size: 0.9rem;
-}
-
-.checkbox-label input[type="checkbox"] {
-  width: auto;
-  margin-right: 8px;
-  margin-bottom: 0;
-  cursor: pointer;
-  accent-color: #2b5a2b; /* Makes checkbox match your theme color */
-}
-
-.checkbox-text {
-  user-select: none;
-}
-
-.confirm-button {
-  width: 100%;
-  padding: 0.75rem;
-  border: none;
-  border-radius: 8px;
-  background-color: #2b5a2b;
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  margin-top: 10px;
-}
-
-.confirm-button:hover {
-  background-color: #1f4220;
-}
-
-/* Optional: Add eye icon for password visibility (if you want to use icons instead of checkbox) */
+/* ── Password with eye icon ── */
 .password-input-wrapper {
   position: relative;
 }
 
-.eye-icon {
+.show-password-btn {
   position: absolute;
   right: 12px;
   top: 50%;
   transform: translateY(-50%);
-  cursor: pointer;
-  color: #666;
+  background: none;
+  border: none;
+  color: #6b7280;
   font-size: 1.2rem;
+  cursor: pointer;
+  padding: 0;
 }
 
-.eye-icon:hover {
-  color: #2b5a2b;
+.confirm-button {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  background: #2b5a2b;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirm-button:hover {
+  background: #1f4220;
+}
+
+.form-footer {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.back-to-login {
+  background: none;
+  border: none;
+  color: #2563eb;
+  font-size: 0.95rem;
+  cursor: pointer;
+  padding: 0;
+}
+
+.back-to-login a {
+  color: inherit;
+  text-decoration: underline;
 }
