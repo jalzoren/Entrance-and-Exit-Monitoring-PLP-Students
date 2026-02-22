@@ -3,9 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import DashboardLayout from './components/DashboardLayout'; // contains Sidebar
 
-// Pages (create these or use placeholders)
-import Dashboard from './pages/Dashboard';   
-import Analytics from './pages/Analytics';
+// Pages (create these or use placeholders)  
 /* import Monitor from './pages/Monitor';
 import Records from './pages/Records';
 import Students from './pages/Students'; */
