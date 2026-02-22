@@ -2,13 +2,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 import DashboardLayout from './components/DashboardLayout'; // contains Sidebar
-
-// Pages (create these or use placeholders)  
-/* import Monitor from './pages/Monitor';
-import Records from './pages/Records';
-import Students from './pages/Students'; */
-
-// Optional: Login page without layout
 import Login from './pages/Login';
 import Dashboard from './adminpages/Dashboard';
 import Monitor from './adminpages/Monitor';
@@ -28,16 +21,15 @@ function App() {
         <Route path="/forgotpass" element={<Forgot />} />
         <Route path="/forgotpass2" element={<Forgot2 />} />
 
-        {/* Protected routes with sidebar */}
-        <Route element={<DashboardLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-       {/*}   <Route path="/monitor" element={<Monitor />} />
-          <Route path="/records" element={<Records />} />
-          <Route path="/students" element={<Students />} />
-          <Route path="/analytics" element={<Analytics />} />
-
-          {/* Optional: redirect or home */}
-          <Route path="/" element={<Dashboard />} />
+        {/* Protected routes */}
+        <Route>
+          <Route element={<DashboardLayout />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/monitor" element={<Monitor />} />
+            <Route path="/records" element={<Records />} />
+            <Route path="/students" element={<Students />} />
+            <Route path="/analytics" element={<Analytics />} />
+          </Route>
         </Route>
 
         {/* Optional 404 */}
