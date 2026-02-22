@@ -1,0 +1,498 @@
+/* Records.css */
+
+.records-container {
+    padding: 20px;
+    min-height: 100vh;
+  }
+  
+
+/* Filters Section Styles */
+.filters-container {
+    margin: 20px 0;
+    padding: 15px 20px;
+  }
+  
+  .filters-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 15px;
+  }
+  
+  .filter-group {
+    flex-direction: column;
+  }
+  
+  /* Year Level dropdown - now same size as Department, Action, and Date */
+  .year-group {
+    min-width: 140px;
+    width: 140px;
+  }
+  
+  .custom-select-wrapper {
+    position: relative;
+    width: 100%;
+  }
+  
+  .year-select {
+    padding-right: 35px !important;
+  }
+  
+  .custom-select-icon {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    pointer-events: none;
+    font-size: 16px;
+    color: #666;
+  }
+  
+  .dept-group,
+  .action-group,
+  .date-group {
+    min-width: 140px;
+    width: 140px;
+  }
+  
+  /* Search group - flexible width */
+  .search-group {
+    flex: 0 1 auto; /* Changed from flex: 1 */
+    min-width: 200px;
+    width: auto; /* Allow width to be determined by content */
+  }
+  
+  /* Button group - fixed width */
+  .button-group {
+    min-width: 150px;
+    width: 150px;
+  }
+  
+  .filter-select {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    background-color: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .filter-select:hover,
+  .filter-select:focus {
+    border-color: #01311D;
+    outline: none;
+  }
+  
+  .search-input {
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #333;
+    transition: border-color 0.3s ease;
+    width: 100%; /* Keep at 70% */
+    box-sizing: border-box;
+  }
+  
+  .search-input:hover,
+  .search-input:focus {
+    border-color: #01311D;
+    outline: none;
+  }
+  
+  .generate-report-btn {
+    background-color: #066518;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.3s ease;
+    white-space: nowrap;
+    width: 100%;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  
+  .generate-report-btn:hover {
+    background-color: #024d2c;
+  }
+
+/* Responsive Design Media Queries */
+
+/* For large screens */
+@media (max-width: 1200px) {
+  .filters-wrapper {
+    justify-content: flex-end; /* Align items to the right */
+  }
+  
+  .year-group,
+  .dept-group,
+  .action-group,
+  .date-group {
+    min-width: 130px;
+    width: 130px;
+  }
+  
+  .button-group {
+    min-width: 140px;
+    width: 140px;
+  }
+}
+
+/* For medium screens */
+@media (max-width: 1024px) {
+  .filters-wrapper {
+    gap: 12px;
+    justify-content: flex-end; /* Align items to the right */
+  }
+  
+  .year-group,
+  .dept-group,
+  .action-group,
+  .date-group {
+    min-width: 120px;
+    width: 120px;
+  }
+
+  .search-group {
+    min-width: 180px;
+  }
+}
+
+/* For tablets */
+@media (max-width: 768px) {
+  .filters-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    justify-content: flex-start; /* Reset to left alignment for mobile */
+  }
+
+  .year-group,
+  .dept-group,
+  .action-group,
+  .date-group,
+  .search-group,
+  .button-group {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .search-input {
+    width: 70%; /* Keep at 70% even on mobile */
+  }
+}
+
+/* Add margin-left auto to push groups to the right on larger screens */
+@media (min-width: 1025px) {
+  .filters-wrapper {
+    justify-content: flex-end;
+  }
+}
+  /* Table Styles */
+  
+  .table-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    overflow-x: auto;
+  }
+  
+  .records-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+  }
+  
+  .records-table thead {
+    background-color: #066518; /* Dark green background for header */
+  }
+  
+  .records-table th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    color: white; /* White text for headers */
+    white-space: nowrap;
+  }
+  
+  .records-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #e9ecef;
+    color: #212529;
+  }
+  
+  .records-table tbody tr:hover {
+    background-color: #f8f9fa;
+    cursor: pointer;
+  }
+  
+  .action-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+  }
+  
+  .action-badge.entry {
+    background-color: #d4edda;
+    color: #155724;
+  }
+  
+  .action-badge.exit {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+  
+  /* Responsive Design Media Queries */
+  
+  /* For large screens */
+  @media (max-width: 1200px) {
+    .year-group {
+      min-width: 150px;
+      width: 150px;
+    }
+    
+    .dept-group,
+    .action-group,
+    .date-group {
+      min-width: 130px;
+      width: 130px;
+    }
+    
+    .button-group {
+      min-width: 140px;
+      width: 140px;
+    }
+  }
+  
+  /* For medium screens */
+  @media (max-width: 1024px) {
+    .filters-wrapper {
+      gap: 12px;
+    }
+    
+    .year-group {
+      min-width: 140px;
+      width: 140px;
+    }
+    
+    .dept-group,
+    .action-group,
+    .date-group {
+      min-width: 120px;
+      width: 120px;
+    }
+
+    .search-group {
+      min-width: 180px;
+    }
+  }
+  
+  /* For tablets */
+  @media (max-width: 768px) {
+    .filters-wrapper {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 15px;
+    }
+  
+    .year-group,
+    .dept-group,
+    .action-group,
+    .date-group,
+    .search-group,
+    .button-group {
+      width: 100%;
+      min-width: auto;
+    }
+  
+    .records-table {
+      font-size: 12px;
+    }
+    
+    .records-table th,
+    .records-table td {
+      padding: 8px 10px;
+    }
+    
+    .header-card h1 {
+      font-size: 20px;
+    }
+  }
+  
+  /* For mobile phones */
+  @media (max-width: 480px) {
+    .filters-container {
+      padding: 10px;
+    }
+    
+    .filter-select,
+    .search-input,
+    .generate-report-btn {
+      padding: 8px 10px;
+      font-size: 13px;
+    }
+    
+    .records-table {
+      font-size: 11px;
+    }
+    
+    .records-table th,
+    .records-table td {
+      padding: 6px 8px;
+    }
+    
+    .action-badge {
+      padding: 3px 6px;
+      font-size: 10px;
+    }
+  }
+
+
+  /* Pagination Styles */
+.pagination-container {
+    margin-top: 30px;
+    padding: 10px 0;
+  }
+  
+  .pagination-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .pagination-arrow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .pagination-arrow:hover:not(:disabled) {
+    background-color: #f5f5f5;
+    border-color: #01311D;
+    color: #01311D;
+  }
+  
+  .pagination-arrow:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  .arrow-icon {
+    font-size: 18px;
+    line-height: 1;
+  }
+  
+  .prev-arrow .arrow-icon {
+    margin-right: 4px;
+  }
+  
+  .next-arrow .arrow-icon {
+    margin-left: 4px;
+  }
+  
+  .pagination-pages {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  
+  .pagination-page {
+    min-width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: white;
+    color: #333;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    padding: 0 8px;
+  }
+  
+  .pagination-page:hover {
+    background-color: #f5f5f5;
+    border-color: #01311D;
+    color: #01311D;
+  }
+  
+  .pagination-page.active {
+    background-color: #066518;
+    border-color: #01311D;
+    color: white;
+  }
+  
+  .pagination-ellipsis {
+    color: #666;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+  
+  /* Responsive pagination */
+  @media (max-width: 768px) {
+    .pagination-wrapper {
+      gap: 15px;
+    }
+    
+    .pagination-arrow {
+      padding: 6px 12px;
+      font-size: 13px;
+    }
+    
+    .pagination-page {
+      min-width: 32px;
+      height: 32px;
+      font-size: 13px;
+    }
+    
+    .arrow-icon {
+      font-size: 16px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .pagination-wrapper {
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .pagination-pages {
+      order: 2;
+    }
+    
+    .pagination-arrow.prev-arrow {
+      order: 1;
+    }
+    
+    .pagination-arrow.next-arrow {
+      order: 3;
+    }
+  }
