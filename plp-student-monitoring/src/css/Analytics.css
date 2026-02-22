@@ -1,48 +1,5 @@
 
-:root {
-  --color-primary: #2d5a45; 
-  --color-primary-light: #4a7c63;
-  --color-accent: #f5a623; 
-  --color-accent-light: #ffc04d;
-  --color-text-dark: #333333;
-  --color-text-light: #666666;
-  --color-text-muted: #999999;
-  --color-bg-light: #f8f9fa;
-  --color-border: #e0e0e0;
-  --color-success: #28a745;
-  --color-error: #dc3545;
-  --color-warning: #ffc107;
 
-  /* SPACING*/
-  --spacing-xs: 4px;
-  --spacing-sm: 8px;
-  --spacing-md: 16px;
-  --spacing-lg: 24px;
-  --spacing-xl: 32px;
-  --spacing-xxl: 48px;
-
-  /* TYPOGRAPHY */
-  --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  --font-size-h1: 32px;
-  --font-size-h2: 24px;
-  --font-size-h3: 20px;
-  --font-size-body: 14px;
-  --font-size-small: 12px;
-
-  /* SHADOWS & EFFECTS */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15);
-
-  /* BORDER RADIUS */
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-
-  /* TRANSITIONS */
-  --transition-fast: 150ms ease-in-out;
-  --transition-normal: 300ms ease-in-out;
-}
 
 * {
   margin: 0;
