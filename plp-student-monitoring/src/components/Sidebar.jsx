@@ -28,7 +28,6 @@ export default function Sidebar() {
 
   return (
     <>
-      
       <button
         className={`sidebar-toggle-btn ${isOpen ? "open" : "collapsed"}`}
         onClick={toggleSidebar}

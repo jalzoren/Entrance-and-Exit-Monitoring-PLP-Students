@@ -31,6 +31,10 @@ function App() {
         {/* Protected routes with sidebar */}
         <Route element={<DashboardLayout />}>
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/monitor" element={<Monitor />} />
+          <Route path="/records" element={<Records />} />
+          <Route path="/students" element={<Students />} />
+          <Route path="/analytics" element={<Analytics />} />
        {/*}   <Route path="/monitor" element={<Monitor />} />
           <Route path="/records" element={<Records />} />
           <Route path="/students" element={<Students />} />
