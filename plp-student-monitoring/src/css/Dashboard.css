@@ -7,7 +7,7 @@
   --color-accent: #d99201;
   --color-accent-hover: #58761b;
   --color-text-dark: #01311d;
-    --color-text-black: #0f0f0f;
+  --color-text-black: #0f0f0f;
 
   --color-text-light: #fafafa;
   --color-border-light: rgba(0, 0, 0, 0.08);
@@ -17,6 +17,7 @@
   --sidebar-open: 260px;
   --transition: 0.28s ease;
 }
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -38,7 +39,7 @@ overflow: hidden;
 }
 
 .dashb{
-      margin-top: 140px;
+    margin-top: 140px;
 }
 .campus-header {
   display: flex;
@@ -78,6 +79,40 @@ overflow: hidden;
   font-size: 0.9rem;
   color: #fafafa;
   font-family: "Montserrat", sans-serif;
+}
+
+/* DATE & TIME STYLING */
+
+.date-and-time {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  color: white;
+}
+
+.date-section {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.day {
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.date {
+  font-size: 0.9rem;
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.time {
+  font-size: 2.8rem;
+  font-weight: 600;
+  letter-spacing: 2px;
 }
 
 
@@ -128,3 +163,4 @@ overflow: hidden;
     padding: 1rem 0.75rem;
   }
 }
+
