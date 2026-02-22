@@ -4,7 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import DashboardLayout from './components/DashboardLayout'; // contains Sidebar
 
 // Pages (create these or use placeholders)
-import Dashboard from './pages/Dashboard';   kjnfkwe
+import Dashboard from './pages/Dashboard';   
 import Analytics from './pages/Analytics';
 /* import Monitor from './pages/Monitor';
 import Records from './pages/Records';
