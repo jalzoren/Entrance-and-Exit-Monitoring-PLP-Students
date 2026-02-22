@@ -71,6 +71,8 @@ export default function Login() {
             <button type="button" className="forgot-password-button">
               <a href="/forgotpass">Forgot Password?</a>
             </button>
+            <Link to="/dashboard" className="register-link">
+dash            </Link>
 
             <p className="footer-text">
               ENTRANCE AND EXIT MONITORING SYSTEM
