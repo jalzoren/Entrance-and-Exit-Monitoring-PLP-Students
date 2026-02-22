@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState} from "react";
 import "../css/FaceRecognition.css";
 
 function FaceRecognition() {
@@ -18,6 +18,45 @@ function FaceRecognition() {
       }
     }
     startCamera();
+  }, []);
+
+
+  const [time, setTime] = useState("");
+  const [date, setDate] = useState("");
+  const [day, setDay] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      const now = new Date();
+
+      const manilaTime = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+      }).format(now);
+
+      const manilaDate = new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Manila",
+        day: "2-digit",
+        month: "2-digit",
+        year: "2-digit",
+      }).format(now);
+
+      const manilaDay = new Intl.DateTimeFormat("en-PH", {
+        timeZone: "Asia/Manila",
+        weekday: "long",
+      }).format(now);
+
+      setTime(manilaTime);
+      setDate(manilaDate);
+      setDay(manilaDay);
+    };
+
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -47,12 +86,15 @@ function FaceRecognition() {
           <h2>pagdating sa PLP</h2>
 
           <div className="time-status-section">
-            <div className="time-date">
-              <p className="time">12:00 AM</p>
-              <p className="date">30 / 01 / 26 <br>
-              </br>Friday</p>
-            </div>
-          </div>
+      <div className="time-date">
+        <p className="time">{time}</p>
+        <p className="date">
+          {date}
+          <br />
+          {day}
+        </p>
+      </div>
+    </div>
 
           <div className="message-box">
             Happy Monday! Let's make it a great week, Jerimiah.
