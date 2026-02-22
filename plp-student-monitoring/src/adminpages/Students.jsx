@@ -8,38 +8,33 @@ function Students() {
   const [registrationDate, setRegistrationDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Sample data for demonstration
-  const students = [
-    { 
-      id: 1, 
-      studentId: '2021-001', 
-      fullName: 'John Doe', 
-      department: 'Engineering', 
-      yearLevel: '1st Year', 
-      enrollmentStatus: 'Active', 
-      dateRegistered: '2024-01-15' 
-    },
-    { 
-      id: 2, 
-      studentId: '2021-002', 
-      fullName: 'Jane Smith', 
-      department: 'Science', 
-      yearLevel: '2nd Year', 
-      enrollmentStatus: 'Active', 
-      dateRegistered: '2023-08-20' 
-    },
-    { 
-      id: 3, 
-      studentId: '2021-003', 
-      fullName: 'Mike Johnson', 
-      department: 'Arts', 
-      yearLevel: '3rd Year', 
-      enrollmentStatus: 'Active', 
-      dateRegistered: '2022-09-10' 
-    },
+  // Sample data for demonstration - expanded to 15 students
+  const allStudents = [
+    { id: 1, studentId: '2021-001', fullName: 'John Doe', department: 'Engineering', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-15' },
+    { id: 2, studentId: '2021-002', fullName: 'Jane Smith', department: 'Science', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-08-20' },
+    { id: 3, studentId: '2021-003', fullName: 'Mike Johnson', department: 'Arts', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2022-09-10' },
+    { id: 4, studentId: '2021-004', fullName: 'Emily Brown', department: 'Business', yearLevel: '4th Year', enrollmentStatus: 'Active', dateRegistered: '2024-02-01' },
+    { id: 5, studentId: '2021-005', fullName: 'David Wilson', department: 'Engineering', yearLevel: '2nd Year', enrollmentStatus: 'Inactive', dateRegistered: '2023-11-12' },
+    { id: 6, studentId: '2021-006', fullName: 'Sarah Garcia', department: 'Science', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-20' },
+    { id: 7, studentId: '2021-007', fullName: 'James Martinez', department: 'Arts', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2023-05-15' },
+    { id: 8, studentId: '2021-008', fullName: 'Lisa Anderson', department: 'Business', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-09-08' },
+    { id: 9, studentId: '2021-009', fullName: 'Robert Taylor', department: 'Engineering', yearLevel: '4th Year', enrollmentStatus: 'Inactive', dateRegistered: '2022-12-03' },
+    { id: 10, studentId: '2021-010', fullName: 'Maria Thomas', department: 'Science', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-05' },
+    { id: 11, studentId: '2021-011', fullName: 'Charles Lee', department: 'Arts', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-02-10' },
+    { id: 12, studentId: '2021-012', fullName: 'Patricia White', department: 'Business', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-10-22' },
+    { id: 13, studentId: '2021-013', fullName: 'Joseph Harris', department: 'Engineering', yearLevel: '3rd Year', enrollmentStatus: 'Inactive', dateRegistered: '2023-07-18' },
+    { id: 14, studentId: '2021-014', fullName: 'Nancy Clark', department: 'Science', yearLevel: '4th Year', enrollmentStatus: 'Active', dateRegistered: '2023-06-14' },
+    { id: 15, studentId: '2021-015', fullName: 'Thomas Lewis', department: 'Arts', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-30' },
   ];
 
-  const totalPages = 68;
+  // Pagination settings
+  const recordsPerPage = 5;
+  const totalPages = Math.ceil(allStudents.length / recordsPerPage);
+
+  // Get current students for the page
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentStudents = allStudents.slice(indexOfFirstRecord, indexOfLastRecord);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -49,63 +44,78 @@ function Students() {
 
   const renderPageNumbers = () => {
     const pages = [];
+    const maxVisiblePages = 5;
     
-    pages.push(
-      <button
-        key={1}
-        className={`page-number ${currentPage === 1 ? 'active' : ''}`}
-        onClick={() => handlePageChange(1)}
-      >
-        1
-      </button>
-    );
-
-    if (totalPages >= 2) {
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if total pages are less than max visible
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+    } else {
+      // Always show first page
       pages.push(
         <button
-          key={2}
-          className={`page-number ${currentPage === 2 ? 'active' : ''}`}
-          onClick={() => handlePageChange(2)}
+          key={1}
+          className={`page-number ${currentPage === 1 ? 'active' : ''}`}
+          onClick={() => handlePageChange(1)}
         >
-          2
+          1
         </button>
       );
-    }
 
-    if (totalPages >= 3) {
+      // Calculate start and end of visible pages
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Adjust if at the beginning
+      if (currentPage <= 2) {
+        end = Math.min(totalPages - 1, 4);
+      }
+      
+      // Adjust if at the end
+      if (currentPage >= totalPages - 1) {
+        start = Math.max(2, totalPages - 3);
+      }
+      
+      // Add ellipsis after first page if needed
+      if (start > 2) {
+        pages.push(<span key="ellipsis1" className="ellipsis">...</span>);
+      }
+      
+      // Add middle pages
+      for (let i = start; i <= end; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+      
+      // Add ellipsis before last page if needed
+      if (end < totalPages - 1) {
+        pages.push(<span key="ellipsis2" className="ellipsis">...</span>);
+      }
+      
+      // Always show last page
       pages.push(
         <button
-          key={3}
-          className={`page-number ${currentPage === 3 ? 'active' : ''}`}
-          onClick={() => handlePageChange(3)}
+          key={totalPages}
+          className={`page-number ${currentPage === totalPages ? 'active' : ''}`}
+          onClick={() => handlePageChange(totalPages)}
         >
-          3
-        </button>
-      );
-    }
-
-    pages.push(<span key="ellipsis" className="ellipsis">...</span>);
-
-    if (totalPages >= 67) {
-      pages.push(
-        <button
-          key={67}
-          className={`page-number ${currentPage === 67 ? 'active' : ''}`}
-          onClick={() => handlePageChange(67)}
-        >
-          67
-        </button>
-      );
-    }
-
-    if (totalPages >= 68) {
-      pages.push(
-        <button
-          key={68}
-          className={`page-number ${currentPage === 68 ? 'active' : ''}`}
-          onClick={() => handlePageChange(68)}
-        >
-          68
+          {totalPages}
         </button>
       );
     }
@@ -201,9 +211,9 @@ function Students() {
               </tr>
             </thead>
             <tbody>
-              {students.map((student) => (
+              {currentStudents.map((student, index) => (
                 <tr key={student.id}>
-                  <td>{student.id}</td>
+                  <td>{indexOfFirstRecord + index + 1}</td>
                   <td>{student.studentId}</td>
                   <td>{student.fullName}</td>
                   <td>{student.department}</td>
