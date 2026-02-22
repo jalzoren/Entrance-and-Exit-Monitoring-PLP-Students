@@ -1,37 +1,42 @@
-const { app, BrowserWindow } = require("electron");
-//npm run start to start
-let win;
+const { app, BrowserWindow, session } = require("electron");
 
 function createWindow() {
-  win = new BrowserWindow({
-    width: 1000,
-    height: 700,
-    frame: true,           // keeps OS toolbar with X, minimize, maximize
-    fullscreenable: false, // optional: prevent true fullscreen
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 800,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,
+      contextIsolation: false, // must be false for your React app to access getUserMedia
+      enableRemoteModule: true,
+      media: true,             // allow camera/microphone
+      webSecurity: false       // allows getUserMedia on file:// if you package later
     },
-    
   });
+
   win.setMenuBarVisibility(false);
-
-
-  // Load your Vite app
-  win.loadURL("http://localhost:5173");
-
-  // Maximize window to fill screen but keep toolbar
+  win.loadURL("http://localhost:5173"); // Vite dev server
   win.maximize();
 }
 
-// Create window when app is ready
-app.whenReady().then(createWindow);
+// Automatically allow camera/mic
+app.whenReady().then(() => {
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === "media") {
+      callback(true); // allow camera
+    } else {
+      callback(false);
+    }
+  });
+
+  createWindow();
+});
 
 // Quit when all windows are closed
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
+// macOS: re-create window if app is activated
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });

@@ -72,8 +72,11 @@ export default function Login() {
               <a href="/forgotpass">Forgot Password?</a>
             </button>
             <Link to="/dashboard" className="register-link">
-dash            </Link>
-
+              Go to Dashboard
+            </Link>
+<Link to="/facerecog" className="register-link">
+              Go to Face Recognition
+            </Link>
             <p className="footer-text">
               ENTRANCE AND EXIT MONITORING SYSTEM
             </p>

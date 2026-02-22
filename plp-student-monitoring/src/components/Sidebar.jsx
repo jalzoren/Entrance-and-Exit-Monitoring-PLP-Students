@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import {
   FiHome,
   FiMonitor,
@@ -76,6 +76,9 @@ export default function Sidebar() {
             <div className="user-details">
               <div className="user-name">Jerimiah Bitancor</div>
               <div className="user-role">EEMS - ADMIN</div>
+              <Link to="/" className="profile-link">
+                Home
+              </Link> 
             </div>
           )}
         </div>
