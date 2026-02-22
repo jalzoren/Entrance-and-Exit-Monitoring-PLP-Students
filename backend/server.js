@@ -15,3 +15,15 @@ app.listen(PORT, () => {
 // DB_PASSWORD=
 // DB_NAME=eems
 // DB_PORT=3306
+
+// .env file content (for reference):
+// PORT=5000
+// 
+// DB_HOST=localhost
+// DB_USER=root
+// DB_PASSWORD=
+// DB_NAME=eems
+// DB_PORT=3306
+
+
+//sjnsns
