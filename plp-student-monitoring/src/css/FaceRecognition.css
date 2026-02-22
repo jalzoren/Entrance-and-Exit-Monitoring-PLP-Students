@@ -71,12 +71,12 @@ background-color: rgba(15, 15, 15, 0.6);
   width: 50%;
   background: url("./src/assets/MAIN.png") no-repeat center center;
   background-size: cover;
-  padding: 10px;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: flex-start;
-  gap: 10px;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 15px;
   align-items: center;
   
 }
@@ -116,7 +116,7 @@ background-color: rgba(15, 15, 15, 0.6);
   text-align: center;
   width: 80%;
   line-height: 1.2;
-  margin-top: 20px;
+  margin-top: 5px;
 }
 
 .mabuhay-section h2 {
@@ -176,13 +176,14 @@ background-color: rgba(15, 15, 15, 0.6);
   padding: 20px;
   border-radius: 8px;
   text-align: center;
-  margin-top: 20px;
+  margin-top: 10px;
   width: 80%;
-  height : 190px;
+        height : auto;
+        padding: 5px;
 }
 
 .status-box h2 {
-  font-size: 28px;
+  font-size: 24px;
   margin-bottom: 10px;
   font-family: "Oswald", sans-serif;
   font-stretch: condensed;
@@ -204,7 +205,6 @@ background-color: rgba(15, 15, 15, 0.6);
 
 .back-link {
   align-self: flex-end;
-  margin-bottom: 20px;
   font-family: "Montserrat", sans-serif;
   color: #fafafa;
   text-decoration: none;
