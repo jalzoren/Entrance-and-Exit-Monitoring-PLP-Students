@@ -2,15 +2,19 @@ import { useState } from "react";
 import "../css/Login.css";
 import logo from "../assets/logo2.png";
 import { LuScanFace } from "react-icons/lu";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
+  const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
     console.log({ username, password });
     // Later: call real login API here
+
+    navigate("/dashboard");
   };
 
   return (
