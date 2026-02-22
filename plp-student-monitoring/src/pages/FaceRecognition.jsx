@@ -1,5 +1,6 @@
-import { useRef, useEffect, useState} from "react";
+import { useRef, useEffect, useState } from "react";
 import "../css/FaceRecognition.css";
+import { Link } from "react-router-dom";
 
 function FaceRecognition() {
   const videoRef = useRef(null);
@@ -19,7 +20,6 @@ function FaceRecognition() {
     }
     startCamera();
   }, []);
-
 
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
@@ -65,14 +65,18 @@ function FaceRecognition() {
       <div className="camera-side">
         <video ref={videoRef} autoPlay playsInline className="camera-video" />
         <div className="camera-text">
-          Please look at the camera <br></br>and position your face within the on-screen
-          frame.
+          Please look at the camera <br></br>and position your face within the
+          on-screen frame.
         </div>
       </div>
 
       {/* Right side: UI */}
       <div className="ui-side">
+          <Link to="/" className="back-link">
+          &larr; Back to Login
+        </Link>
         <div className="school-info">
+          
           <img src="/logoplp.gif" alt="School Logo" className="school-logo" />
           <div className="school-text">
             <h1>PAMANTASAN NG LUNGSOD NG PASIG</h1>
@@ -80,21 +84,22 @@ function FaceRecognition() {
             <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>
           </div>
         </div>
+      
 
         <div className="mabuhay-section">
           <h2>Mabuhay, Maligayang</h2>
-          <h2>pagdating sa PLP</h2>
+          <h2>pagdating sa PLP!</h2>
 
           <div className="time-status-section">
-      <div className="time-date">
-        <p className="time">{time}</p>
-        <p className="date">
-          {date}
-          <br />
-          {day}
-        </p>
-      </div>
-    </div>
+            <div className="time-date">
+              <p className="time">{time}</p>
+              <p className="date">
+                {date}
+                <br />
+                {day}
+              </p>
+            </div>
+          </div>
 
           <div className="message-box">
             Happy Monday! Let's make it a great week, Jerimiah.
@@ -102,12 +107,18 @@ function FaceRecognition() {
         </div>
 
         <div className="status-box">
-          <p>
+          <h2>
             <strong>AUTHENTICATION SUCCESSFUL!</strong>
+          </h2>
+          <p>
+            Time: <span>7:45 AM </span>{" "}
           </p>
-          <p>Time: 7:45 AM</p>
-          <p>Status: ENTRY - Logged In</p>
-          <p>Method: Facial Recognition</p>
+          <p>
+            Status:<span> ENTRY - Logged In </span>
+          </p>
+          <p>
+            Method: <span>Facial Recognition</span>
+          </p>
         </div>
       </div>
     </div>
