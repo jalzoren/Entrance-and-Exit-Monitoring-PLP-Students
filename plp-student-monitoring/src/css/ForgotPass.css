@@ -179,3 +179,26 @@
 .back-to-home:hover {
   color: #1e40af;
 }
+
+
+.password-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.show-password-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 1.1rem;
+}
+
+.form-description {
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+  color: #333;
+}

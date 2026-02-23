@@ -1,4 +1,3 @@
-// src/pages/ForgotPasswordStep2.jsx  (or same file with conditional step)
 import { useState } from "react";
 import "../css/ForgotPass.css";
 import logo from "../assets/logo2.png";
@@ -20,7 +19,6 @@ export default function ForgotPasswordStep2() {
     }
 
     console.log("Resetting password:", { code, newPassword });
-    // → Call your backend API here (verify code + reset password)
   };
 
   const toggleShowPassword = () => setShowPassword((prev) => !prev);
@@ -32,30 +30,19 @@ export default function ForgotPasswordStep2() {
         className="top-left-icon"
       />
 
-      <div className="login-wrapper">
-        <div className="login-header-container">
+      <div className="login-content">
+        {/* Logo + Title */}
+        <div className="logined">
           <img src={logo} alt="System Logo" className="login-icon" />
-          <h1 className="logintext">RESET PASSWORD</h1>
+          <div className="login-header">
+            <h1 className="logintext">RESET PASSWORD</h1>
+          </div>
         </div>
 
-        <div className="login-card">
-          <p className="form-description">
-            Enter the code sent to your email and choose a new password.
-          </p>
+        {/* Form Box */}
+        <div className="login-box">
 
           <form className="login-form" onSubmit={handleResetPassword}>
-            <div className="input-group">
-              <label htmlFor="code">Verification Code</label>
-              <input
-                id="code"
-                type="text"
-                placeholder="Enter code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-
             <div className="input-group">
               <label htmlFor="newPassword">New Password</label>
               <div className="password-input-wrapper">
@@ -98,16 +85,14 @@ export default function ForgotPasswordStep2() {
               </div>
             </div>
 
-            <button type="submit" className="confirm-button">
+            <button type="submit" className="submit-button">
               Reset Password
             </button>
           </form>
 
-          <div className="form-footer">
-            <button type="button" className="back-to-login">
-              <a href="/">← Back to Login</a>
-            </button>
-          </div>
+          <button type="button" className="back-to-home">
+            <a href="/">← Back to Login</a>
+          </button>
         </div>
       </div>
     </div>
