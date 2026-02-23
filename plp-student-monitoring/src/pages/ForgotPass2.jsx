@@ -41,23 +41,8 @@ export default function ForgotPasswordStep2() {
 
         {/* Form Box */}
         <div className="login-box">
-          <p className="form-description">
-            Enter the code sent to your email and choose a new password.
-          </p>
 
           <form className="login-form" onSubmit={handleResetPassword}>
-            <div className="input-group">
-              <label htmlFor="code">Verification Code</label>
-              <input
-                id="code"
-                type="text"
-                placeholder="Enter code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                required
-              />
-            </div>
-
             <div className="input-group">
               <label htmlFor="newPassword">New Password</label>
               <div className="password-input-wrapper">
