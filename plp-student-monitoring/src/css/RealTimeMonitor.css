@@ -1,0 +1,206 @@
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ── All rules scoped under .rtm-wrapper to avoid bleeding into other pages ── */
+
+.rtm-wrapper {
+  font-family: 'Rajdhani', sans-serif;
+  padding: 32px 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.rtm-wrapper *,
+.rtm-wrapper *::before,
+.rtm-wrapper *::after {
+  box-sizing: border-box;
+}
+
+/* ── Center container ── */
+.rtm-card {
+  width: 100%;
+  max-width: 860px;
+}
+
+/* ── Sub-header row: student count only ── */
+.rtm-subheader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.rtm-student-count {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #0d3321;
+  letter-spacing: 1px;
+  line-height: 1;
+  margin: 0;
+}
+
+/* ── Two-column body ── */
+.rtm-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── Left panel ── */
+.rtm-left-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rtm-btn-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rtm-btn {
+  padding: 10px 0;
+  border: 2px solid #01311d;
+  background: #01311d;
+  color: #ffffff;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s;
+}
+
+.rtm-btn:hover,
+.rtm-btn.active {
+  background: #024d2c;
+  border-color: #024d2c;
+  color: #ffffff;
+}
+
+/* ── Avatar box ── */
+.rtm-avatar-box {
+  border: 2px solid #0d3321;
+  background: #ffffff;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+.rtm-avatar-box svg {
+  width: 55%;
+  height: 55%;
+  opacity: 0.4;
+}
+
+.rtm-scan-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #2ecc71, transparent);
+  animation: rtm-scan 2.8s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes rtm-scan {
+  0%   { top: 0%; }
+  100% { top: 100%; }
+}
+
+.rtm-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-color: #2ecc71;
+  border-style: solid;
+}
+.rtm-corner.tl { top: 8px;    left: 8px;   border-width: 2px 0 0 2px; }
+.rtm-corner.tr { top: 8px;    right: 8px;  border-width: 2px 2px 0 0; }
+.rtm-corner.bl { bottom: 8px; left: 8px;   border-width: 0 0 2px 2px; }
+.rtm-corner.br { bottom: 8px; right: 8px;  border-width: 0 2px 2px 0; }
+
+.rtm-status-text {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.6rem;
+  color: #1a5c3a;
+  letter-spacing: 1px;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin: 0;
+}
+
+/* ── Log panel ── */
+.rtm-log-panel {
+  background: #0d3321;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  scroll-behavior: smooth;
+  align-self: stretch;
+}
+
+.rtm-log-panel::-webkit-scrollbar       { width: 4px; }
+.rtm-log-panel::-webkit-scrollbar-track { background: transparent; }
+.rtm-log-panel::-webkit-scrollbar-thumb { background: #1a5c3a; border-radius: 2px; }
+
+.rtm-log-entry {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.7rem;
+  color: #e8f5e9;
+  line-height: 1.6;
+  padding: 5px 8px;
+  border-left: 2px solid transparent;
+  animation: rtm-fadeSlide 0.35s ease forwards;
+  opacity: 0;
+}
+
+@keyframes rtm-fadeSlide {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.rtm-log-entry.failed {
+  color: #ff4444;
+  border-left-color: #ff4444;
+  background: rgba(255, 68, 68, 0.08);
+}
+
+.rtm-log-entry.success {
+  border-left-color: #2ecc71;
+}
+
+.rtm-log-time {
+  color: #2ecc71;
+  margin-right: 4px;
+}
+
+.rtm-log-entry.failed .rtm-log-time {
+  color: #ff4444;
+}
+
+.rtm-log-method {
+  opacity: 0.65;
+  font-size: 0.65rem;
+}
+
+.rtm-log-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+  margin: 1px 0;
+  flex-shrink: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 700px) {
+  .rtm-body    { grid-template-columns: 1fr; }
+  .rtm-wrapper { padding: 20px 16px; }
+}

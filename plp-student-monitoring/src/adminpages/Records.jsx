@@ -167,14 +167,16 @@ function Records() {
   };
 
   return (
-    <div className="records-container">
+   <div>
       <header className="header-card">
         <h1>ENTRY-EXIT RECORDS</h1>
         <p className="subtitle">Dashboard / Entry-Exit Records</p>
       </header>
       
       <hr className="header-divider" />
-      
+      <div className="records-table"></div>
+
+ <div className="records-container">
       {/* Filters and Actions Section */}
       <div className="filters-container">
         <div className="filters-wrapper">
@@ -308,6 +310,8 @@ function Records() {
           </button>
         </div>
       </div>
+    </div>
+
     </div>
   )
 }

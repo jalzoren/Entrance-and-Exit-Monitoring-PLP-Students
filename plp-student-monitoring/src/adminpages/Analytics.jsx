@@ -1,5 +1,9 @@
-import React, {useState, useEffect} from 'react';
-import '../css/Analytics.css'; // Create this CSS file for styling
+import React, { useState, useEffect } from 'react';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import '../css/Analytics.css';
 
 const INITIAL_METRICS = {
   totalStudents: 10000,
@@ -13,6 +17,7 @@ const INITIAL_TRAFFIC_DATA = [
   { date: 'Thu', entrance: 1478, exit: 1200 },
   { date: 'Fri', entrance: 1189, exit: 1218 },
   { date: 'Sat', entrance: 1200, exit: 1250 },
+  { date: 'Sun', entrance: 1100, exit: 1150 },
 ];
 
 const INITIAL_COLLEGE_DATA = [
@@ -39,32 +44,44 @@ const INITIAL_COLLEGE_DATA = [
   },
 ];
 
-
 const INITIAL_AUTH_DATA = [
-  { id: 1, method: 'Facial Recognition', attempts: 300, success: 270, successRate: '90% (detected)' },
-  { id: 2, method: 'Manual Input', attempts: 100, success: 100, successRate: '100% (detected)' },
+  { id: 1, method: 'Facial Recognition', attempts: 300, success: 270, successRate: '90%' },
+  { id: 2, method: 'Manual Input', attempts: 100, success: 100, successRate: '100%' },
 ];
+
+// Colors for charts
+const COLORS = ['#01311d', '#548772', '#6a9b84', '#88b7a0', '#a6d5c0'];
 
 function Analytics() {
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
-
   const [trafficData, setTrafficData] = useState(INITIAL_TRAFFIC_DATA);
   const [collegeData, setCollegeData] = useState(INITIAL_COLLEGE_DATA);
   const [authData, setAuthData] = useState(INITIAL_AUTH_DATA);
-
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('7days');
+  
+  // Pagination state for college data
+  const [currentPage, setCurrentPage] = useState(1);
+  const recordsPerPage = 5;
+  
+  // Calculate pagination
+  const indexOfLastRecord = currentPage * recordsPerPage;
+  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
+  const currentCollegeData = collegeData.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(collegeData.length / recordsPerPage);
 
   useEffect(() => {
-
     const fetchAnalyticsData = async () => {
       try {
         setIsLoading(true);
         setError(null);
 
-        if (window.electronAPI) {
+        // Simulate API call
+        await new Promise(resolve => setTimeout(resolve, 1000));
 
+        if (window.electronAPI) {
           const data = await window.electronAPI.invoke('get-analytics-data', {
             timeRange,
           });
@@ -76,9 +93,7 @@ function Analytics() {
             setAuthData(data.authData || INITIAL_AUTH_DATA);
           }
         } else {
-
           console.warn('Electron API not available, using sample data');
-
         }
 
         setIsLoading(false);
@@ -90,25 +105,127 @@ function Analytics() {
     };
 
     fetchAnalyticsData();
-
   }, [timeRange]);
 
+  // Calculate insights from data
+  const getTrafficInsights = () => {
+    if (!trafficData.length) return null;
+    
+    const highestTraffic = trafficData.reduce((max, day) => 
+      day.entrance > max.entrance ? day : max
+    );
+    
+    const lowestTraffic = trafficData.reduce((min, day) => 
+      day.entrance < min.entrance ? day : min
+    );
+    
+    return { highestTraffic, lowestTraffic };
+  };
+
+  const insights = getTrafficInsights();
+
+  // Pagination handlers
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const renderPageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+    } else {
+      pages.push(
+        <button
+          key={1}
+          className={`page-number ${currentPage === 1 ? 'active' : ''}`}
+          onClick={() => handlePageChange(1)}
+        >
+          1
+        </button>
+      );
+
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 2) {
+        end = Math.min(totalPages - 1, 4);
+      }
+      
+      if (currentPage >= totalPages - 1) {
+        start = Math.max(2, totalPages - 3);
+      }
+      
+      if (start > 2) {
+        pages.push(<span key="ellipsis1" className="ellipsis">...</span>);
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push(<span key="ellipsis2" className="ellipsis">...</span>);
+      }
+      
+      pages.push(
+        <button
+          key={totalPages}
+          className={`page-number ${currentPage === totalPages ? 'active' : ''}`}
+          onClick={() => handlePageChange(totalPages)}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+
+    return pages;
+  };
+
+  // Prepare data for pie chart
+  const pieChartData = authData.map(item => ({
+    name: item.method,
+    value: item.attempts
+  }));
 
   return (
-  <div className="analytics-container">
-        <div className="analytics-header">
-          <h1>ANALYTICS & REPORTS</h1>
-          <p className="breadcrumb">Dashboard / Analytics & Reports</p>
-        </div>
+    <div>
+      <header className="header-card">
+        <h1>ANALYTICS & REPORTS</h1>
+        <p className="subtitle">Dashboard / Analytics & Reports</p>
+      </header>
+      <hr className="header-divider"></hr>
 
+      {/* Analytics Content */}
+      <div className="analytics-container">
+        {/* Metrics Cards */}
         <div className="metrics-row">
-          {/* Card 1: Total Students */}
           <div className="metric-card">
             <div className="metric-value">{metrics.totalStudents.toLocaleString()}</div>
             <div className="metric-label">TOTAL STUDENTS</div>
           </div>
 
-          {/* Card 2: Current Students Inside */}
           <div className="metric-card">
             <div className="metric-value">{metrics.currentStudentsInside.toLocaleString()}</div>
             <div className="metric-label">CURRENT STUDENTS INSIDE</div>
@@ -135,7 +252,6 @@ function Analytics() {
               <div className="section-header">
                 <h2>Daily Traffic Trend (Entries and Exits)</h2>
                 <div className="time-range-selector">
-
                   <button
                     className={`range-btn ${timeRange === '7days' ? 'active' : ''}`}
                     onClick={() => setTimeRange('7days')}
@@ -157,79 +273,43 @@ function Analytics() {
                 </div>
               </div>
 
+              {/* Recharts Area Chart - Changed from LineChart to AreaChart */}
               <TrafficChart data={trafficData} />
 
               {/* INSIGHTS SECTION */}
               <div className="insights">
                 <h4>Insights:</h4>
                 <ul>
-                  <li>
-                    <strong>Highest traffic:</strong> Wednesday (1,240 entrances)
-                  </li>
-                  <li>
-                    <strong>Lowest traffic:</strong> Sunday (1,100 entrances)
-                  </li>
-                  <li>
-                    <strong>Peak hour today:</strong> 8:15 AM (350 entrances)
-                  </li>
+                  {insights && (
+                    <>
+                      <li>
+                        <strong>Highest traffic:</strong> {insights.highestTraffic.date} ({insights.highestTraffic.entrance.toLocaleString()} entrances)
+                      </li>
+                      <li>
+                        <strong>Lowest traffic:</strong> {insights.lowestTraffic.date} ({insights.lowestTraffic.entrance.toLocaleString()} entrances)
+                      </li>
+                      <li>
+                        <strong>Peak hour today:</strong> 8:15 AM (350 entrances)
+                      </li>
+                    </>
+                  )}
                 </ul>
               </div>
             </section>
 
-            {/* SECTION 2: COLLEGE DISTRIBUTION */}
-            <section className="chart-section charts-grid">
-              <div className="chart-box">
-                <div className="chart-header">
-                  <h3>College Distribution (Current Campus Population)</h3>
-                  <button className="info-btn">ℹ</button>
-                </div>
-
-                <CollegeDistributionChart data={collegeData} />
-
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>No.</th>
-                      <th>College</th>
-                      <th>Present Now</th>
-                      <th>Total of Students</th>
-                      <th>% of Campus</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-
-                    {collegeData.map((college) => (
-                      <tr key={college.id}>
-                        <td>{college.id}</td>
-                        <td>{college.collegeName}</td>
-                        <td>{college.presenceNow}</td>
-                        <td>{college.totalStudents}</td>
-                        <td>{college.percentage}%</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-
-                {/* Pagination */}
-                <div className="pagination">
-                  <button className="prev-btn">← Previous</button>
-                  <span className="page-info">
-                    Page <strong>1</strong> of <strong>67</strong>
-                  </span>
-                  <button className="next-btn">Next →</button>
-                </div>
+            {/* SECTION 2: AUTHENTICATION METHOD - NOW SECOND */}
+            <section className="chart-section">
+              <div className="section-header">
+                <h2>Authentication Method Usage</h2>
+                <button className="info-btn" title="More information">ℹ</button>
               </div>
 
-              {/* SECTION 3: AUTHENTICATION METHOD */}
-              <div className="chart-box">
-                <div className="chart-header">
-                  <h3>Authentication Method Usage</h3>
-                  <button className="info-btn">ℹ</button>
-                </div>
+              {/* Recharts Pie Chart */}
+              <AuthenticationChart data={authData} />
 
-                <AuthenticationChart data={authData} />
-
-                <table className="data-table">
+              {/* Table Section - Smaller table */}
+              <div className="table-container small-table">
+                <table className="analytics-table small-table">
                   <thead>
                     <tr>
                       <th>No.</th>
@@ -243,7 +323,7 @@ function Analytics() {
                       <tr key={auth.id}>
                         <td>{index + 1}</td>
                         <td>{auth.method}</td>
-                        <td>{auth.attempts}</td>
+                        <td>{auth.attempts.toLocaleString()}</td>
                         <td>{auth.successRate}</td>
                       </tr>
                     ))}
@@ -251,79 +331,223 @@ function Analytics() {
                 </table>
               </div>
             </section>
+
+            {/* SECTION 3: COLLEGE DISTRIBUTION - NOW THIRD */}
+            <section className="chart-section">
+              <div className="section-header">
+                <h2>College Distribution (Current Campus Population)</h2>
+                <button className="info-btn" title="More information">ℹ</button>
+              </div>
+
+              {/* Recharts Bar Chart with Percentages */}
+              <CollegeDistributionChart data={collegeData} />
+
+               {/* Summary Text - Total Students on Campus */}
+              <div className="campus-summary">
+                <p>
+                  <strong>Total students currently on campus:</strong>{' '}
+                  {collegeData.reduce((sum, college) => sum + college.presenceNow, 0).toLocaleString()} students
+                </p>
+              </div>
+  
+              {/* Table Section */}
+              <div className="table-container">
+                <table className="analytics-table">
+                  <thead>
+                    <tr>
+                      <th>No.</th>
+                      <th>College</th>
+                      <th>Present Now</th>
+                      <th>Total Students</th>
+                      <th>% of Campus</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentCollegeData.map((college, index) => (
+                      <tr key={college.id}>
+                        <td>{indexOfFirstRecord + index + 1}</td>
+                        <td>{college.collegeName}</td>
+                        <td>{college.presenceNow.toLocaleString()}</td>
+                        <td>{college.totalStudents.toLocaleString()}</td>
+                        <td>{college.percentage}%</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="pagination">
+                    <button
+                      className="pagination-button"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      ← Previous
+                    </button>
+
+                    <div className="page-numbers">
+                      {renderPageNumbers()}
+                    </div>
+
+                    <button
+                      className="pagination-button"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                )}
+              </section>
           </>
         )}
       </div>
+    </div>
   );
 }
 
+// Recharts Area Chart Component - Updated from LineChart to AreaChart and made thinner
 function TrafficChart({ data }) {
-
   return (
-    <div className="traffic-chart-container">
-      <div className="chart-placeholder">
-        <p>Chart Area - Use Recharts library for actual chart</p>
-
-        <div className="data-preview">
-          {data.map((entry) => (
-            <div key={entry.date} className="day-data">
-              <strong>{entry.date}:</strong> In: {entry.entrance}, Out: {entry.exit}
-            </div>
-          ))}
-        </div>
-      </div>
+    <div style={{ width: '100%', height: '250px', marginBottom: '24px' }}> {/* Reduced height from 300px to 250px */}
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}> {/* Reduced top margin from 20 to 10 */}
+          <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+          <XAxis dataKey="date" stroke="#666666" tick={{ fontSize: 12 }} /> {/* Smaller tick font */}
+          <YAxis stroke="#666666" tick={{ fontSize: 12 }} /> {/* Smaller tick font */}
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: 'white', 
+              border: '1px solid #01311d',
+              borderRadius: '4px',
+              fontSize: '12px', // Smaller tooltip font
+              padding: '8px' // Smaller padding
+            }} 
+          />
+          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '5px' }} /> {/* Smaller legend font */}
+          <Area 
+            type="monotone" 
+            dataKey="entrance" 
+            stroke="#58761B"
+            strokeWidth={2}
+            fill="#58761B" 
+            fillOpacity={0.3} // Semi-transparent fill
+            dot={{ fill: '#58761B', r: 3 }} // Smaller dots (r: 3 instead of 4)
+            activeDot={{ r: 5 }} // Smaller active dot
+            name="Entrances"
+          />
+          <Area 
+            type="monotone" 
+            dataKey="exit" 
+            stroke="#D99201"
+            strokeWidth={2}
+            fill="#D99201" 
+            fillOpacity={0.3} // Semi-transparent fill
+            dot={{ fill: '#D99201', r: 3 }} // Smaller dots
+            activeDot={{ r: 5 }} // Smaller active dot
+            name="Exits"
+          />
+        </AreaChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
 function CollegeDistributionChart({ data }) {
   return (
-    <div className="college-distribution-container">
-      <div className="chart-placeholder">
-        <p>College Distribution Chart - Use Recharts BarChart</p>
-        <div className="bar-preview">
-          {data.map((college) => (
-            <div key={college.id} className="bar-item">
-              <label>{college.collegeName}</label>
-              <div className="bar-wrapper">
-                <div
-                  className="bar-fill"
-                  style={{ width: `${college.percentage}%` }}
-                >
-                  {college.percentage}%
-                </div>
-              </div>
-            </div>
-          ))}
+    <div style={{ width: '100%', marginBottom: '24px' }}>
+      {/* Centered chart container */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center',
+        width: '100%'
+      }}>
+        <div style={{ 
+          width: '100%',
+          maxWidth: '800px',  // Max width, but can shrink on mobile
+          height: '350px' // Reduced from 400px
+        }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart 
+              data={data} 
+              layout="vertical"
+              margin={{ top: 10, right: 30, left: 100, bottom: 10 }} // Reduced margins
+            >
+              <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+              <XAxis type="number" stroke="#666666" tick={{ fontSize: 11 }} />
+              <YAxis 
+                type="category" 
+                dataKey="collegeName" 
+                stroke="#666666"
+                width={100}
+                tick={{ fontSize: 11 }}
+              />
+              <Tooltip 
+                formatter={(value) => [value.toLocaleString(), "Present Now"]}
+                contentStyle={{ 
+                  backgroundColor: 'white', 
+                  border: '1px solid #01311d',
+                  borderRadius: '4px',
+                  fontSize: '11px',
+                  padding: '6px'
+                }} 
+              />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Bar dataKey="presenceNow" fill="#58761B" name="Present Now" barSize={15} /> {/* Thinner bars */}
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
   );
 }
-
 
 function AuthenticationChart({ data }) {
+  const pieData = data.map(item => ({
+    name: item.method,
+    value: item.attempts
+  }));
 
-  const total = data.reduce((sum, item) => sum + item.attempts, 0);
-  
+  // Colors for pie slices
+  const AUTH_COLORS = ['#066518', '#D99201'];
+
   return (
-    <div className="auth-chart-container">
-      <div className="chart-placeholder">
-        <p>Authentication Methods - Use Recharts PieChart</p>
-        <div className="pie-preview">
-          {data.map((auth) => {
-            const percentage = ((auth.attempts / total) * 100).toFixed(1);
-            return (
-              <div key={auth.id} className="pie-segment">
-                <span className="segment-label">{auth.method}:</span>
-                <span className="segment-value">{percentage}%</span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div style={{ width: '100%', height: '300px', marginBottom: '24px' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
+          <Pie
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            labelLine={true}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+            outerRadius={100} // Increased from 70 to 100
+            dataKey="value"
+            fontSize={12}
+          >
+            {pieData.map((entry, index) => (
+              <Cell 
+                key={`cell-${index}`} 
+                fill={AUTH_COLORS[index % AUTH_COLORS.length]} 
+              />
+            ))}
+          </Pie>
+          <Tooltip 
+            contentStyle={{ 
+              backgroundColor: 'white', 
+              border: '1px solid #01311d',
+              borderRadius: '4px',
+              fontSize: '12px',
+              padding: '8px'
+            }} 
+          />
+          <Legend wrapperStyle={{ fontSize: '12px' }} />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
   );
 }
 
-export default Analytics
+export default Analytics;

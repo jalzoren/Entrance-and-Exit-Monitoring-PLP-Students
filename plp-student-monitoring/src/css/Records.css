@@ -1,37 +1,27 @@
 /* Records.css */
+:root {
+  @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap");
+  --color-bg-main: #fcfbf4;
+  --color-primary: #548772;
+  --color-primary-dark: #01311d;
+  --color-accent: #d99201;
+  --color-accent-hover: #58761b;
+  --color-text-dark: #01311d;
+  --color-text-black: #0f0f0f;
 
+  --color-text-light: #fafafa;
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-shadow-soft: rgba(0, 0, 0, 0.1);
+
+  --sidebar-collapsed: 0px;
+  --sidebar-open: 260px;
+  --transition: 0.28s ease;
+}
 .records-container {
     padding: 20px;
-    background-color: #f5f5f5;
     min-height: 100vh;
   }
   
-  .header-card {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    margin-bottom: 20px;
-  }
-  
-  .header-card h1 {
-    margin: 0;
-    color: #333;
-    font-size: 24px;
-    font-weight: 600;
-  }
-  
-  .subtitle {
-    margin: 5px 0 0;
-    color: #666;
-    font-size: 14px;
-  }
-  
-  .header-divider {
-    margin: 20px 0;
-    border: 0;
-    border-top: 1px solid #e0e0e0;
-  }
 
 /* Filters Section Styles */
 .filters-container {
@@ -132,7 +122,7 @@
   }
   
   .generate-report-btn {
-    background-color: #066518;
+    background-color: var(--color-primary-dark);
     color: white;
     border: none;
     border-radius: 4px;
@@ -242,7 +232,7 @@
   }
   
   .records-table thead {
-    background-color: #066518; /* Dark green background for header */
+    background-color: var(--color-primary-dark); /* Dark green background for header */
   }
   
   .records-table th {
@@ -274,12 +264,12 @@
   
   .action-badge.entry {
     background-color: #d4edda;
-    color: #155724;
+    color: var(--color-primary-dark);
   }
   
   .action-badge.exit {
     background-color: #f8d7da;
-    color: #721c24;
+    color: var(--color-primary-dark);
   }
   
   /* Responsive Design Media Queries */
@@ -419,8 +409,8 @@
   
   .pagination-arrow:hover:not(:disabled) {
     background-color: #f5f5f5;
-    border-color: #01311D;
-    color: #01311D;
+    border-color: var(--color-primary-dark);
+      color: #01311D;
   }
   
   .pagination-arrow:disabled {
@@ -472,8 +462,8 @@
   }
   
   .pagination-page.active {
-    background-color: #066518;
-    border-color: #01311D;
+    background-color: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
     color: white;
   }
   
