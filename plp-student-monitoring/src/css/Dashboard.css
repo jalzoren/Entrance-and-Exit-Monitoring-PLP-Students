@@ -51,8 +51,7 @@ html, body {
 
 /* Inner content box — provides padding and top offset */
 .dashb {
-  padding: 0 2rem 2rem;
-  margin-top: 120px; /* leave room for sidebar/nav above */
+  padding: 20px;
 }
 
 /* ── HEADER ─────────────────────────────────────────────────────────────────*/
@@ -63,6 +62,9 @@ html, body {
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
+
+  margin-top: 90px;
+
 }
 
 .logo-area {

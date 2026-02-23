@@ -161,7 +161,9 @@ const [authTime, setAuthTime] = useState(""); // timestamp from Python
 
   {/* Right side: UI */}
   <div className="ui-side">
+    <Link to="/" className="logo-link">Back</Link>
     <div className="school-info">
+      
       <img src="/logoplp.gif" alt="School Logo" className="school-logo" />
       <div className="school-text">
         <h1>PAMANTASAN NG LUNGSOD NG PASIG</h1>

@@ -71,13 +71,13 @@ export default function Login() {
             <button type="button" className="forgot-password-button">
               <a href="/forgotpass">Forgot Password?</a>
             </button>
-            {/* <Link to="/dashboard" className="register-link">
+            <Link to="/dashboard" className="register-link">
               Go to Dashboard
             </Link>
 <Link to="/facerecog" className="register-link">
               Go to Face Recognition
             </Link>
-              */}
+            
             <p className="footer-text">
               ENTRANCE AND EXIT MONITORING SYSTEM
             </p>

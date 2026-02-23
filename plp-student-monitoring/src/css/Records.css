@@ -1,6 +1,6 @@
 /* Records.css */
+
 :root {
-  @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap");
   --color-bg-main: #fcfbf4;
   --color-primary: #548772;
   --color-primary-dark: #01311d;
@@ -23,17 +23,13 @@
   }
   
 
-/* Filters Section Styles */
-.filters-container {
-    margin: 20px 0;
-    padding: 15px 20px;
-  }
   
   .filters-wrapper {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 15px;
+      justify-content: flex-start; /* Align to the right on larger screens */
   }
   
   .filter-group {
@@ -65,11 +61,12 @@
     color: #666;
   }
   
+  .year-group,
   .dept-group,
   .action-group,
   .date-group {
-    min-width: 140px;
-    width: 140px;
+    flex: 0 0 140px;   /* Hard fixed width in flex layout */
+    max-width: 140px;
   }
   
   /* Search group - flexible width */
@@ -146,11 +143,7 @@
 
 /* Responsive Design Media Queries */
 
-/* For large screens */
-@media (max-width: 1200px) {
-  .filters-wrapper {
-    justify-content: flex-end; /* Align items to the right */
-  }
+
   
   .year-group,
   .dept-group,
@@ -164,27 +157,10 @@
     min-width: 140px;
     width: 140px;
   }
-}
 
-/* For medium screens */
-@media (max-width: 1024px) {
-  .filters-wrapper {
-    gap: 12px;
-    justify-content: flex-end; /* Align items to the right */
-  }
-  
-  .year-group,
-  .dept-group,
-  .action-group,
-  .date-group {
-    min-width: 120px;
-    width: 120px;
-  }
 
-  .search-group {
-    min-width: 180px;
-  }
-}
+
+
 
 /* For tablets */
 @media (max-width: 768px) {
@@ -275,25 +251,24 @@
   /* Responsive Design Media Queries */
   
   /* For large screens */
-  @media (max-width: 1200px) {
-    .year-group {
-      min-width: 150px;
-      width: 150px;
-    }
-    
-    .dept-group,
-    .action-group,
-    .date-group {
-      min-width: 130px;
-      width: 130px;
-    }
+@media (max-width: 1024px) {
+  .year-group,
+  .dept-group,
+  .action-group,
+  .date-group {
+    flex: 0 0 120px;
+    max-width: 120px;
+  }
+}
     
     .button-group {
       min-width: 140px;
       width: 140px;
     }
-  }
   
+  #select{
+    width: 100%;
+  }
   /* For medium screens */
   @media (max-width: 1024px) {
     .filters-wrapper {
