@@ -7,18 +7,18 @@ function Records() {
     {
       id: 1,
       dateTime: "2024-01-15 08:30 AM",
-      studentId: "2023-00123",
-      name: "John Doe",
+      studentId: "23-00123",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Computer Studies",
       yearLevel: "3rd Year",
       action: "Entry",
-      method: "QR Code"
+      method: "Facial Recognition"
     },
     {
       id: 2,
       dateTime: "2024-01-15 05:45 PM",
-      studentId: "2023-00123",
-      name: "John Doe",
+      studentId: "23-00123",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Computer Studies",
       yearLevel: "3rd Year",
       action: "Exit",
@@ -27,39 +27,39 @@ function Records() {
     {
       id: 3,
       dateTime: "2024-01-15 09:15 AM",
-      studentId: "2023-00456",
-      name: "Jane Smith",
+      studentId: "23-00456",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Engineering",
       yearLevel: "2nd Year",
       action: "Entry",
-      method: "RFID"
+      method: "Facial Recognition"
     },
     {
       id: 4,
       dateTime: "2024-01-15 06:30 PM",
-      studentId: "2023-00456",
-      name: "Jane Smith",
+      studentId: "23-00456",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Engineering",
       yearLevel: "2nd Year",
       action: "Exit",
-      method: "QR Code"
+      method: "Facial Recognition"
     },
     // Add more sample records to demonstrate pagination
     {
       id: 5,
       dateTime: "2024-01-16 08:30 AM",
-      studentId: "2023-00789",
-      name: "Mike Johnson",
+      studentId: "23-00789",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Business",
       yearLevel: "4th Year",
       action: "Entry",
-      method: "QR Code"
+      method: "Facial Recognition"
     },
     {
       id: 6,
       dateTime: "2024-01-16 05:45 PM",
-      studentId: "2023-00789",
-      name: "Mike Johnson",
+      studentId: "23-00789",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Business",
       yearLevel: "4th Year",
       action: "Exit",
@@ -68,22 +68,22 @@ function Records() {
     {
       id: 7,
       dateTime: "2024-01-17 09:15 AM",
-      studentId: "2023-00901",
-      name: "Sarah Williams",
+      studentId: "23-00901",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Nursing",
       yearLevel: "1st Year",
       action: "Entry",
-      method: "RFID"
+      method: "Facial Recognition"
     },
     {
       id: 8,
       dateTime: "2024-01-17 06:30 PM",
-      studentId: "2023-00901",
-      name: "Sarah Williams",
+      studentId: "23-00901",
+      name: "Jerimiah Bitancor",
       collegeDept: "College of Nursing",
       yearLevel: "1st Year",
       action: "Exit",
-      method: "QR Code"
+      method: "Facial Recognition"
     }
   ];
 
