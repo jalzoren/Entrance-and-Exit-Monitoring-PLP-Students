@@ -1,92 +1,105 @@
-/* src/pages/Dashboard.css */
+/* src/css/Dashboard.css
+ * ─────────────────────────────────────────────────────────────────────────────
+ * PROFESSOR'S NOTE — CSS Variables (Custom Properties)
+ *   All brand colours and spacing values live here under :root.
+ *   WHY: Change --color-primary once → the whole app updates.
+ *   BEGINNER TIP: Add new variables here before hard-coding any colour.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap');
+
 :root {
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Oswald:wght@200..700&display=swap');
-  --color-bg-main: #fcfbf4;
-  --color-primary: #548772;
-  --color-primary-dark: #01311d;
-  --color-accent: #d99201;
-  --color-accent-hover: #58761b;
-  --color-text-dark: #01311d;
-  --color-text-black: #0f0f0f;
+  --color-bg-main:       #fcfbf4;
+  --color-primary:       #548772;
+  --color-primary-dark:  #01311d;
+  --color-accent:        #d99201;
+  --color-accent-hover:  #58761b;
+  --color-text-dark:     #01311d;
+  --color-text-light:    #fafafa;
+  --color-border-light:  rgba(0, 0, 0, 0.08);
+  --color-shadow-soft:   rgba(0, 0, 0, 0.12);
 
-  --color-text-light: #fafafa;
-  --color-border-light: rgba(0, 0, 0, 0.08);
-  --color-shadow-soft: rgba(0, 0, 0, 0.1);
-
-  --sidebar-collapsed: 0px; 
-  --sidebar-open: 260px;
-  --transition: 0.28s ease;
+  --radius-card: 10px;
+  --gap-std: 1.25rem;
 }
 
-* {
+/* ── Reset ──────────────────────────────────────────────────────────────────*/
+*, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-overflow: hidden;
 }
 
+/*
+  COMMON MISTAKE: `overflow: hidden` on * breaks Recharts' ResponsiveContainer
+  because it can't measure its parent's width.  We only hide overflow on
+  specific elements that need it (e.g. the background wrapper).
+*/
+html, body {
+  overflow: auto;
+}
+
+/* ── Full-page background ───────────────────────────────────────────────────*/
 .dashboard-wrapper {
-  background: url("../assets/MAIN.png") no-repeat center center;
-  background-size:cover;   
-  
-  color: white;
+  background: url("../assets/MAIN.png") no-repeat center center / cover;
   min-height: 100vh;
-
-  width: 100vw;         
-  margin: 0;
-  box-sizing: border-box;   
-  
+  width: 100vw;
+  color: var(--color-text-light);
+  overflow: visible; /* must stay visible so Recharts can measure */
 }
 
-.dashb{
-    margin-top: 140px;
+/* Inner content box — provides padding and top offset */
+.dashb {
+  padding: 0 2rem 2rem;
+  margin-top: 120px; /* leave room for sidebar/nav above */
 }
+
+/* ── HEADER ─────────────────────────────────────────────────────────────────*/
 .campus-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 1.5rem;
-  width: 100%;
-  margin-bottom: 20px;
+  margin-bottom: 1.5rem;
 }
 
 .logo-area {
   display: flex;
   align-items: center;
-  gap: 10px;
-
+  gap: 0.875rem;
 }
-.university-emblem .seal-placeholder {
-  width: 64px;             
+
+.seal-placeholder {
+  width: 64px;
   height: 70px;
   flex-shrink: 0;
-  display: block;          
+  display: block;
 }
 
-
 .university-info h1 {
-  font-size: 1.45rem;
-  margin: 0;
-  font-weight: 600;
-  color: #fafafa;
-  line-height: 1.15;
   font-family: "Cinzel", serif;
+  font-size: 1.45rem;
+  font-weight: 600;
+  color: var(--color-text-light);
+  line-height: 1.15;
 }
 
 .university-info p {
   margin-top: 0.25rem;
-  font-size: 0.9rem;
-  color: #fafafa;
+  font-size: 0.85rem;
   font-family: "Montserrat", sans-serif;
+  color: var(--color-text-light);
+  letter-spacing: 0.5px;
+  opacity: 0.9;
 }
 
-/* DATE & TIME STYLING */
-
+/* ── DATE & TIME (top-right of header) ─────────────────────────────────────*/
 .date-and-time {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 1rem;
   color: white;
 }
 
@@ -97,70 +110,340 @@ overflow: hidden;
 }
 
 .day {
-  font-size: 0.8rem;
-  letter-spacing: 1px;
-  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  font-weight: 600;
   opacity: 0.9;
+  font-family: "Montserrat", sans-serif;
 }
 
 .date {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 400;
   opacity: 0.8;
+  font-family: "Montserrat", sans-serif;
 }
 
 .time {
   font-size: 2.8rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 2px;
+  font-family: "Montserrat", sans-serif;
+  line-height: 1;
 }
 
+/* ── METRIC CARDS ───────────────────────────────────────────────────────────*/
+/*
+  WHY CSS Grid here?
+  `repeat(3, 1fr)` gives three equal-width columns automatically.
+  When you add a 4th MetricCard, it will wrap gracefully on small screens.
+*/
+.metrics-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gap-std);
+  margin: 1.25rem 0 1.5rem;
+}
 
-@media (min-width: 640px) {
-  .dashboard-wrapper {
-    padding: 1.75rem 2rem;
-  }
+.metric-card {
+  background: rgba(2, 45, 26, 0.90);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  padding: 1.25rem 1.5rem;
+  border-radius: var(--radius-card);
+  box-shadow: 0 6px 20px var(--color-shadow-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* CRITICAL: backdrop-filter creates a new stacking context which clips
+     the ::after tooltip pseudo-element. overflow:visible lets it escape. */
+  overflow: visible;
+}
 
-  .stat-value {
-    font-size: 3.6rem;
+.metric-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.metric-title {
+  font-size: 0.9rem;
+  font-family: "Montserrat", sans-serif;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.metric-value {
+  font-size: 2.75rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  line-height: 1;
+  font-family: "Montserrat", sans-serif;
+}
+
+.metric-sub {
+  font-size: 0.78rem;
+  margin-top: 0.35rem;
+  opacity: 0.75;
+  letter-spacing: 0.8px;
+  font-family: "Montserrat", sans-serif;
+}
+
+/* ── INFO ICON (ⓘ) ──────────────────────────────────────────────────────────*/
+/*
+  The tooltip is now a REAL React <div> (.tooltip-bubble), not a CSS ::after.
+
+  WHY the change?
+  backdrop-filter on .metric-card creates a GPU compositing layer. CSS
+  pseudo-elements (::after / ::before) are painted inside that layer and
+  physically cannot appear on top of it — z-index and overflow:visible have
+  zero effect on GPU-composited layers. A real DOM <div> rendered by React
+  is a separate paint layer and always appears above everything correctly.
+*/
+.info-icon {
+  display: inline-flex;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+  font-weight: 700;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: default;
+  margin-left: 8px;
+  /* position:relative is the anchor for .tooltip-bubble's absolute positioning */
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  overflow: visible;
+}
+
+/* Flip colours when the icon sits inside a white chart card */
+.chart-card .info-icon {
+  background: rgba(1, 49, 29, 0.12);
+  color: #123;
+}
+
+/* ── TOOLTIP PORTAL (renders directly into document.body via React Portal) ──*/
+/*
+  WHY fixed positioning?
+  `position: fixed` is relative to the VIEWPORT, not any parent element.
+  This means backdrop-filter, transform, overflow:hidden on any ancestor
+  have ZERO effect on where this element renders — it always appears at
+  the exact screen coordinates we calculated with getBoundingClientRect().
+
+  The JS positions it above the hovered icon using those coordinates.
+  All we control here is appearance (colours, shape, shadow).
+*/
+.tooltip-portal {
+  background: #01311d;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+  line-height: 1.55;
+  white-space: normal;
+  text-align: left;
+  max-width: 230px;
+  width: max-content;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  /* pointer-events:none so it doesn't accidentally block mouse events */
+  pointer-events: none;
+}
+
+/* Downward arrow — points from the tooltip bubble toward the icon */
+.tooltip-arrow {
+  position: absolute;
+  bottom: -11px;         /* just below the bubble */
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #01311d;
+  display: block;
+  width: 0;
+  height: 0;
+}
+
+/* ── CHARTS GRID ────────────────────────────────────────────────────────────*/
+/*
+  WHY `2fr 1fr`?
+  The traffic chart (left) needs more horizontal space because it has an X-axis
+  with 7 date labels.  The pie chart (right) is compact and square-ish.
+  BEGINNER TIP: Change to `1fr 1fr` for equal widths.
+*/
+.charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--gap-std);
+  align-items: start;
+}
+
+.chart-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  border-radius: var(--radius-card);
+  padding: 1.1rem 1.25rem 1rem;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
+  /* Same fix — overflow:visible lets the info icon tooltip escape the card */
+  overflow: visible;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.chart-card-header h3 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #123;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 600;
+}
+
+/* Small date range label (e.g. "Jan 25 – 31, 2026") */
+.chart-date-range {
+  font-size: 0.78rem;
+  color: #888;
+  margin-bottom: 0.5rem;
+  text-align: right;
+  font-family: "Montserrat", sans-serif;
+}
+
+/*
+  IMPORTANT: .chart-area-wrap must be a plain block element with an explicit height.
+  DO NOT use display:flex here — ResponsiveContainer measures offsetHeight of its
+  parent.  Inside a flex container that has no explicit height set, offsetHeight
+  returns 0, causing the chart to render with zero height (invisible).
+  The child chart components now own their own wrapper divs with inline heights,
+  so this element only needs to establish the available width.
+*/
+.chart-area-wrap {
+  width: 100%;
+  /* No height here — each chart component provides its own sized wrapper */
+}
+
+.chart-controls {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.chart-controls select {
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 0.8rem;
+  font-family: "Montserrat", sans-serif;
+  background: #f5f5f5;
+  cursor: pointer;
+}
+
+/* Summary footer below the traffic chart */
+.chart-summary {
+  margin-top: 0.6rem;
+  font-size: 0.8rem;
+  color: #555;
+  text-align: center;
+  font-family: "Montserrat", sans-serif;
+}
+
+/* ── CUSTOM TOOLTIP (traffic chart) ─────────────────────────────────────────*/
+.custom-tooltip {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  font-family: "Montserrat", sans-serif;
+}
+
+.tt-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #123;
+  margin-bottom: 4px;
+}
+
+.tt-entries { font-size: 12px; color: #58761b; }
+.tt-exits   { font-size: 12px; color: #c17a00; }
+
+/* ── PIE CHART LAYOUT ───────────────────────────────────────────────────────*/
+.pie-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.pie-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 12px;
+  font-family: "Montserrat", sans-serif;
+  color: #333;
+  min-width: 110px;
+}
+
+.pie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+  line-height: 1.2;
+}
+
+.swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.chart-placeholder {
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ── RESPONSIVE ─────────────────────────────────────────────────────────────*/
+@media (max-width: 900px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
   }
 }
 
-@media (min-width: 1024px) {
-  .dashboard-wrapper {
-    padding: 2.5rem 3rem;
+@media (max-width: 640px) {
+  .metrics-row {
+    grid-template-columns: 1fr;
   }
 
-  .stat-value {
-    font-size: 4rem;
+  .dashb {
+    padding: 0 1rem 1.5rem;
+    margin-top: 80px;
   }
 
-  .chart-placeholder {
-    min-height: 360px;
-  }
-}
-
-@media (max-width: 480px) {
-  .stat-value {
-    font-size: 2.8rem;
+  .university-info h1 {
+    font-size: 1.1rem;
   }
 
-  .date-time {
-    font-size: 1.5rem;
+  .time {
+    font-size: 2rem;
   }
 
   .campus-header {
     flex-direction: column;
     align-items: flex-start;
-    text-align: left;
   }
 
-  .current-datetime {
-    text-align: left;
-  }
-
-  .dashboard-wrapper {
-    padding: 1rem 0.75rem;
+  .date-and-time {
+    align-self: flex-end;
   }
 }
-
