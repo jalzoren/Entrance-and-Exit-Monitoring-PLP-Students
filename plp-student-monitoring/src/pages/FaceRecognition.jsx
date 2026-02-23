@@ -21,6 +21,48 @@ function FaceRecognition() {
     startCamera();
   }, []);
 
+  const captureAndSend = async () => {
+  if (!videoRef.current) return;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = videoRef.current.videoWidth;
+  canvas.height = videoRef.current.videoHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(videoRef.current, 0, 0);
+
+  const imageData = canvas.toDataURL("image/jpeg");
+
+  try {
+    const response = await fetch("http://localhost:5000/api/recognize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ image: imageData }),
+    });
+
+    const result = await response.json();
+
+    if (result.detected && result.authenticated) {
+      setCameraStatus("detected");
+      setAuthenticatedName(result.name);
+      setDepartment(result.department);
+      setAuthTime(result.time);
+    } else if (result.detected && !result.authenticated) {
+      setCameraStatus("unauthorized");
+      setAuthTime(result.time);
+      setAuthenticatedName("");
+      setDepartment("");
+    } else {
+      setCameraStatus("neutral");
+      setAuthenticatedName("");
+      setDepartment("");
+      setAuthTime("");
+    }
+  } catch (err) {
+    console.error(err);
+    setCameraStatus("neutral");
+  }
+};
+
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
   const [day, setDay] = useState("");
@@ -59,69 +101,127 @@ function FaceRecognition() {
     return () => clearInterval(interval);
   }, []);
 
+  // Array of greetings
+  const greetings = [
+    "Mabuhay! Ready to learn,",
+    "Kamusta! Let's start the day,",
+    "Magandang Umaga,",
+    "Magandang Araw! Keep it up,",
+    "Kumusta? Attendance check,",
+    "Mabuhay! Salamat sa pagdating,",
+    "Hi! Ready for class, ",
+    "Maligayang pagdating! Let's go, ",
+    "Uy! Kamusta PLPian? Log in na, ",
+    "L E T apostrophe S  G O! LETSGO",
+
+  ];
+
+  const [greeting, setGreeting] = useState(greetings[0]);
+  const [fade, setFade] = useState(true);
+
+  useEffect(() => {
+    let index = 0;
+
+    const interval = setInterval(() => {
+      setFade(false); 
+
+      setTimeout(() => {
+        index = (index + 1) % greetings.length;
+        setGreeting(greetings[index]);
+        setFade(true);
+      }, 500); 
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+
+  const [cameraStatus, setCameraStatus] = useState("neutral"); // neutral / detected / unauthorized
+const [authenticatedName, setAuthenticatedName] = useState(""); // name from Python
+const [department, setDepartment] = useState(""); // department from Python
+const [authTime, setAuthTime] = useState(""); // timestamp from Python
   return (
     <div className="dashboard">
-      {/* Left side: Camera */}
-      <div className="camera-side">
-        <video ref={videoRef} autoPlay playsInline className="camera-video" />
-        <div className="camera-text">
-          Please look at the camera <br></br>and position your face within the
-          on-screen frame.
-        </div>
-      </div>
+  {/* Left side: Camera */}
+  <div className={`camera-side ${
+      cameraStatus === "neutral" ? "" :
+      cameraStatus === "detected" ? "green-border" :
+      cameraStatus === "unauthorized" ? "red-border" : ""
+    }`}
+  >
+    <video ref={videoRef} autoPlay playsInline className="camera-video" />
 
-      {/* Right side: UI */}
-      <div className="ui-side">
-          <Link to="/" className="back-link">
-          &larr; Back to Login
-        </Link>
-        <div className="school-info">
-          
-          <img src="/logoplp.gif" alt="School Logo" className="school-logo" />
-          <div className="school-text">
-            <h1>PAMANTASAN NG LUNGSOD NG PASIG</h1>
-            <hr />
-            <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>
-          </div>
-        </div>
-      
+ 
 
-        <div className="mabuhay-section">
-          <h2>Mabuhay, Maligayang</h2>
-          <h2>pagdating sa PLP!</h2>
+<div className="camera-text">
+  {cameraStatus === "neutral" && "Please look at the camera and position your face..."}
+  {cameraStatus === "detected" && `Welcome, ${authenticatedName}! Face recognized.`}
+  {cameraStatus === "unauthorized" && "Face not recognized. Please look at the camera again."}
+</div>  </div>
 
-          <div className="time-status-section">
-            <div className="time-date">
-              <p className="time">{time}</p>
-              <p className="date">
-                {date}
-                <br />
-                {day}
-              </p>
-            </div>
-          </div>
-
-          <div className="message-box">
-            Happy Monday! Let's make it a great week, Jerimiah.
-          </div>
-        </div>
-
-        <div className="status-box">
-          <h2>
-            <strong>AUTHENTICATION SUCCESSFUL!</strong>
-          </h2>
-          <p>
-            Time: <span>7:45 AM </span>{" "}
-          </p>
-          <p>
-            Status:<span> ENTRY - Logged In </span>
-          </p>
-          <p>
-            Method: <span>Facial Recognition</span>
-          </p>
-        </div>
+  {/* Right side: UI */}
+  <div className="ui-side">
+    <div className="school-info">
+      <img src="/logoplp.gif" alt="School Logo" className="school-logo" />
+      <div className="school-text">
+        <h1>PAMANTASAN NG LUNGSOD NG PASIG</h1>
+        <hr />
+        <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>
       </div>
     </div>
+
+    <div className="mabuhay-section">
+      <div className="greet">
+        <h2 className={`${fade ? "fade-text fade-in" : "fade-text fade-out"}`}>
+          {greeting}
+        </h2>
+        <p className="plpian"> PLPian!</p>
+      </div>
+
+      <div className="time-status-section">
+        <div className="time-date">
+          <p className="time">{time}</p>
+          <p className="date">
+            {date}
+            <br />
+            {day}
+          </p>
+        </div>
+      </div>
+
+      <div className="message-box">
+        {cameraStatus === "neutral" && "Welcome! Please scan your face for attendance."}
+        {cameraStatus === "detected" && `Welcome back, ${authenticatedName}! Department: ${department}.`}
+        {cameraStatus === "unauthorized" && "Face not recognized. Please try again."}
+      </div>
+    </div>
+
+    <div className="status-box">
+      {cameraStatus === "neutral" && (
+        <>
+          <h2><strong>FACIAL AUTHENTICATION SYSTEM</strong></h2>
+          <p>Status updates will appear after scan.</p>
+        </>
+      )}
+      {cameraStatus === "detected" && (
+        <>
+          <h2><strong>AUTHENTICATION SUCCESSFUL!</strong></h2>
+          <p>Time: <span>{authTime}</span></p>
+          <p>Status: <span>ENTRY - Logged In</span></p>
+          <p>Method: <span>Facial Recognition</span></p>
+        </>
+      )}
+      {cameraStatus === "unauthorized" && (
+        <>
+          <h2><strong>AUTHENTICATION FAILED!</strong></h2>
+          <p>Time: <span>{authTime}</span></p>
+          <p>Status: <span>ENTRY - Denied</span></p>
+          <p>Method: <span>Facial Recognition</span></p>
+        </>
+      )}
+    </div>
+  </div>
+</div>
   );
 }
 
