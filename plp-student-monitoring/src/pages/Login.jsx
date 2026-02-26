@@ -3,14 +3,18 @@ import "../css/Login.css";
 import logo from "../assets/logo2.png";
 import { LuScanFace } from "react-icons/lu";
 import { useNavigate, Link } from "react-router-dom";
+import { FaEye, FaEyeSlash } from "react-icons/fa"; // Add this import
 import Swal from 'sweetalert2';
 
 export default function Login() {
-  const [email, setEmail] = useState(""); // Changed from username to email
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // Add this state
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+
+  const toggleShowPassword = () => setShowPassword((prev) => !prev); // Add this function
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -23,7 +27,7 @@ export default function Login() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          email: email,  // Changed from username to email
+          email: email,
           password: password 
         })
       });
@@ -31,10 +35,8 @@ export default function Login() {
       const data = await response.json();
 
       if (data.success) {
-        // Store user info in localStorage
         localStorage.setItem('user', JSON.stringify(data.user));
         
-        // Success alert
         await Swal.fire({
           icon: 'success',
           title: 'Login Successful!',
@@ -43,10 +45,8 @@ export default function Login() {
           showConfirmButton: false
         });
         
-        // Navigate to dashboard
         navigate("/dashboard");
       } else {
-        // Error alert
         Swal.fire({
           icon: 'error',
           title: 'Login Failed',
@@ -95,15 +95,24 @@ export default function Login() {
 
             <div className="input-group password-container">
               <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <div className="password-input-wrapper"> {/* Add wrapper div */}
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"} // Toggle type
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  className="show-password-btn"
+                  onClick={toggleShowPassword}
+                >
+                  {showPassword ? <FaEyeSlash /> : <FaEye />}
+                </button>
+              </div>
             </div>
 
             <button 

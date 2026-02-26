@@ -1,17 +1,18 @@
 require("dotenv").config();
 const app = require("./src/app");
-const loginRouter = require("./routes/login"); // Add this line
+const loginRouter = require("./routes/login");
+const forgotPasswordRouter = require("./routes/forgotPassword"); // Add this
 
 const PORT = process.env.PORT || 5000;
 
-// Add this before app.listen
-app.use('/api', loginRouter); // This makes the endpoint available at /api/login
+app.use('/api', loginRouter);
+app.use('/api', forgotPasswordRouter); // Add this line
 
 app.listen(PORT, () => {
   console.log(`Backend running on port http://localhost:${PORT}`);
-  console.log(`Login endpoint: http://localhost:${PORT}/api/login`); // Optional: added for clarity
+  console.log(`Login endpoint: http://localhost:${PORT}/api/login`);
+  console.log(`Forgot password endpoints ready`);
 });
-
 // .env file content (for reference):
 // PORT=5000
 // 
