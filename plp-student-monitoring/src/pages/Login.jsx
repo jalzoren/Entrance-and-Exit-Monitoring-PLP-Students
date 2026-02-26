@@ -122,6 +122,7 @@ export default function Login() {
             >
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
+          
           </form>
 
           <div className="form-footer">
