@@ -193,12 +193,18 @@ function Records() {
 
           <div className="filter-group dept-group">
             <select id="department" className="filter-select">
-              <option value="">Department</option>
-              <option value="College of Computer Studies">College of Computer Studies</option>
-              <option value="College of Engineering">College of Engineering</option>
-              <option value="College of Business">College of Business</option>
-              <option value="College of Education">College of Education</option>
-              <option value="College of Nursing">College of Nursing</option>
+              <option value="">Select College Department</option>
+                <option value="College of Nursing">College of Nursing</option>
+                <option value="College of Engineering">College of Engineering</option>
+                <option value="College of Education">College of Education</option>
+                <option value="College of Computer Studies">College of Computer Studies</option>
+                <option value="College of Arts and Science">College of Arts and Science</option>
+                <option value="College of Business and Accountancy">
+                  College of Business and Accountancy
+                </option>
+                <option value="College of Hospitality Management">
+                  College of Hospitality Management
+                </option>
             </select>
           </div>
 

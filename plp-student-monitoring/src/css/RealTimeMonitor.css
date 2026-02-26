@@ -1,9 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
-
-/* ── All rules scoped under .rtm-wrapper to avoid bleeding into other pages ── */
-
+:root {
+  @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap");
+  --color-bg-main: #fcfbf4;
+  --color-primary: #548772;
+  --color-primary-dark: #01311d;
+  --color-accent: #d99201;
+  --color-accent-hover: #58761b;
+  --color-text-dark: #01311d;
+  --color-text-black: #0f0f0f;
+  --color-text-light: #fafafa;
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-shadow-soft: rgba(0, 0, 0, 0.1);
+  --sidebar-collapsed: 0px;
+  --sidebar-open: 260px;
+  --transition: 0.28s ease;
+  --color-red: #FF2E2E;
+  --color-success: #52c41a;
+  --color-error: #ff4d4f;
+}
 .rtm-wrapper {
-  font-family: 'Rajdhani', sans-serif;
+  font-family: 'Cinzel', serif;
   padding: 32px 40px;
   display: flex;
   justify-content: center;

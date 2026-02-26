@@ -1,11 +1,3 @@
-/* src/css/Dashboard.css
- * ─────────────────────────────────────────────────────────────────────────────
- * PROFESSOR'S NOTE — CSS Variables (Custom Properties)
- *   All brand colours and spacing values live here under :root.
- *   WHY: Change --color-primary once → the whole app updates.
- *   BEGINNER TIP: Add new variables here before hard-coding any colour.
- * ─────────────────────────────────────────────────────────────────────────────
- */
 
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap');
 

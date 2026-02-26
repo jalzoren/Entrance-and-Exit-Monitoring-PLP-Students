@@ -12,6 +12,7 @@ import FaceRecognition from './pages/FaceRecognition';
 
 import Forgot from './pages/ForgotPass';
 import Forgot2 from './pages/ForgotPass2';
+import RegisterStudent from './components/RegisterStudent';
 function App() {
   return (
     <BrowserRouter>
@@ -21,7 +22,7 @@ function App() {
         <Route path="/forgotpass" element={<Forgot />} />
         <Route path="/forgotpass2" element={<Forgot2 />} />
         <Route path="/facerecog" element={<FaceRecognition />} />
-
+        <Route path="/registerstudent" element={<RegisterStudent />} />
         {/* Protected routes */}
         <Route>
           <Route element={<DashboardLayout />}>

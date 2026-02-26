@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import '../css/Students.css';
+import RegisterStudent from '../components/RegisterStudent';
+import { FiDownload, FiPlus, FiFilter } from 'react-icons/fi';
+import { IoMdArrowDropdown } from 'react-icons/io';
 
 function Students() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -7,6 +10,7 @@ function Students() {
   const [yearLevel, setYearLevel] = useState('');
   const [registrationDate, setRegistrationDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
 
   // Sample data for demonstration - expanded to 15 students
   const allStudents = [
@@ -40,6 +44,33 @@ function Students() {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
     }
+  };
+
+  const handleAddClick = () => {
+    setShowRegisterModal(true);
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const handleCloseModal = () => {
+    setShowRegisterModal(false);
+    // Restore body scrolling
+    document.body.style.overflow = 'unset';
+  };
+
+  const handleEdit = (studentId) => {
+    console.log('Edit student:', studentId);
+    // Add edit functionality here
+  };
+
+  const handleDeactivate = (studentId, currentStatus) => {
+    console.log('Deactivate student:', studentId, 'Current status:', currentStatus);
+    // Add deactivate/activate functionality here
+  };
+
+  const handleViewPhoto = (studentId) => {
+    console.log('View photo for student:', studentId);
+    // Add view photo functionality here
   };
 
   const renderPageNumbers = () => {
@@ -136,8 +167,9 @@ function Students() {
         {/* Controls Section */}
         <div className="controls">
           <button className="sort-button">
-            <span className="sort-icon">⬍</span>
+            <FiFilter className="sort-icon" />
             Sort
+            <IoMdArrowDropdown className="dropdown-icon" />
           </button>
 
           <select 
@@ -145,11 +177,18 @@ function Students() {
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            <option value="">Department</option>
-            <option value="engineering">Engineering</option>
-            <option value="science">Science</option>
-            <option value="arts">Arts</option>
-            <option value="business">Business</option>
+            <option value="">Select College Department</option>
+                <option value="College of Nursing">College of Nursing</option>
+                <option value="College of Engineering">College of Engineering</option>
+                <option value="College of Education">College of Education</option>
+                <option value="College of Computer Studies">College of Computer Studies</option>
+                <option value="College of Arts and Science">College of Arts and Science</option>
+                <option value="College of Business and Accountancy">
+                  College of Business and Accountancy
+                </option>
+                <option value="College of Hospitality Management">
+                  College of Hospitality Management
+                </option>
           </select>
 
           <select 
@@ -185,12 +224,12 @@ function Students() {
           />
 
           <button className="action-button import-button">
-            <span className="icon">📄</span>
+            <FiDownload className="button-icon" />
             Import
           </button>
 
-          <button className="action-button add-button">
-            <span className="icon">➕</span>
+          <button className="action-button add-button" onClick={handleAddClick}>
+            <FiPlus className="button-icon" />
             Add
           </button>
         </div>
@@ -207,7 +246,7 @@ function Students() {
                 <th>Year Level</th>
                 <th>Enrollment Status</th>
                 <th>Date Registered</th>
-                <th>Action</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -218,12 +257,33 @@ function Students() {
                   <td>{student.fullName}</td>
                   <td>{student.department}</td>
                   <td>{student.yearLevel}</td>
-                  <td>{student.enrollmentStatus}</td>
+                  <td>
+                    <span className={`status-badge ${student.enrollmentStatus.toLowerCase()}`}>
+                      {student.enrollmentStatus}
+                    </span>
+                  </td>
                   <td>{student.dateRegistered}</td>
                   <td className="action-cell">
-                    <a href="#" className="action-link">[Edit]</a>{' '}
-                    <a href="#" className="action-link">[Deactivate]</a>{' '}
-                    <a href="#" className="action-link">[View Photo]</a>
+                    <div className="action-buttons-text">
+                      <button 
+                        className="action-text-btn edit-text-btn" 
+                        onClick={() => handleEdit(student.id)}
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        className="action-text-btn photo-text-btn" 
+                        onClick={() => handleViewPhoto(student.id)}
+                      >
+                       View Photo
+                      </button>
+                      <button 
+                        className={`action-text-btn ${student.enrollmentStatus === 'Active' ? 'deactivate-text-btn' : 'activate-text-btn'}`}
+                        onClick={() => handleDeactivate(student.id, student.enrollmentStatus)}
+                      >
+                        {student.enrollmentStatus === 'Active' ? 'Deactivate' : 'Activate'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -254,6 +314,15 @@ function Students() {
           </button>
         </div>
       </div>
+
+      {/* Register Student Modal */}
+      {showRegisterModal && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <RegisterStudent onClose={handleCloseModal} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
