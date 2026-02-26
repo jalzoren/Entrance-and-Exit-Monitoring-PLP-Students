@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 23, 2026 at 05:11 AM
+-- Generation Time: Feb 26, 2026 at 08:57 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.2.12
+-- PHP Version: 8.0.30
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -29,7 +29,7 @@ SET time_zone = "+00:00";
 
 CREATE TABLE `admins` (
   `admin_id` int(11) NOT NULL,
-  `username` varchar(50) NOT NULL,
+  `email` varchar(255) NOT NULL,
   `fullname` varchar(100) NOT NULL,
   `role` enum('Super Admin','EEMS Admin','EAMS Admin') NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -37,6 +37,13 @@ CREATE TABLE `admins` (
   `code_expiry` datetime DEFAULT NULL,
   `created` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `admins`
+--
+
+INSERT INTO `admins` (`admin_id`, `email`, `fullname`, `role`, `password`, `reset_code`, `code_expiry`, `created`) VALUES
+(2300295, 'cassyrain03@gmail.com', 'Bianca Rain Castillon', 'Super Admin', 'Admin123', NULL, NULL, '2026-02-26 07:19:51');
 
 -- --------------------------------------------------------
 
@@ -95,8 +102,7 @@ CREATE TABLE `students` (
 -- Indexes for table `admins`
 --
 ALTER TABLE `admins`
-  ADD PRIMARY KEY (`admin_id`),
-  ADD UNIQUE KEY `username` (`username`);
+  ADD PRIMARY KEY (`admin_id`);
 
 --
 -- Indexes for table `authentication`
@@ -128,7 +134,7 @@ ALTER TABLE `students`
 -- AUTO_INCREMENT for table `admins`
 --
 ALTER TABLE `admins`
-  MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `admin_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2300296;
 
 --
 -- AUTO_INCREMENT for table `authentication`

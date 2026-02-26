@@ -109,6 +109,8 @@
   box-shadow: 0 0 0 3px rgba(43, 90, 43, 0.15);
 }
 
+
+
 /* Button */
 .login-button {
   margin-top: 1rem;
@@ -125,6 +127,17 @@
 
 .login-button:hover {
   background: #1f4220;
+}
+
+
+.show-password-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #555;
+  font-size: 1.1rem;
 }
 
 /* Footer links & text */

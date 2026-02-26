@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, NavLink } from "react-router-dom";
 import {
   FiHome,
@@ -6,15 +6,22 @@ import {
   FiFileText,
   FiUsers,
   FiBarChart2,
-  FiChevronLeft,
-  FiChevronRight,
+  FiMenu,
 } from "react-icons/fi";
-import { FiMenu } from "react-icons/fi"; // add FiMenu
 
 import "../componentscss/Sidebar.css";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
+  const [user, setUser] = useState({ fullname: 'Loading...', role: 'ADMIN' });
+
+  useEffect(() => {
+    // Get user info from localStorage when component mounts
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
 
@@ -26,6 +33,12 @@ export default function Sidebar() {
     { icon: <FiBarChart2 />, label: "Analytics & Reports", path: "/analytics" },
   ];
 
+  // Get initials for avatar
+  const getInitials = (name) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+  };
+
   return (
     <>
       <button
@@ -36,23 +49,23 @@ export default function Sidebar() {
       >
         <FiMenu size={20} />
       </button>
+      
       <aside className={`sidebar ${isOpen ? "open" : "collapsed"}`}>
-          <div className="logo-container">
-            {isOpen && (
-              <div className="brand-text">
-                <img
-                  src="../logo3.png" // replace with your image path
-                  alt="Logo"
-                  className="brand-image"
-                />
-                <h1 className="brand-title">Entrance and Exit</h1>
-                <p className="brand-subtitle">Monitoring System</p>
-              </div>
-            )}
-          </div>
+        <div className="logo-container">
+          {isOpen && (
+            <div className="brand-text">
+              <img
+                src="../logo3.png"
+                alt="Logo"
+                className="brand-image"
+              />
+              <h1 className="brand-title">Entrance and Exit</h1>
+              <p className="brand-subtitle">Monitoring System</p>
+            </div>
+          )}
+        </div>
 
         {/* Navigation */}
-
         <nav className="sidebar-nav">
           {menuItems.map((item) => (
             <NavLink
@@ -69,21 +82,19 @@ export default function Sidebar() {
           ))}
         </nav>
 
-        {/* User profile */}
+        {/* User profile - NOW DYNAMIC */}
         <div className="sidebar-user">
-          <div className="user-avatar">JB</div>
+          <div className="user-avatar">{getInitials(user.fullname)}</div>
           {isOpen && (
             <div className="user-details">
-              <div className="user-name">Jerimiah Bitancor</div>
-              <div className="user-role">EEMS - ADMIN</div>
+              <div className="user-name">{user.fullname || 'Admin User'}</div>
+              <div className="user-role">EEMS - {user.role || 'ADMIN'}</div>
               <Link to="/" className="profile-link">
-                Home
+                Logout
               </Link> 
             </div>
           )}
         </div>
-
-        {/* Toggle button — inside sidebar but positioned dynamically */}
       </aside>
     </>
   );
