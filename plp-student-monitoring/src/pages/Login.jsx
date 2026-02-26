@@ -3,48 +3,93 @@ import "../css/Login.css";
 import logo from "../assets/logo2.png";
 import { LuScanFace } from "react-icons/lu";
 import { useNavigate, Link } from "react-router-dom";
+import Swal from 'sweetalert2';
+
 export default function Login() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState(""); // Changed from username to email
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    console.log({ username, password });
-    // Later: call real login API here
+    setLoading(true);
 
-    navigate("/dashboard");
+    try {
+      const response = await fetch('http://localhost:5000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          email: email,  // Changed from username to email
+          password: password 
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user info in localStorage
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        // Success alert
+        await Swal.fire({
+          icon: 'success',
+          title: 'Login Successful!',
+          text: `Welcome back, ${data.user.fullname || data.user.email}!`,
+          timer: 1500,
+          showConfirmButton: false
+        });
+        
+        // Navigate to dashboard
+        navigate("/dashboard");
+      } else {
+        // Error alert
+        Swal.fire({
+          icon: 'error',
+          title: 'Login Failed',
+          text: data.message || 'Invalid email or password',
+        });
+      }
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Connection Error',
+        text: 'Cannot connect to server. Please try again.',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="login-container">
-      {/* Floating top-left icon */}
       <LuScanFace
         title="Go To Entry-Exit Students"
         className="top-left-icon"
+        onClick={() => navigate("/facerecog")}
       />
 
-      {/* Main centered content wrapper */}
       <div className="login-wrapper">
-        {/* Logo + Title section */}
         <div className="login-header-container">
           <img src={logo} alt="System Logo" className="login-icon" />
           <h1 className="logintext">LOG IN</h1>
         </div>
 
-        {/* Form card */}
         <div className="login-card">
           <form className="login-form" onSubmit={handleLogin}>
             <div className="input-group">
-              <label htmlFor="username">Email</label>
+              <label htmlFor="email">Email</label>
               <input
-                id="username"
-                type="email"          // ← changed to type="email" (better validation)
+                id="email"
+                type="email"
                 placeholder="example@gmail.com"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
 
@@ -57,24 +102,24 @@ export default function Login() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
-              <span className="show-password"></span>
             </div>
 
-            <button type="submit" className="login-button">
-              LOGIN
+            <button 
+              type="submit" 
+              className="login-button"
+              disabled={loading}
+            >
+              {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
-           
           </form>
 
           <div className="form-footer">
-            <button type="button" className="forgot-password-button">
-              <a href="/forgotpass">Forgot Password?</a>
-            </button>
-            <Link to="/dashboard" className="register-link">
-              Go to Dashboard
+            <Link to="/forgotpass" className="forgot-password-link">
+              Forgot Password?
             </Link>
-<Link to="/facerecog" className="register-link">
+            <Link to="/facerecog" className="register-link">
               Go to Face Recognition
             </Link>
             

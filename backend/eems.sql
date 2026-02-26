@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 26, 2026 at 08:29 AM
+-- Generation Time: Feb 26, 2026 at 08:57 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.0.30
 
@@ -30,7 +30,6 @@ SET time_zone = "+00:00";
 CREATE TABLE `admins` (
   `admin_id` int(11) NOT NULL,
   `email` varchar(255) NOT NULL,
-  `username` varchar(50) NOT NULL,
   `fullname` varchar(100) NOT NULL,
   `role` enum('Super Admin','EEMS Admin','EAMS Admin') NOT NULL,
   `password` varchar(255) NOT NULL,
@@ -43,8 +42,8 @@ CREATE TABLE `admins` (
 -- Dumping data for table `admins`
 --
 
-INSERT INTO `admins` (`admin_id`, `email`, `username`, `fullname`, `role`, `password`, `reset_code`, `code_expiry`, `created`) VALUES
-(2300295, 'cassyrain03@gmail.com', 'AdminBRC', 'Bianca Rain Castillon', 'Super Admin', 'Admin123', NULL, NULL, '2026-02-26 07:19:51');
+INSERT INTO `admins` (`admin_id`, `email`, `fullname`, `role`, `password`, `reset_code`, `code_expiry`, `created`) VALUES
+(2300295, 'cassyrain03@gmail.com', 'Bianca Rain Castillon', 'Super Admin', 'Admin123', NULL, NULL, '2026-02-26 07:19:51');
 
 -- --------------------------------------------------------
 
@@ -103,8 +102,7 @@ CREATE TABLE `students` (
 -- Indexes for table `admins`
 --
 ALTER TABLE `admins`
-  ADD PRIMARY KEY (`admin_id`),
-  ADD UNIQUE KEY `username` (`username`);
+  ADD PRIMARY KEY (`admin_id`);
 
 --
 -- Indexes for table `authentication`
