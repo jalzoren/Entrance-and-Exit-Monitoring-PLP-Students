@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import '../css/Students.css';
 import RegisterStudent from '../components/RegisterStudent';
+import ImportStudent from '../components/ImportStudents';
 import { FiDownload, FiPlus, FiFilter } from 'react-icons/fi';
 import { IoMdArrowDropdown } from 'react-icons/io';
 
@@ -11,6 +12,7 @@ function Students() {
   const [registrationDate, setRegistrationDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false); // New state for import modal
 
   // Sample data for demonstration - expanded to 15 students
   const allStudents = [
@@ -52,8 +54,20 @@ function Students() {
     document.body.style.overflow = 'hidden';
   };
 
-  const handleCloseModal = () => {
+  const handleImportClick = () => {
+    setShowImportModal(true);
+    // Prevent body scrolling when modal is open
+    document.body.style.overflow = 'hidden';
+  };
+
+  const handleCloseRegisterModal = () => {
     setShowRegisterModal(false);
+    // Restore body scrolling
+    document.body.style.overflow = 'unset';
+  };
+
+  const handleCloseImportModal = () => {
+    setShowImportModal(false);
     // Restore body scrolling
     document.body.style.overflow = 'unset';
   };
@@ -150,7 +164,7 @@ function Students() {
         </button>
       );
     }
-
+    
     return pages;
   };
 
@@ -178,17 +192,17 @@ function Students() {
             onChange={(e) => setDepartment(e.target.value)}
           >
             <option value="">Select College Department</option>
-                <option value="College of Nursing">College of Nursing</option>
-                <option value="College of Engineering">College of Engineering</option>
-                <option value="College of Education">College of Education</option>
-                <option value="College of Computer Studies">College of Computer Studies</option>
-                <option value="College of Arts and Science">College of Arts and Science</option>
-                <option value="College of Business and Accountancy">
-                  College of Business and Accountancy
-                </option>
-                <option value="College of Hospitality Management">
-                  College of Hospitality Management
-                </option>
+            <option value="College of Nursing">College of Nursing</option>
+            <option value="College of Engineering">College of Engineering</option>
+            <option value="College of Education">College of Education</option>
+            <option value="College of Computer Studies">College of Computer Studies</option>
+            <option value="College of Arts and Science">College of Arts and Science</option>
+            <option value="College of Business and Accountancy">
+              College of Business and Accountancy
+            </option>
+            <option value="College of Hospitality Management">
+              College of Hospitality Management
+            </option>
           </select>
 
           <select 
@@ -223,7 +237,7 @@ function Students() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
 
-          <button className="action-button import-button">
+          <button className="action-button import-button" onClick={handleImportClick}>
             <FiDownload className="button-icon" />
             Import
           </button>
@@ -275,7 +289,7 @@ function Students() {
                         className="action-text-btn photo-text-btn" 
                         onClick={() => handleViewPhoto(student.id)}
                       >
-                       View Photo
+                        View Photo
                       </button>
                       <button 
                         className={`action-text-btn ${student.enrollmentStatus === 'Active' ? 'deactivate-text-btn' : 'activate-text-btn'}`}
@@ -317,11 +331,19 @@ function Students() {
 
       {/* Register Student Modal */}
       {showRegisterModal && (
-        <div className="modal-overlay" onClick={handleCloseModal}>
+        <div className="modal-overlay" onClick={handleCloseRegisterModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <RegisterStudent onClose={handleCloseModal} />
+            <RegisterStudent onClose={handleCloseRegisterModal} />
           </div>
         </div>
+      )}
+
+      {/* Import Student Modal */}
+      {showImportModal && (
+        <ImportStudent 
+          isOpen={showImportModal} 
+          onClose={handleCloseImportModal} 
+        />
       )}
     </div>
   );
