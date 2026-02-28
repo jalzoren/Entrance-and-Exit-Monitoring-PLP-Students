@@ -1,6 +1,8 @@
 :root {
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Oswald:wght@200..700&display=swap');
   --color-bg-main: #fcfbf4;
+    --color-bg-main2:rgb(254, 254, 254);
+
   --color-primary: #548772d4;
   --color-primary-dark: #01311d;
   --color-accent: #d99201;
@@ -24,7 +26,7 @@
   left: 0;
   height: 100vh;
   width: var(--sidebar-collapsed);
-  background: var(--color-bg-main);
+  background: var(--color-bg-main2);
   transition: width var(--transition);
   overflow: hidden;
   z-index: 91;
