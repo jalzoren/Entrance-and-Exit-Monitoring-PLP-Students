@@ -1,56 +1,76 @@
+require('dotenv').config();
 const express = require('express');
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcrypt');
 
 const router = express.Router();
 
-// Create database connection using env variables
+// Create DB pool using .env
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || 'localhost',
-  user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'eems',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
 });
 
-// Login endpoint - using email onlysss
+
+// ============================
+// 🔐 Secure Login Endpoint
+// ============================
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body; // Changed from username to email
-    console.log('Login attempt for email:', email);
+    const { email, password } = req.body;
 
-    // Query the admins table using email only
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    // 1️⃣ Get user by email only
     const [rows] = await pool.query(
-      'SELECT * FROM admins WHERE email = ? AND password = ?',
-      [email, password]
+      'SELECT * FROM admins WHERE email = ?',
+      [email]
     );
 
-    if (rows.length > 0) {
-      // Login successful
-      const user = rows[0];
-      // Remove password from response
-      const { password, ...userWithoutPassword } = user;
-      
-      res.json({
-        success: true,
-        message: 'Login successful',
-        user: userWithoutPassword
-      });
-    } else {
-      // Login failed
-      res.status(401).json({
+    if (rows.length === 0) {
+      return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
       });
     }
 
+    const user = rows[0];
+
+    // 2️⃣ Compare hashed password
+    const isMatch = await bcrypt.compare(password, user.password);
+
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password'
+      });
+    }
+
+    // 3️⃣ Remove password before sending response
+    const { password: _, ...userWithoutPassword } = user;
+
+    res.json({
+      success: true,
+      message: 'Login successful',
+      user: userWithoutPassword
+    });
+
   } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Server error: ' + error.message 
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
     });
   }
 });
