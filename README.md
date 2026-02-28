@@ -139,3 +139,75 @@ The system enhances campus security, automates attendance tracking, and supports
 ---
 
 
+
+```
+Entrance-and-Exit-Monitoring-PLP-Students
+├─ backend
+│  ├─ .env
+│  ├─ eems.sql
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ routes
+│  │  ├─ forgotPassword.js
+│  │  └─ login.js
+│  ├─ server.js
+│  └─ src
+│     ├─ app.js
+│     ├─ db.js
+│     └─ time.js
+├─ plp-student-monitoring
+│  ├─ eslint.config.js
+│  ├─ index.html
+│  ├─ main.cjs
+│  ├─ package-lock.json
+│  ├─ package.json
+│  ├─ public
+│  │  ├─ logo3.png
+│  │  ├─ logoplp.gif
+│  │  └─ vite.svg
+│  ├─ README.md
+│  ├─ src
+│  │  ├─ adminpages
+│  │  │  ├─ Analytics.jsx
+│  │  │  ├─ Dashboard.jsx
+│  │  │  ├─ Monitor.jsx
+│  │  │  ├─ Records.jsx
+│  │  │  └─ Students.jsx
+│  │  ├─ App.css
+│  │  ├─ App.jsx
+│  │  ├─ assets
+│  │  │  ├─ logo2.png
+│  │  │  ├─ MAIN.png
+│  │  │  └─ react.svg
+│  │  ├─ components
+│  │  │  ├─ DashboardLayout.jsx
+│  │  │  ├─ RegisterStudent.jsx
+│  │  │  ├─ RegisterStudentCam.jsx
+│  │  │  └─ Sidebar.jsx
+│  │  ├─ componentscss
+│  │  │  ├─ DashboardLayout.css
+│  │  │  ├─ RegisterStudent.css
+│  │  │  ├─ RegisterStudentCam.css
+│  │  │  └─ Sidebar.css
+│  │  ├─ css
+│  │  │  ├─ Analytics.css
+│  │  │  ├─ Dashboard.css
+│  │  │  ├─ FaceRecognition.css
+│  │  │  ├─ ForgotPass.css
+│  │  │  ├─ Login.css
+│  │  │  ├─ Monitor.css
+│  │  │  ├─ RealTimeMonitor.css
+│  │  │  ├─ Records.css
+│  │  │  └─ Students.css
+│  │  ├─ index.css
+│  │  ├─ main.jsx
+│  │  └─ pages
+│  │     ├─ About.jsx
+│  │     ├─ FaceRecognition.jsx
+│  │     ├─ ForgotPass.jsx
+│  │     ├─ ForgotPass2.jsx
+│  │     └─ Login.jsx
+│  └─ vite.config.js
+└─ README.md
+
+```

@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Montserrat:wght@400;500;600&display=swap');
 
 :root {
@@ -23,27 +22,27 @@
   padding: 0;
 }
 
-/*
-  COMMON MISTAKE: `overflow: hidden` on * breaks Recharts' ResponsiveContainer
-  because it can't measure its parent's width.  We only hide overflow on
-  specific elements that need it (e.g. the background wrapper).
-*/
 html, body {
-  overflow: auto;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 /* ── Full-page background ───────────────────────────────────────────────────*/
 .dashboard-wrapper {
   background: url("../assets/MAIN.png") no-repeat center center / cover;
   min-height: 100vh;
-  width: 100vw;
+  width: 100%;
   color: var(--color-text-light);
-  overflow: visible; /* must stay visible so Recharts can measure */
+  overflow-x: hidden;
+  position: relative;
 }
 
 /* Inner content box — provides padding and top offset */
 .dashb {
   padding: 20px;
+  max-width: 1600px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ── HEADER ─────────────────────────────────────────────────────────────────*/
@@ -54,15 +53,15 @@ html, body {
   flex-wrap: wrap;
   gap: 1.5rem;
   margin-bottom: 1.5rem;
-
   margin-top: 90px;
-
+  width: 100%;
 }
 
 .logo-area {
   display: flex;
   align-items: center;
   gap: 0.875rem;
+  flex-wrap: wrap;
 }
 
 .seal-placeholder {
@@ -74,7 +73,7 @@ html, body {
 
 .university-info h1 {
   font-family: "Cinzel", serif;
-  font-size: 1.45rem;
+  font-size: clamp(1rem, 3vw, 1.45rem);
   font-weight: 600;
   color: var(--color-text-light);
   line-height: 1.15;
@@ -82,7 +81,7 @@ html, body {
 
 .university-info p {
   margin-top: 0.25rem;
-  font-size: 0.85rem;
+  font-size: clamp(0.7rem, 2vw, 0.85rem);
   font-family: "Montserrat", sans-serif;
   color: var(--color-text-light);
   letter-spacing: 0.5px;
@@ -93,8 +92,9 @@ html, body {
 .date-and-time {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: clamp(0.5rem, 2vw, 1rem);
   color: white;
+  flex-wrap: wrap;
 }
 
 .date-section {
@@ -104,7 +104,7 @@ html, body {
 }
 
 .day {
-  font-size: 0.75rem;
+  font-size: clamp(0.65rem, 1.5vw, 0.75rem);
   letter-spacing: 1.5px;
   font-weight: 600;
   opacity: 0.9;
@@ -112,14 +112,14 @@ html, body {
 }
 
 .date {
-  font-size: 0.85rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.85rem);
   font-weight: 400;
   opacity: 0.8;
   font-family: "Montserrat", sans-serif;
 }
 
 .time {
-  font-size: 2.8rem;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
   font-weight: 700;
   letter-spacing: 2px;
   font-family: "Montserrat", sans-serif;
@@ -127,29 +127,24 @@ html, body {
 }
 
 /* ── METRIC CARDS ───────────────────────────────────────────────────────────*/
-/*
-  WHY CSS Grid here?
-  `repeat(3, 1fr)` gives three equal-width columns automatically.
-  When you add a 4th MetricCard, it will wrap gracefully on small screens.
-*/
 .metrics-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--gap-std);
   margin: 1.25rem 0 1.5rem;
+  width: 100%;
 }
 
 .metric-card {
   background: rgba(2, 45, 26, 0.90);
   backdrop-filter: blur(6px);
   color: #fff;
-  padding: 1.25rem 1.5rem;
+  padding: clamp(1rem, 3vw, 1.25rem) clamp(1rem, 3vw, 1.5rem);
   border-radius: var(--radius-card);
   box-shadow: 0 6px 20px var(--color-shadow-soft);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  /* CRITICAL: backdrop-filter creates a new stacking context which clips
-     the ::after tooltip pseudo-element. overflow:visible lets it escape. */
   overflow: visible;
+  width: 100%;
 }
 
 .metric-card-header {
@@ -159,22 +154,23 @@ html, body {
 }
 
 .metric-title {
-  font-size: 0.9rem;
+  font-size: clamp(0.8rem, 2vw, 0.9rem);
   font-family: "Montserrat", sans-serif;
   opacity: 0.9;
   font-weight: 500;
 }
 
 .metric-value {
-  font-size: 2.75rem;
+  font-size: clamp(2rem, 5vw, 2.75rem);
   font-weight: 700;
   margin-top: 0.5rem;
   line-height: 1;
   font-family: "Montserrat", sans-serif;
+  word-break: break-word;
 }
 
 .metric-sub {
-  font-size: 0.78rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.78rem);
   margin-top: 0.35rem;
   opacity: 0.75;
   letter-spacing: 0.8px;
@@ -182,16 +178,6 @@ html, body {
 }
 
 /* ── INFO ICON (ⓘ) ──────────────────────────────────────────────────────────*/
-/*
-  The tooltip is now a REAL React <div> (.tooltip-bubble), not a CSS ::after.
-
-  WHY the change?
-  backdrop-filter on .metric-card creates a GPU compositing layer. CSS
-  pseudo-elements (::after / ::before) are painted inside that layer and
-  physically cannot appear on top of it — z-index and overflow:visible have
-  zero effect on GPU-composited layers. A real DOM <div> rendered by React
-  is a separate paint layer and always appears above everything correctly.
-*/
 .info-icon {
   display: inline-flex;
   width: 20px;
@@ -205,7 +191,6 @@ html, body {
   font-size: 11px;
   cursor: default;
   margin-left: 8px;
-  /* position:relative is the anchor for .tooltip-bubble's absolute positioning */
   position: relative;
   flex-shrink: 0;
   user-select: none;
@@ -218,17 +203,7 @@ html, body {
   color: #123;
 }
 
-/* ── TOOLTIP PORTAL (renders directly into document.body via React Portal) ──*/
-/*
-  WHY fixed positioning?
-  `position: fixed` is relative to the VIEWPORT, not any parent element.
-  This means backdrop-filter, transform, overflow:hidden on any ancestor
-  have ZERO effect on where this element renders — it always appears at
-  the exact screen coordinates we calculated with getBoundingClientRect().
-
-  The JS positions it above the hovered icon using those coordinates.
-  All we control here is appearance (colours, shape, shadow).
-*/
+/* ── TOOLTIP PORTAL ──────────────────────────────────────────────────────────*/
 .tooltip-portal {
   background: #01311d;
   color: #fff;
@@ -240,17 +215,15 @@ html, body {
   line-height: 1.55;
   white-space: normal;
   text-align: left;
-  max-width: 230px;
+  max-width: min(230px, 90vw);
   width: max-content;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  /* pointer-events:none so it doesn't accidentally block mouse events */
   pointer-events: none;
 }
 
-/* Downward arrow — points from the tooltip bubble toward the icon */
 .tooltip-arrow {
   position: absolute;
-  bottom: -11px;         /* just below the bubble */
+  bottom: -11px;
   left: 50%;
   transform: translateX(-50%);
   border: 6px solid transparent;
@@ -261,27 +234,22 @@ html, body {
 }
 
 /* ── CHARTS GRID ────────────────────────────────────────────────────────────*/
-/*
-  WHY `2fr 1fr`?
-  The traffic chart (left) needs more horizontal space because it has an X-axis
-  with 7 date labels.  The pie chart (right) is compact and square-ish.
-  BEGINNER TIP: Change to `1fr 1fr` for equal widths.
-*/
 .charts-grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: var(--gap-std);
   align-items: start;
+  width: 100%;
 }
 
 .chart-card {
   background: #fff;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: var(--radius-card);
-  padding: 1.1rem 1.25rem 1rem;
+  padding: clamp(0.8rem, 2vw, 1.1rem) clamp(0.8rem, 2vw, 1.25rem) clamp(0.8rem, 2vw, 1rem);
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.07);
-  /* Same fix — overflow:visible lets the info icon tooltip escape the card */
   overflow: visible;
+  width: 100%;
 }
 
 .chart-card-header {
@@ -289,61 +257,60 @@ html, body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .chart-card-header h3 {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: clamp(0.85rem, 2vw, 0.95rem);
   color: #123;
   font-family: "Montserrat", sans-serif;
   font-weight: 600;
 }
 
-/* Small date range label (e.g. "Jan 25 – 31, 2026") */
+/* Small date range label */
 .chart-date-range {
-  font-size: 0.78rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.78rem);
   color: #888;
   margin-bottom: 0.5rem;
   text-align: right;
   font-family: "Montserrat", sans-serif;
+  word-break: break-word;
 }
 
-/*
-  IMPORTANT: .chart-area-wrap must be a plain block element with an explicit height.
-  DO NOT use display:flex here — ResponsiveContainer measures offsetHeight of its
-  parent.  Inside a flex container that has no explicit height set, offsetHeight
-  returns 0, causing the chart to render with zero height (invisible).
-  The child chart components now own their own wrapper divs with inline heights,
-  so this element only needs to establish the available width.
-*/
 .chart-area-wrap {
   width: 100%;
-  /* No height here — each chart component provides its own sized wrapper */
+  min-height: 260px; /* Ensure minimum height for charts */
 }
 
 .chart-controls {
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .chart-controls select {
   padding: 5px 8px;
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.12);
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   font-family: "Montserrat", sans-serif;
   background: #f5f5f5;
   cursor: pointer;
+  max-width: 120px;
 }
 
 /* Summary footer below the traffic chart */
 .chart-summary {
   margin-top: 0.6rem;
-  font-size: 0.8rem;
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
   color: #555;
   text-align: center;
   font-family: "Montserrat", sans-serif;
+  word-break: break-word;
+  line-height: 1.5;
 }
 
 /* ── CUSTOM TOOLTIP (traffic chart) ─────────────────────────────────────────*/
@@ -354,6 +321,7 @@ html, body {
   border-radius: 8px;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
   font-family: "Montserrat", sans-serif;
+  max-width: 200px;
 }
 
 .tt-label {
@@ -363,8 +331,17 @@ html, body {
   margin-bottom: 4px;
 }
 
-.tt-entries { font-size: 12px; color: #58761b; }
-.tt-exits   { font-size: 12px; color: #c17a00; }
+.tt-entries { 
+  font-size: 12px; 
+  color: #58761b; 
+  white-space: nowrap;
+}
+
+.tt-exits { 
+  font-size: 12px; 
+  color: #c17a00; 
+  white-space: nowrap;
+}
 
 /* ── PIE CHART LAYOUT ───────────────────────────────────────────────────────*/
 .pie-wrap {
@@ -373,16 +350,26 @@ html, body {
   justify-content: center;
   gap: 8px;
   width: 100%;
+  flex-wrap: wrap;
+}
+
+.pie-wrap > div:first-child {
+  flex: 1 1 200px;
+  min-width: 180px;
+  max-width: 250px;
+  height: auto;
+  aspect-ratio: 1/1;
 }
 
 .pie-legend {
   list-style: none;
   padding: 0;
   margin: 0;
-  font-size: 12px;
+  font-size: clamp(11px, 2vw, 12px);
   font-family: "Montserrat", sans-serif;
   color: #333;
   min-width: 110px;
+  flex: 1 1 auto;
 }
 
 .pie-legend li {
@@ -391,6 +378,7 @@ html, body {
   gap: 6px;
   margin-bottom: 7px;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .swatch {
@@ -405,23 +393,108 @@ html, body {
   color: rgba(0, 0, 0, 0.4);
   font-style: italic;
   font-size: 0.9rem;
+  text-align: center;
+  padding: 20px;
 }
 
-/* ── RESPONSIVE ─────────────────────────────────────────────────────────────*/
-@media (max-width: 900px) {
-  .charts-grid {
-    grid-template-columns: 1fr;
+/* ── RESPONSIVE BREAKPOINTS ─────────────────────────────────────────────────*/
+
+/* Large Tablets */
+@media (max-width: 1024px) {
+  .dashb {
+    padding: 15px;
+  }
+  
+  .campus-header {
+    margin-top: 70px;
+  }
+  
+  .pie-wrap {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .pie-legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 20px;
+    width: 100%;
+  }
+  
+  .pie-legend li {
+    white-space: normal;
   }
 }
 
+/* Medium Tablets */
+@media (max-width: 900px) {
+  .charts-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  
+  .chart-card {
+    max-width: 100%;
+  }
+  
+  .pie-wrap {
+    flex-direction: row;
+  }
+  
+  .pie-legend {
+    display: block;
+  }
+}
+
+/* Small Tablets */
+@media (max-width: 768px) {
+  .campus-header {
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 60px;
+    gap: 1rem;
+  }
+  
+  .date-and-time {
+    align-self: flex-end;
+    width: 100%;
+    justify-content: flex-end;
+  }
+  
+  .metrics-row {
+    gap: 1rem;
+  }
+  
+  .pie-wrap {
+    flex-direction: column;
+  }
+  
+  .pie-legend {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  .chart-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+}
+
+/* Mobile Landscape */
 @media (max-width: 640px) {
   .metrics-row {
     grid-template-columns: 1fr;
+    gap: 0.875rem;
   }
 
   .dashb {
     padding: 0 1rem 1.5rem;
-    margin-top: 80px;
+    margin-top: 50px;
+  }
+
+  .logo-area {
+    width: 100%;
   }
 
   .university-info h1 {
@@ -431,13 +504,392 @@ html, body {
   .time {
     font-size: 2rem;
   }
-
-  .campus-header {
+  
+  .pie-legend {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .chart-card-header {
     flex-direction: column;
     align-items: flex-start;
   }
+  
+  .chart-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .chart-controls select {
+    flex: 1;
+    max-width: none;
+  }
+}
 
+/* Mobile Portrait */
+@media (max-width: 480px) {
+  .campus-header {
+    margin-top: 40px;
+  }
+  
   .date-and-time {
-    align-self: flex-end;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+  }
+  
+  .date-section {
+    text-align: right;
+  }
+  
+  .time {
+    font-size: 1.8rem;
+  }
+  
+  .metric-value {
+    font-size: 2rem;
+  }
+  
+  .pie-legend {
+    grid-template-columns: 1fr;
+  }
+  
+  .pie-wrap > div:first-child {
+    min-width: 150px;
+    max-width: 200px;
+  }
+  
+  .custom-tooltip {
+    padding: 8px 10px;
+  }
+  
+  .tt-entries, .tt-exits {
+    white-space: normal;
+    word-break: break-word;
+  }
+  
+  .chart-summary {
+    font-size: 0.7rem;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 360px) {
+  .seal-placeholder {
+    width: 48px;
+    height: 52px;
+  }
+  
+  .university-info h1 {
+    font-size: 0.9rem;
+  }
+  
+  .university-info p {
+    font-size: 0.65rem;
+  }
+  
+  .time {
+    font-size: 1.5rem;
+  }
+  
+  .day, .date {
+    font-size: 0.6rem;
+  }
+  
+  .metric-card {
+    padding: 0.875rem;
+  }
+  
+  .metric-value {
+    font-size: 1.75rem;
+  }
+}
+
+/* Fix for very large screens */
+@media (min-width: 1800px) {
+  .dashb {
+    max-width: 1800px;
+    padding: 30px;
+  }
+  
+  .metric-value {
+    font-size: 3rem;
+  }
+  
+  .time {
+    font-size: 3.2rem;
+  }
+}
+
+/* Ensure charts are always visible */
+[data-chart] {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Fix for Recharts responsiveness */
+.recharts-wrapper {
+  position: absolute !important;
+  left: 0;
+  right: 0;
+  width: 100% !important;
+}
+
+.recharts-surface {
+  overflow: visible;
+}
+
+/* Ensure tooltips work on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .info-icon {
+    display: none; /* Hide tooltips on touch devices */
+  }
+}
+
+/* Add these styles to your existing CSS */
+
+/* Chart container fixes */
+.chart-container {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+  position: relative;
+}
+
+/* Fix for Recharts responsiveness */
+.recharts-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  left: 0;
+  top: 0;
+}
+
+.recharts-surface {
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+
+/* Chart wrapper styles */
+.chart-area-wrap {
+  width: 100%;
+  min-height: 300px;
+  height: auto;
+  position: relative;
+}
+
+/* Pie chart specific fixes */
+.pie-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  flex-wrap: wrap;
+  min-height: 300px;
+}
+
+.pie-chart-wrapper {
+  flex: 2 1 250px;
+  min-width: 200px;
+  max-width: 300px;
+  height: 250px;
+  position: relative;
+}
+
+.pie-legend {
+  flex: 1 1 150px;
+  min-width: 120px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: clamp(11px, 2vw, 12px);
+  font-family: "Montserrat", sans-serif;
+  color: #333;
+}
+
+.pie-legend li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  line-height: 1.3;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.legend-text {
+  flex: 1;
+}
+
+.swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+/* Chart summary improvements */
+.chart-summary {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: clamp(0.7rem, 1.5vw, 0.8rem);
+  color: #555;
+  text-align: center;
+  font-family: "Montserrat", sans-serif;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.summary-separator {
+  color: #ccc;
+  font-weight: bold;
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 768px) {
+  .chart-area-wrap {
+    min-height: 280px;
+  }
+  
+  .pie-wrap {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .pie-chart-wrapper {
+    max-width: 280px;
+    width: 100%;
+  }
+  
+  .pie-legend {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px 15px;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart-area-wrap {
+    min-height: 250px;
+  }
+  
+  .pie-chart-wrapper {
+    max-width: 220px;
+    height: 220px;
+  }
+  
+  .pie-legend {
+    grid-template-columns: 1fr;
+  }
+  
+  .chart-summary {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .summary-separator {
+    display: none;
+  }
+  
+  /* Adjust axis labels for small screens */
+  .recharts-xAxis .recharts-cartesian-axis-tick-value {
+    font-size: 9px !important;
+  }
+  
+  .recharts-yAxis .recharts-cartesian-axis-tick-value {
+    font-size: 9px !important;
+  }
+}
+
+/* Fix for tooltip positioning */
+.custom-tooltip {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  font-family: "Montserrat", sans-serif;
+  max-width: min(200px, 80vw);
+  z-index: 1000;
+}
+
+.tt-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #123;
+  margin-bottom: 4px;
+}
+
+.tt-entries { 
+  font-size: 12px; 
+  color: #58761b; 
+}
+
+.tt-exits { 
+  font-size: 12px; 
+  color: #c17a00; 
+}
+
+/* Ensure charts are visible during loading */
+.chart-placeholder {
+  color: rgba(0, 0, 0, 0.4);
+  font-style: italic;
+  font-size: 0.9rem;
+  text-align: center;
+  padding: 40px 20px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 8px;
+  width: 100%;
+}
+
+/* Remove the problematic recharts-wrapper absolute positioning */
+/* Replace with this: */
+.recharts-responsive-container {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: inherit;
+}
+
+/* Fix for chart cards on very small screens */
+@media (max-width: 360px) {
+  .chart-card {
+    padding: 10px;
+  }
+  
+  .chart-area-wrap {
+    min-height: 220px;
+  }
+  
+  .pie-chart-wrapper {
+    max-width: 180px;
+    height: 180px;
+  }
+  
+  .pie-legend {
+    font-size: 10px;
+  }
+  
+  .swatch {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* Improve chart tooltip on mobile */
+@media (hover: none) and (pointer: coarse) {
+  .recharts-tooltip-wrapper {
+    max-width: 90vw !important;
+  }
+  
+  .custom-tooltip {
+    padding: 8px 12px;
+    font-size: 11px;
   }
 }

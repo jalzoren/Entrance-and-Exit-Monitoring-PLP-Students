@@ -1,14 +1,3 @@
-// src/pages/Dashboard.jsx
-//
-// ─────────────────────────────────────────────────────────────────────────────
-// PROFESSOR'S NOTE ─ Why OOP-style organisation inside React?
-//   React is functional by nature, but we can still apply OOP principles by
-//   grouping related logic into "service objects" (plain JS classes) that live
-//   outside the component tree.  Components stay thin (UI only); services
-//   handle data-fetching and business rules.  This mirrors the Model-View
-//   separation you'd find in a proper MVC architecture.
-// ─────────────────────────────────────────────────────────────────────────────
-
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import {
@@ -26,15 +15,6 @@ import {
 } from "recharts";
 import "../css/Dashboard.css";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// SERVICE LAYER  (OOP "Model" classes)
-// These are pure data-fetching / data-transformation classes.
-// They have NO knowledge of React state — they just return data.
-// WHY: Swapping a mock for a real API later means editing ONE class, not
-//      hunting through JSX for fetch() calls.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Handles all clock/time concerns. */
 class TimeService {
   static async fetchServerTime() {
     const res = await fetch("http://localhost:5000/api/time");
@@ -77,9 +57,6 @@ class DashboardService {
   }
 
   // ── TRAFFIC CHART ─────────────────────────────────────────────────────────
-  // BEGINNER TIP: `days` drives how many rows are sliced from sampleAll.
-  //   When the user picks "30 DAYS" in the dropdown, fetchTraffic(30) is called
-  //   and you'd swap sampleAll for a real API call: fetch(`/api/traffic?days=${days}`)
   static async fetchTraffic(days = 7) {
     // prettier-ignore
     const sampleAll = [
@@ -135,9 +112,6 @@ class DashboardService {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT COMPONENT
-// WHY: Dashboard is the "smart" / "container" component — it owns all state
-//      and passes data down as props.  Child components are "dumb" / presentational
-//      and have zero fetch logic.  This keeps children easy to test and reuse.
 // ─────────────────────────────────────────────────────────────────────────────
 function Dashboard() {
   const [serverTime,   setServerTime]   = useState(null);
@@ -145,11 +119,9 @@ function Dashboard() {
   const [trafficData,  setTrafficData]  = useState(null);
   const [collegeData,  setCollegeData]  = useState(null);
   const [trafficDays,  setTrafficDays]  = useState(7);
+  const [chartKey, setChartKey] = useState(0); // Add key for forcing re-renders
 
   // ── Clock effect ────────────────────────────────────────────────────────
-  // LIFECYCLE: runs once on mount (empty [] dep-array).
-  // WHY two intervals?  One ticks every second locally (cheap), the other
-  // re-syncs with the server every 60 s to prevent drift.
   useEffect(() => {
     let baseTime;
     let tickInterval;
@@ -194,12 +166,24 @@ function Dashboard() {
   // Re-fetch traffic whenever the user changes the day-range dropdown
   useEffect(() => {
     DashboardService.fetchTraffic(trafficDays).then(setTrafficData);
+    // Force chart re-render when data changes
+    setChartKey(prev => prev + 1);
   }, [trafficDays]);
 
   // ── Derived values (memoised so they don't recalculate on every render) ─
   const formatted    = serverTime ? TimeService.format(serverTime) : null;
   const summary      = useMemo(() => DashboardService.trafficSummary(trafficData), [trafficData]);
   const dateRangeLabel = useMemo(() => DashboardService.trafficDateRange(trafficDays), [trafficDays]);
+
+  // Handle window resize to force chart re-render
+  useEffect(() => {
+    const handleResize = () => {
+      setChartKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Don't render anything until the clock is ready (avoids flash)
   if (!formatted) return null;
@@ -228,11 +212,6 @@ function Dashboard() {
         </header>
 
         {/* ── METRIC CARDS ── */}
-        {/*
-          WHY a separate MetricCard component?
-          Because if your designer changes the card layout, you update ONE
-          component instead of three copy-pasted blocks.
-        */}
         <section className="metrics-row">
           <MetricCard
             title="Currently On Campus"
@@ -256,13 +235,11 @@ function Dashboard() {
 
         {/* ── CHARTS ── */}
         <section className="charts-grid">
-
           {/* Chart 1 — Daily Traffic Trend (Area Chart) */}
           <div className="chart-card">
             <div className="chart-card-header">
               <h3>Daily Traffic Trend</h3>
               <div className="chart-controls">
-                {/* The dropdown triggers a re-fetch via the trafficDays state */}
                 <select
                   value={trafficDays}
                   onChange={(e) => setTrafficDays(Number(e.target.value))}
@@ -274,22 +251,24 @@ function Dashboard() {
               </div>
             </div>
 
-            {/* Date range label (matches wireframe) */}
             {dateRangeLabel && (
               <div className="chart-date-range">{dateRangeLabel}</div>
             )}
 
-            <div className="chart-area-wrap">
-              <TrafficAreaChart data={trafficData} />
+            <div className="chart-area-wrap" style={{ minHeight: '300px', width: '100%' }}>
+              <TrafficAreaChart 
+                key={`traffic-${chartKey}`} 
+                data={trafficData} 
+              />
             </div>
 
-            {/* Summary footer (matches wireframe) */}
             {summary && (
               <div className="chart-summary">
-                Weekly Total:{" "}
-                <strong>{summary.totalEntries.toLocaleString()} entries</strong>{" "}
-                · <strong>{summary.totalExits.toLocaleString()} exits</strong>{" "}
-                · Peak: <strong>{summary.peakDay} ({summary.peakEntries.toLocaleString()} entries)</strong>
+                <span>Weekly Total: <strong>{summary.totalEntries.toLocaleString()} entries</strong></span>
+                <span className="summary-separator">·</span>
+                <span><strong>{summary.totalExits.toLocaleString()} exits</strong></span>
+                <span className="summary-separator">·</span>
+                <span>Peak: <strong>{summary.peakDay} ({summary.peakEntries.toLocaleString()} entries)</strong></span>
               </div>
             )}
           </div>
@@ -300,54 +279,29 @@ function Dashboard() {
               <h3>College Department Distribution</h3>
               <InfoIcon tooltip="Shows the proportion of student traffic by college or department currently on campus today." />
             </div>
-            <div className="chart-area-wrap">
-              <CollegePieChart data={collegeData} />
+            <div className="chart-area-wrap" style={{ minHeight: '300px', width: '100%' }}>
+              <CollegePieChart 
+                key={`pie-${chartKey}`} 
+                data={collegeData} 
+              />
             </div>
           </div>
-
         </section>
       </div>
     </div>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PRESENTATIONAL (DUMB) COMPONENTS
-// These receive only props — no fetch calls, no useEffect.
-// WHY: Pure UI components are trivial to test and reuse across pages.
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * InfoIcon — uses ReactDOM.createPortal to render the tooltip directly into
- * document.body, which GUARANTEES it escapes ALL parent clipping contexts:
- * backdrop-filter, overflow:hidden, transform, opacity, filter — none of
- * these can trap a portal because the portal's DOM node is a DIRECT child
- * of <body>, not a descendant of the clipping element at all.
- *
- * HOW PORTALS WORK (beginner explanation):
- *   Normally React renders children inside their parent DOM node.
- *   createPortal(child, container) says "render this child into THIS
- *   container instead" — even though it still lives in the React component
- *   tree for event bubbling and state purposes.
- *
- * HOW POSITION IS CALCULATED:
- *   useRef() gets a reference to the icon's DOM node.
- *   getBoundingClientRect() reads its exact pixel position on screen.
- *   We use those coordinates to position the tooltip with fixed positioning
- *   (fixed = relative to the viewport, not any parent element).
- */
 function InfoIcon({ tooltip }) {
   const [visible, setVisible]   = useState(false);
   const [coords,  setCoords]    = useState({ top: 0, left: 0 });
   const iconRef                 = useRef(null);
 
-  // Recalculate tooltip position every time it becomes visible
   const handleMouseEnter = useCallback(() => {
     if (iconRef.current) {
       const rect = iconRef.current.getBoundingClientRect();
       setCoords({
-        // Place tooltip above the icon, centred on it
-        top:  rect.top + window.scrollY - 8,   // 8px gap above the icon
+        top:  rect.top + window.scrollY - 8,
         left: rect.left + window.scrollX + rect.width / 2,
       });
     }
@@ -356,15 +310,12 @@ function InfoIcon({ tooltip }) {
 
   const handleMouseLeave = useCallback(() => setVisible(false), []);
 
-  // The floating tooltip rendered via portal into document.body
   const tooltipPortal = visible
     ? ReactDOM.createPortal(
         <div
           className="tooltip-portal"
           style={{
-            // `position: fixed` so it's relative to the VIEWPORT, not any parent
             position: "fixed",
-            // Convert page-scroll-adjusted coords back to viewport coords
             top:  coords.top  - window.scrollY,
             left: coords.left,
             transform: "translate(-50%, -100%)",
@@ -376,7 +327,7 @@ function InfoIcon({ tooltip }) {
           {tooltip}
           <span className="tooltip-arrow" />
         </div>,
-        document.body   // ← renders OUTSIDE all parent containers
+        document.body
       )
     : null;
 
@@ -395,14 +346,6 @@ function InfoIcon({ tooltip }) {
   );
 }
 
-/**
- * Metric summary card.
- * Props:
- *   title   – card heading
- *   value   – big number / string
- *   subtitle – small label below the value
- *   tooltip – text shown when hovering the info icon
- */
 function MetricCard({ title, value, subtitle, tooltip }) {
   return (
     <div className="metric-card">
@@ -416,130 +359,175 @@ function MetricCard({ title, value, subtitle, tooltip }) {
   );
 }
 
-// ── Colour palettes ──────────────────────────────────────────────────────────
-// Matches the greenish-gold brand palette used in the wireframe.
 const TRAFFIC_COLORS = {
   entries: "#58761B",
   exits:   "#D99201",
 };
 
-// Pie slice colours — distinct enough to tell apart at a glance
 const PIE_COLORS = [
-  "#b0b8d1", // CSS — muted blue-grey
-  "#a8d5ba", // CAS — soft green
-  "#e8a0bf", // CON — pink
-  "#f5c97a", // CBA — gold
-  "#e05c5c", // CIHM — red
-  "#6b7fd7", // COED — indigo
+  "#b0b8d1",
+  "#a8d5ba",
+  "#e8a0bf",
+  "#f5c97a",
+  "#e05c5c",
+  "#6b7fd7",
 ];
 
-// ── Custom tooltip defined at module scope ───────────────────────────────────
-// CRITICAL: Never define this inside the chart component.
-// WHY: If defined inside, React creates a NEW component type on every render.
-//      Recharts sees a "new" tooltip component each time and resets its internal
-//      hover state — this is also what causes the chart areas to appear blank
-//      in some Recharts versions.  Defining it outside fixes both issues.
 function TrafficTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const { date, entries, exits } = payload[0].payload;
   return (
     <div className="custom-tooltip">
       <div className="tt-label">{date}</div>
-      <div className="tt-entries">Entries: {entries.toLocaleString()}</div>
-      <div className="tt-exits">Exits: {exits.toLocaleString()}</div>
+      <div className="tt-entries">Entries: {entries?.toLocaleString() || 0}</div>
+      <div className="tt-exits">Exits: {exits?.toLocaleString() || 0}</div>
     </div>
   );
 }
 
-/**
- * Area chart for daily traffic.
- * COMMON MISTAKE: forgetting to normalise incoming key names.
- *   The backend might return `entries` or `entry` — the map below handles both.
- */
 function TrafficAreaChart({ data }) {
-  if (!data || data.length === 0)
-    return <p className="chart-placeholder">No traffic data</p>;
+  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  // Normalise keys so the chart always works regardless of API field names
+  if (!data || data.length === 0) {
+    return <p className="chart-placeholder">No traffic data</p>;
+  }
+
   const formatted = data.map((d) => ({
-    date:    d.date || d.day,
+    date: d.date || d.day,
     entries: d.entries ?? d.entry ?? d.entrances ?? 0,
-    exits:   d.exits  ?? d.exit  ?? d.exiting   ?? 0,
+    exits: d.exits ?? d.exit ?? d.exiting ?? 0,
   }));
 
+  // Update dimensions on resize
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
   return (
-    // WHY a plain <div> wrapper with explicit pixel height?
-    // ResponsiveContainer measures its IMMEDIATE parent to get width/height.
-    // If that parent is a flex/grid item without an explicit size, the
-    // measurement returns 0 and the chart renders invisible.
-    // Solution: wrap in a plain block div with a fixed pixel height.
-    <div style={{ width: "100%", height: 260 }}>
-      <ResponsiveContainer width="100%" height="100%">
-      <ReAreaChart data={formatted} margin={{ top: 10, right: 20, left: 0, bottom: 30 }}>
-        <defs>
-          <linearGradient id="gEntries" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%"   stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.85} />
-            <stop offset="100%" stopColor="#ffffff"                 stopOpacity={0.05} />
-          </linearGradient>
-          <linearGradient id="gExits" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%"   stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.85} />
-            <stop offset="100%" stopColor="#ffffff"               stopOpacity={0.05} />
-          </linearGradient>
-        </defs>
-
-        <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-        <XAxis dataKey="date" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} />
-        <ReTooltip content={<TrafficTooltip />} />
-        <ReLegend verticalAlign="bottom" height={36} />
-
-        <Area
-          type="monotone"
-          dataKey="entries"
-          stroke={TRAFFIC_COLORS.entries}
-          fill="url(#gEntries)"
-          fillOpacity={0.4}
-          strokeWidth={2}
-        />
-        <Area
-          type="monotone"
-          dataKey="exits"
-          stroke={TRAFFIC_COLORS.exits}
-          fill="url(#gExits)"
-          fillOpacity={0.4}
-          strokeWidth={2}
-        />
-      </ReAreaChart>
-      </ResponsiveContainer>
+    <div 
+      ref={containerRef} 
+      className="chart-container" 
+      style={{ width: '100%', height: '100%', minHeight: '280px' }}
+    >
+      {dimensions.width > 0 && (
+        <ResponsiveContainer width="100%" height="100%">
+          <ReAreaChart 
+            data={formatted} 
+            margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+          >
+            <defs>
+              <linearGradient id="gEntries" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.8}/>
+                <stop offset="95%" stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.1}/>
+              </linearGradient>
+              <linearGradient id="gExits" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.8}/>
+                <stop offset="95%" stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.1}/>
+              </linearGradient>
+            </defs>
+            
+            <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
+            <XAxis 
+              dataKey="date" 
+              tick={{ fontSize: 11 }}
+              interval="preserveStartEnd"
+              angle={-45}
+              textAnchor="end"
+              height={60}
+            />
+            <YAxis 
+              tick={{ fontSize: 11 }}
+              width={45}
+            />
+            <ReTooltip content={<TrafficTooltip />} />
+            <ReLegend 
+              verticalAlign="bottom" 
+              height={36}
+              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
+            />
+            
+            <Area
+              type="monotone"
+              dataKey="entries"
+              name="Entries"
+              stroke={TRAFFIC_COLORS.entries}
+              strokeWidth={2}
+              fill="url(#gEntries)"
+              fillOpacity={0.6}
+              dot={{ r: 3, fill: TRAFFIC_COLORS.entries }}
+              activeDot={{ r: 5 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="exits"
+              name="Exits"
+              stroke={TRAFFIC_COLORS.exits}
+              strokeWidth={2}
+              fill="url(#gExits)"
+              fillOpacity={0.6}
+              dot={{ r: 3, fill: TRAFFIC_COLORS.exits }}
+              activeDot={{ r: 5 }}
+            />
+          </ReAreaChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 }
 
-/**
- * Pie chart for college distribution — matches the wireframe exactly.
- *
- * HOW IT WORKS:
- *   1. Recharts <Pie> maps each { name, value } object to a slice.
- *   2. <Cell> gives each slice its own colour from PIE_COLORS.
- *   3. A custom legend on the right shows name + percentage.
- *
- * BEGINNER TIP: To add an inner ring (donut style), add `innerRadius={60}` to <Pie>.
- */
 function CollegePieChart({ data }) {
-  if (!data || data.length === 0)
+  const containerRef = useRef(null);
+  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  if (!data || data.length === 0) {
     return <p className="chart-placeholder">No distribution data</p>;
+  }
 
   const total = data.reduce((s, d) => s + d.value, 0);
 
-  // Custom legend rendered as a plain list (gives us full style control)
+  // Update dimensions on resize
+  useEffect(() => {
+    const updateDimensions = () => {
+      if (containerRef.current) {
+        setDimensions({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+
+    updateDimensions();
+    window.addEventListener('resize', updateDimensions);
+    
+    return () => window.removeEventListener('resize', updateDimensions);
+  }, []);
+
   const CustomLegend = () => (
     <ul className="pie-legend">
       {data.map((entry, i) => {
         const pct = ((entry.value / total) * 100).toFixed(0);
         return (
           <li key={entry.name}>
-            <span className="swatch" style={{ background: PIE_COLORS[i % PIE_COLORS.length] }} />
-            {entry.name} ({pct}%)
+            <span 
+              className="swatch" 
+              style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} 
+            />
+            <span className="legend-text">
+              {entry.name} ({pct}%)
+            </span>
           </li>
         );
       })}
@@ -547,31 +535,40 @@ function CollegePieChart({ data }) {
   );
 
   return (
-    <div className="pie-wrap">
-      {/* WHY style={{ flex: "0 0 200px" }}?
-          The pie-wrap is a flex row (pie + legend side by side).
-          We give the chart a fixed pixel basis so the legend always has room.
-          The inner div with explicit height lets ResponsiveContainer measure correctly. */}
-      <div style={{ flex: "0 0 200px", height: 220 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <RePieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              outerRadius={90}
-              dataKey="value"
-              label={false}
-            >
-              {data.map((_, i) => (
-                <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-              ))}
-            </Pie>
-            <ReTooltip formatter={(value, name) => [value.toLocaleString(), name]} />
-          </RePieChart>
-        </ResponsiveContainer>
+    <div ref={containerRef} className="pie-wrap">
+      <div className="pie-chart-wrapper" style={{ width: '100%', height: '250px' }}>
+        {dimensions.width > 0 && (
+          <ResponsiveContainer width="100%" height="100%">
+            <RePieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={dimensions.width < 400 ? 30 : 40}
+                outerRadius={dimensions.width < 400 ? 60 : 80}
+                paddingAngle={2}
+                dataKey="value"
+                label={false}
+              >
+                {data.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={PIE_COLORS[index % PIE_COLORS.length]}
+                    stroke="#fff"
+                    strokeWidth={2}
+                  />
+                ))}
+              </Pie>
+              <ReTooltip 
+                formatter={(value, name) => [
+                  `${value.toLocaleString()} (${((value/total)*100).toFixed(1)}%)`, 
+                  name
+                ]}
+              />
+            </RePieChart>
+          </ResponsiveContainer>
+        )}
       </div>
-
       <CustomLegend />
     </div>
   );
