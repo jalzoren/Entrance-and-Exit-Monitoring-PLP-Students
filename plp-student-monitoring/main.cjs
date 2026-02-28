@@ -4,12 +4,14 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false, // must be false for your React app to access getUserMedia
       enableRemoteModule: true,
       media: true,             // allow camera/microphone
-      webSecurity: false       // allows getUserMedia on file:// if you package later
+      webSecurity: false,      // allows getUserMedia on file:// if you package later
+      setResizeable: true,
     },
   });
 
