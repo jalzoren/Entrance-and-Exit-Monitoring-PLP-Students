@@ -84,10 +84,10 @@ const AUTH_COLORS = ['#01311d', '#d99201'];
 function Analytics() {
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
   const [trafficData, setTrafficData] = useState(INITIAL_TRAFFIC_DATA);
-  const [collegeData, setCollegeData] useState(INITIAL_COLLEGE_DATA);
+  const [collegeData, setCollegeData] = useState(INITIAL_COLLEGE_DATA);
   const [authData, setAuthData] = useState(INITIAL_AUTH_DATA);
   
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false); // Set to false initially to show data
   const [error, setError] = useState(null);
   const [timeRange, setTimeRange] = useState('7days');
   
@@ -108,9 +108,15 @@ function Analytics() {
         setIsLoading(true);
         setError(null);
 
+        // Simulate API call
         await new Promise(resolve => setTimeout(resolve, 800));
 
+        // In a real app, you would fetch from your API
+        // For now, we'll use the initial data
+        
+        // You can simulate different data based on timeRange
         if (timeRange === '30days') {
+          // Generate more data points for 30 days
           const extendedData = [];
           for (let i = 1; i <= 30; i++) {
             extendedData.push({
@@ -121,6 +127,7 @@ function Analytics() {
           }
           setTrafficData(extendedData);
         } else if (timeRange === '1year') {
+          // Generate monthly data
           const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
           const yearlyData = months.map(month => ({
             date: month,
@@ -129,6 +136,7 @@ function Analytics() {
           }));
           setTrafficData(yearlyData);
         } else {
+          // Default to 7 days
           setTrafficData(INITIAL_TRAFFIC_DATA);
         }
 
@@ -251,6 +259,12 @@ function Analytics() {
     return pages;
   };
 
+  // Prepare data for pie chart
+  const pieChartData = authData.map(item => ({
+    name: item.method,
+    value: item.attempts
+  }));
+
   return (
     <div className="analytics-page">
       <header className="header-card">
@@ -316,7 +330,7 @@ function Analytics() {
                 </div>
               </div>
 
-              {/* Traffic Chart with smaller legend */}
+              {/* Traffic Chart */}
               <TrafficChart data={trafficData} />
 
               {/* INSIGHTS SECTION */}
@@ -345,7 +359,7 @@ function Analytics() {
                 <button className="info-btn" title="More information">ℹ</button>
               </div>
 
-              {/* Authentication Chart with smaller legend */}
+              {/* Authentication Chart */}
               <AuthenticationChart data={authData} />
 
               {/* Table Section */}
@@ -380,7 +394,7 @@ function Analytics() {
                 <button className="info-btn" title="More information">ℹ</button>
               </div>
 
-              {/* College Distribution Chart with smaller legend */}
+              {/* College Distribution Chart */}
               <CollegeDistributionChart data={collegeData} />
 
               {/* Summary Text */}
@@ -449,26 +463,8 @@ function Analytics() {
   );
 }
 
-// Traffic Chart Component with smaller legend
+// Traffic Chart Component
 function TrafficChart({ data }) {
-  // Custom legend renderer for smaller size
-  const renderLegend = (props) => {
-    const { payload } = props;
-    return (
-      <ul className="custom-legend">
-        {payload.map((entry, index) => (
-          <li key={`item-${index}`} className="legend-item">
-            <span 
-              className="legend-color" 
-              style={{ backgroundColor: entry.color }}
-            ></span>
-            <span className="legend-label">{entry.value}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
-
   return (
     <div className="chart-container">
       <ResponsiveContainer width="100%" height="100%">
@@ -484,30 +480,26 @@ function TrafficChart({ data }) {
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis dataKey="date" stroke="#666666" tick={{ fontSize: 11 }} />
-          <YAxis stroke="#666666" tick={{ fontSize: 11 }} />
+          <XAxis dataKey="date" stroke="#666666" tick={{ fontSize: 12 }} />
+          <YAxis stroke="#666666" tick={{ fontSize: 12 }} />
           <Tooltip 
             contentStyle={{ 
               backgroundColor: 'white', 
               border: '1px solid #01311d',
-              borderRadius: '6px',
-              fontSize: '11px',
-              padding: '6px'
+              borderRadius: '4px',
+              fontSize: '12px',
+              padding: '8px'
             }} 
           />
-          <Legend 
-            content={renderLegend}
-            wrapperStyle={{ fontSize: '11px', paddingTop: '5px' }}
-            iconSize={8}
-          />
+          <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '5px' }} />
           <Area 
             type="monotone" 
             dataKey="entrance" 
             stroke="#58761B"
             strokeWidth={2}
             fill="url(#entranceGradient)"
-            dot={{ fill: '#58761B', r: 2 }}
-            activeDot={{ r: 4 }}
+            dot={{ fill: '#58761B', r: 3 }}
+            activeDot={{ r: 5 }}
             name="Entrances"
           />
           <Area 
@@ -516,8 +508,8 @@ function TrafficChart({ data }) {
             stroke="#D99201"
             strokeWidth={2}
             fill="url(#exitGradient)"
-            dot={{ fill: '#D99201', r: 2 }}
-            activeDot={{ r: 4 }}
+            dot={{ fill: '#D99201', r: 3 }}
+            activeDot={{ r: 5 }}
             name="Exits"
           />
         </AreaChart>
@@ -526,28 +518,10 @@ function TrafficChart({ data }) {
   );
 }
 
-// College Distribution Chart Component with smaller legend
+// College Distribution Chart Component
 function CollegeDistributionChart({ data }) {
   // Sort data by presenceNow for better visualization
   const sortedData = [...data].sort((a, b) => b.presenceNow - a.presenceNow);
-  
-  // Custom legend renderer for smaller size
-  const renderLegend = (props) => {
-    const { payload } = props;
-    return (
-      <ul className="custom-legend">
-        {payload.map((entry, index) => (
-          <li key={`item-${index}`} className="legend-item">
-            <span 
-              className="legend-color" 
-              style={{ backgroundColor: entry.color }}
-            ></span>
-            <span className="legend-label">{entry.value}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
   
   return (
     <div className="chart-container college-chart">
@@ -558,74 +532,52 @@ function CollegeDistributionChart({ data }) {
           margin={{ top: 10, right: 30, left: 120, bottom: 10 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis type="number" stroke="#666666" tick={{ fontSize: 10 }} />
+          <XAxis type="number" stroke="#666666" tick={{ fontSize: 11 }} />
           <YAxis 
             type="category" 
             dataKey="collegeName" 
             stroke="#666666"
             width={110}
-            tick={{ fontSize: 10 }}
+            tick={{ fontSize: 11 }}
           />
           <Tooltip 
             formatter={(value) => [value.toLocaleString(), "Present Now"]}
             contentStyle={{ 
               backgroundColor: 'white', 
               border: '1px solid #01311d',
-              borderRadius: '6px',
-              fontSize: '10px',
-              padding: '5px'
+              borderRadius: '4px',
+              fontSize: '11px',
+              padding: '6px'
             }} 
           />
-          <Legend 
-            content={renderLegend}
-            wrapperStyle={{ fontSize: '10px', paddingTop: '5px' }}
-            iconSize={7}
-          />
-          <Bar dataKey="presenceNow" fill="#58761B" name="Present Now" barSize={12} />
+          <Legend wrapperStyle={{ fontSize: '11px' }} />
+          <Bar dataKey="presenceNow" fill="#58761B" name="Present Now" barSize={15} />
         </BarChart>
       </ResponsiveContainer>
     </div>
   );
 }
 
-// Authentication Chart Component with smaller legend
+// Authentication Chart Component
 function AuthenticationChart({ data }) {
   const pieData = data.map(item => ({
     name: item.method,
     value: item.attempts
   }));
 
-  // Custom legend renderer for smaller size
-  const renderLegend = (props) => {
-    const { payload } = props;
-    return (
-      <ul className="custom-legend">
-        {payload.map((entry, index) => (
-          <li key={`item-${index}`} className="legend-item">
-            <span 
-              className="legend-color" 
-              style={{ backgroundColor: entry.color }}
-            ></span>
-            <span className="legend-label">{entry.value}</span>
-          </li>
-        ))}
-      </ul>
-    );
-  };
-
   return (
     <div className="chart-container pie-chart">
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+        <PieChart margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
           <Pie
             data={pieData}
             cx="50%"
-            cy="45%"
-            labelLine={{ stroke: '#666', strokeWidth: 1 }}
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-            outerRadius={90}
+            cy="50%"
+            labelLine={true}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+            outerRadius={100}
             dataKey="value"
-            fontSize={10}
+            fontSize={12}
           >
             {pieData.map((entry, index) => (
               <Cell 
@@ -638,18 +590,12 @@ function AuthenticationChart({ data }) {
             contentStyle={{ 
               backgroundColor: 'white', 
               border: '1px solid #01311d',
-              borderRadius: '6px',
-              fontSize: '10px',
-              padding: '5px'
+              borderRadius: '4px',
+              fontSize: '12px',
+              padding: '8px'
             }} 
           />
-          <Legend 
-            content={renderLegend}
-            wrapperStyle={{ fontSize: '10px', paddingTop: '5px' }}
-            iconSize={7}
-            verticalAlign="bottom"
-            height={30}
-          />
+          <Legend wrapperStyle={{ fontSize: '12px' }} />
         </PieChart>
       </ResponsiveContainer>
     </div>
