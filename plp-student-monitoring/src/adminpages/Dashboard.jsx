@@ -72,15 +72,17 @@ class DashboardService {
   }
 
   // ── COLLEGE DISTRIBUTION ─────────────────────────────────────────────────
-  static async fetchColleges() {
+static async fetchColleges() {
     // Sample data — each object needs `name` and `value` for Recharts <Pie>
     return [
-      { name: "CSS",  value: 2000 },
-      { name: "CAS",  value: 1000 },
-      { name: "CON",  value: 1000 },
-      { name: "CBA",  value: 1000 },
-      { name: "CIHM", value: 2000 },
-      { name: "COED", value: 3000 },
+      { name: "College of Computer Studies", value: 2000 },
+      { name: "College of Arts and Sciences", value: 1000 },
+      { name: "College of Nursing", value: 1000 },
+      { name: "College of Business and Accountancy", value: 1000 },
+      { name: "College of International Hospitality Management", value: 2000 },
+      { name: "College of Education", value: 3000 },
+      { name: "College of Engineering", value: 2500 },
+     
     ];
   }
 
@@ -365,12 +367,13 @@ const TRAFFIC_COLORS = {
 };
 
 const PIE_COLORS = [
-  "#b0b8d1",
-  "#a8d5ba",
-  "#e8a0bf",
-  "#f5c97a",
-  "#e05c5c",
-  "#6b7fd7",
+  "#5e5e5e",
+  "#54325f",
+  "#da719e",
+  "#ffeb36",
+  "#d11100",
+  "#0023be",
+  "#ff8800",
 ];
 
 function TrafficTooltip({ active, payload }) {
