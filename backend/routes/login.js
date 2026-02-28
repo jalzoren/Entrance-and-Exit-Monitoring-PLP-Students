@@ -15,7 +15,7 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Login endpoint - using email only
+// Login endpoint - using email onlysss
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body; // Changed from username to email
