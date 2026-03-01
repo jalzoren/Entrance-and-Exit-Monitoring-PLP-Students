@@ -14,6 +14,14 @@ import {
   CartesianGrid,
 } from "recharts";
 import "../css/Dashboard.css";
+import { 
+  FaBook, FaQuestionCircle, FaBolt, FaHeadset,
+  FaPlusCircle, FaChartBar, FaDownload, FaCog,
+  FaVideo, FaEnvelope, FaCheckCircle, FaClock,
+  FaCode, FaCalendar, FaCircle, FaSync, FaTachometerAlt,
+  FaInfoCircle, FaExclamationTriangle, FaBell
+} from "react-icons/fa";
+
 
 class TimeService {
   static async fetchServerTime() {
@@ -72,15 +80,17 @@ class DashboardService {
   }
 
   // ── COLLEGE DISTRIBUTION ─────────────────────────────────────────────────
-  static async fetchColleges() {
+static async fetchColleges() {
     // Sample data — each object needs `name` and `value` for Recharts <Pie>
     return [
-      { name: "CSS",  value: 2000 },
-      { name: "CAS",  value: 1000 },
-      { name: "CON",  value: 1000 },
-      { name: "CBA",  value: 1000 },
-      { name: "CIHM", value: 2000 },
-      { name: "COED", value: 3000 },
+      { name: "College of Computer Studies", value: 2000 },
+      { name: "College of Arts and Sciences", value: 1000 },
+      { name: "College of Nursing", value: 1000 },
+      { name: "College of Business and Accountancy", value: 1000 },
+      { name: "College of International Hospitality Management", value: 2000 },
+      { name: "College of Education", value: 3000 },
+      { name: "College of Engineering", value: 2500 },
+     
     ];
   }
 
@@ -287,6 +297,125 @@ function Dashboard() {
             </div>
           </div>
         </section>
+
+
+        
+{/* ── QUICK ACTIONS ── */}
+<section className="quick-actions-section">
+  <div className="section-header-wrapper">
+    <h3><FaBolt /> Quick Actions</h3>
+    <span className="section-badge">4 available</span>
+  </div>
+  
+  <div className="actions-grid">
+    <button className="action-card primary">
+      <span className="action-icon"><FaPlusCircle /></span>
+      <div className="action-content">
+        <span className="action-title">Register New Student</span>
+        <span className="action-desc">Add student record</span>
+      </div>
+    </button>
+    
+    <button className="action-card success">
+      <span className="action-icon"><FaChartBar /></span>
+      <div className="action-content">
+        <span className="action-title">Generate Report</span>
+        <span className="action-desc">Export analytics</span>
+      </div>
+    </button>
+    
+    <button className="action-card warning">
+      <span className="action-icon"><FaDownload /></span>
+      <div className="action-content">
+        <span className="action-title">Export Data</span>
+        <span className="action-desc">CSV, PDF, Excel</span>
+      </div>
+    </button>
+  
+  
+    
+    <button className="action-card">
+      <span className="action-icon"><FaEnvelope /></span>
+      <div className="action-content">
+        <span className="action-title">Contact Support</span>
+        <span className="action-desc">24/7 assistance</span>
+      </div>
+    </button>
+  </div>
+
+ 
+</section>
+
+<section className="quick-guide-section">
+  <h3><FaBook /> Quick Guide & FAQs</h3>
+  <div className="guide-grid">
+    <div className="guide-card">
+      <div className="guide-icon"><FaBook /></div>
+      <h4>Getting Started</h4>
+      <ul>
+        <li><FaCircle /> Monitor real-time entries/exits</li>
+        <li><FaCircle /> View daily traffic trends</li>
+        <li><FaCircle /> Check college distribution</li>
+        <li><FaCircle /> Generate reports weekly</li>
+      </ul>
+    </div>
+    
+    <div className="guide-card">
+      <div className="guide-icon"><FaQuestionCircle /></div>
+      <h4>Frequently Asked</h4>
+      <ul>
+        <li><FaCircle /> How to add new students?</li>
+        <li><FaCircle /> What if facial recognition fails?</li>
+        <li><FaCircle /> How to export reports?</li>
+        <li><FaCircle /> Who to contact for support?</li>
+      </ul>
+    </div>
+    
+    <div className="guide-card">
+      <div className="guide-icon"><FaBolt /></div>
+      <h4>Quick Tips</h4>
+      <ul>
+        <li><FaCircle /> Use filters to narrow logs</li>
+        <li><FaCircle /> Hover over cards for details</li>
+        <li><FaCircle /> Click charts to zoom</li>
+        <li><FaCircle /> Export data as CSV</li>
+      </ul>
+    </div>
+    
+    <div className="guide-card">
+      <div className="guide-icon"><FaHeadset /></div>
+      <h4>Contact Support</h4>
+      <ul>
+        <li><FaCircle /> IT Helpdesk: ext. 1234</li>
+        <li><FaCircle /> Email: support@plp.edu</li>
+        <li><FaCircle /> Hours: 8AM - 5PM</li>
+        <li><FaCircle /> Emergency: 0917-123-4567</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+
+{/* ── FOOTER WITH SYSTEM STATUS ── */}
+<footer className="dashboard-footer">
+  <div className="footer-left">
+    <span className="system-status">
+      <span className="status-dot green"></span>
+      <FaCheckCircle /> System Online
+    </span>
+    <span className="separator">|</span>
+    <span><FaClock /> Last Sync: {formatted.time}</span>
+    <span className="separator">|</span>
+    <span><FaTachometerAlt /> API: 45ms</span>
+  </div>
+  <div className="footer-right">
+    <span><FaCalendar /> 2026 PLP Entrance Exit Monitoring System</span>
+    <span className="separator">|</span>
+    <span><FaCode /> v1.1.0</span>
+    <span className="separator">|</span>
+    <span><FaSync /> Build: 03.01</span>
+  </div>
+</footer>
       </div>
     </div>
   );
@@ -365,12 +494,13 @@ const TRAFFIC_COLORS = {
 };
 
 const PIE_COLORS = [
-  "#b0b8d1",
-  "#a8d5ba",
-  "#e8a0bf",
-  "#f5c97a",
-  "#e05c5c",
-  "#6b7fd7",
+  "#5e5e5e",
+  "#54325f",
+  "#da719e",
+  "#ffeb36",
+  "#d11100",
+  "#0023be",
+  "#ff8800",
 ];
 
 function TrafficTooltip({ active, payload }) {
@@ -535,6 +665,7 @@ function CollegePieChart({ data }) {
   );
 
   return (
+    <>
     <div ref={containerRef} className="pie-wrap">
       <div className="pie-chart-wrapper" style={{ width: '100%', height: '250px' }}>
         {dimensions.width > 0 && (
@@ -571,6 +702,8 @@ function CollegePieChart({ data }) {
       </div>
       <CustomLegend />
     </div>
+    
+    </>
   );
 }
 

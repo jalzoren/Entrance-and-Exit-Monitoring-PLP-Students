@@ -232,6 +232,8 @@
 /* Action Buttons Container */
 .action-cell {
   white-space: nowrap;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .action-buttons {
@@ -240,6 +242,8 @@
   justify-content: flex-start;
   align-items: center;
 }
+
+
 
 /* Individual Action Buttons */
 .action-btn {

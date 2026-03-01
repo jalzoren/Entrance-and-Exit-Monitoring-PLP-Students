@@ -1,7 +1,11 @@
-import React, { useState } from 'react'
+import React, { useState } from 'react';
 import '../css/Records.css'; // Create this CSS file for styling
+import GenerateReportFilter from '../components/GenerateReportFilter'; // Import the filter component
 
 function Records() {
+  // State for filter popup
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+
   // Sample data for demonstration
   const allRecords = [
     {
@@ -166,21 +170,27 @@ function Records() {
     }
   };
 
+  // Handler for generating report with filters
+  const handleGenerateReport = (filters) => {
+    console.log('Generating report with filters:', filters);
+    // Here you would typically make an API call or process the data
+    alert('Report generated with filters! Check console for details.');
+  };
+
   return (
-   <div>
+    <div>
       <header className="header-card">
         <h1>ENTRY-EXIT RECORDS</h1>
         <p className="subtitle">Dashboard / Entry-Exit Records</p>
       </header>
       
       <hr className="header-divider" />
-      <div className="records-table"></div>
-
- <div className="records-container">
-      {/* Filters and Actions Section */}
-      <div className="filters-container">
-        <div className="filters-wrapper">
-          <div className="filter-group year-group">
+      
+      <div className="records-container">
+        {/* Filters and Actions Section */}
+        <div className="filters-container">
+          <div className="filters-wrapper">
+            <div className="filter-group year-group">
               <select id="yearLevel" className="filter-select year-select">
                 <option value="">Year Level</option>
                 <option value="1st Year">1st Year</option>
@@ -189,11 +199,11 @@ function Records() {
                 <option value="4th Year">4th Year</option>
                 <option value="5th Year">5th Year</option>
               </select>
-          </div>
+            </div>
 
-          <div className="filter-group dept-group">
-            <select id="department" className="filter-select">
-              <option value="">Select College Department</option>
+            <div className="filter-group dept-group">
+              <select id="department" className="filter-select">
+                <option value="">Select College Department</option>
                 <option value="College of Nursing">College of Nursing</option>
                 <option value="College of Engineering">College of Engineering</option>
                 <option value="College of Education">College of Education</option>
@@ -205,121 +215,131 @@ function Records() {
                 <option value="College of Hospitality Management">
                   College of Hospitality Management
                 </option>
-            </select>
-          </div>
+              </select>
+            </div>
 
-          <div className="filter-group action-group">
-            <select id="action" className="filter-select">
-              <option value="">Action</option>
-              <option value="Entry">Entry</option>
-              <option value="Exit">Exit</option>
-            </select>
-          </div>
+            <div className="filter-group action-group">
+              <select id="action" className="filter-select">
+                <option value="">Action</option>
+                <option value="Entry">Entry</option>
+                <option value="Exit">Exit</option>
+              </select>
+            </div>
 
-          <div className="filter-group date-group">
-            <select id="date" className="filter-select">
-              <option value="">Date</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="this-week">This Week</option>
-              <option value="this-month">This Month</option>
-              <option value="last-month">Last Month</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
+            <div className="filter-group date-group">
+              <select id="date" className="filter-select">
+                <option value="">Date</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="this-week">This Week</option>
+                <option value="this-month">This Month</option>
+                <option value="last-month">Last Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+            </div>
 
-          <div className="filter-group search-group">
-            <input 
-              type="text" 
-              id="search" 
-              className="search-input" 
-              placeholder="Search"
-            />
-          </div>
+            <div className="filter-group search-group">
+              <input 
+                type="text" 
+                id="search" 
+                className="search-input" 
+                placeholder="Search"
+              />
+            </div>
 
-          <div className="filter-group button-group">
-            <button className="generate-report-btn">
-              Generate Report
+            <div className="filter-group button-group">
+              <button 
+                className="generate-report-btn"
+                onClick={() => setShowFilterPopup(true)}
+              >
+                Generate Report
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="table-container">
+          <table className="records-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Date & Time</th>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>College Department</th>
+                <th>Year Level</th>
+                <th>Action</th>
+                <th>Method</th>
+              </tr>
+            </thead>
+            <tbody>
+              {currentRecords.map((record, index) => (
+                <tr key={record.id}>
+                  <td>{indexOfFirstRecord + index + 1}</td>
+                  <td>{record.dateTime}</td>
+                  <td>{record.studentId}</td>
+                  <td>{record.name}</td>
+                  <td>{record.collegeDept}</td>
+                  <td>{record.yearLevel}</td>
+                  <td>
+                    <span className={`action-badge ${record.action.toLowerCase()}`}>
+                      {record.action}
+                    </span>
+                  </td>
+                  <td>{record.method}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Section */}
+        <div className="pagination-container">
+          <div className="pagination-wrapper">
+            <button 
+              className="pagination-arrow prev-arrow" 
+              onClick={goToPreviousPage}
+              disabled={currentPage === 1}
+            >
+              <span className="arrow-icon">←</span> Previous
+            </button>
+            
+            <div className="pagination-pages">
+              {getPageNumbers().map((page, index) => (
+                page === '...' ? (
+                  <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
+                ) : (
+                  <button
+                    key={page}
+                    className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                    onClick={() => goToPage(page)}
+                  >
+                    {page}
+                  </button>
+                )
+              ))}
+            </div>
+            
+            <button 
+              className="pagination-arrow next-arrow"
+              onClick={goToNextPage}
+              disabled={currentPage === totalPages}
+            >
+              Next <span className="arrow-icon">→</span>
             </button>
           </div>
         </div>
       </div>
 
-      <div className="table-container">
-        <table className="records-table">
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Date & Time</th>
-              <th>Student ID</th>
-              <th>Name</th>
-              <th>College Department</th>
-              <th>Year Level</th>
-              <th>Action</th>
-              <th>Method</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentRecords.map((record, index) => (
-              <tr key={record.id}>
-                <td>{indexOfFirstRecord + index + 1}</td>
-                <td>{record.dateTime}</td>
-                <td>{record.studentId}</td>
-                <td>{record.name}</td>
-                <td>{record.collegeDept}</td>
-                <td>{record.yearLevel}</td>
-                <td>
-                  <span className={`action-badge ${record.action.toLowerCase()}`}>
-                    {record.action}
-                  </span>
-                </td>
-                <td>{record.method}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination Section */}
-      <div className="pagination-container">
-        <div className="pagination-wrapper">
-          <button 
-            className="pagination-arrow prev-arrow" 
-            onClick={goToPreviousPage}
-            disabled={currentPage === 1}
-          >
-            <span className="arrow-icon">←</span> Previous
-          </button>
-          
-          <div className="pagination-pages">
-            {getPageNumbers().map((page, index) => (
-              page === '...' ? (
-                <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
-              ) : (
-                <button
-                  key={page}
-                  className={`pagination-page ${currentPage === page ? 'active' : ''}`}
-                  onClick={() => goToPage(page)}
-                >
-                  {page}
-                </button>
-              )
-            ))}
-          </div>
-          
-          <button 
-            className="pagination-arrow next-arrow"
-            onClick={goToNextPage}
-            disabled={currentPage === totalPages}
-          >
-            Next <span className="arrow-icon">→</span>
-          </button>
-        </div>
-      </div>
+      {/* Generate Report Filter Popup */}
+      {showFilterPopup && (
+        <GenerateReportFilter 
+          onClose={() => setShowFilterPopup(false)}
+          onGenerate={handleGenerateReport}
+        />
+      )}
     </div>
-
-    </div>
-  )
+  );
 }
 
-export default Records
+export default Records;
