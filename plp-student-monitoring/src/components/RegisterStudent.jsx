@@ -27,6 +27,11 @@ function RegisterStudent({ onClose }) {
   const [photoPreviews, setPhotoPreviews] = useState(Array(5).fill(null));
   const [captureStep, setCaptureStep] = useState(0);
   const [showCamera, setShowCamera] = useState(false);
+  const [studentId, setStudentId] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [middleName, setMiddleName] = useState("");
+  const [yearLevel, setYearLevel] = useState("");
   const maxPhotos = 5;
 
   const captureSteps = [
@@ -154,6 +159,43 @@ function RegisterStudent({ onClose }) {
   const [status, setStatus] = useState("");
   const [college, setCollege] = useState("");
 
+  const handleRegister = async () => {
+    try {
+  
+      const validImages = photoPreviews.filter(img => img !== null);
+  
+      const response = await axios.post(
+        "http://localhost:5000/api/register",
+        {
+          student_id: studentId,
+          college: college,
+          last_name: lastName,
+          first_name: firstName,
+          middle_name: middleName,
+          year_level: yearLevel,
+          status: status,
+          images: validImages
+        }
+      );
+  
+      alert("Student registered successfully");
+  
+      console.log(response.data);
+  
+      onClose();
+  
+    } catch (error) {
+  
+      console.error(error);
+  
+      alert(
+        error.response?.data?.error ||
+        "Registration failed"
+      );
+  
+    }
+  };
+
   return (
     <div className="register-container">
       <div className="register-header">
@@ -170,7 +212,12 @@ function RegisterStudent({ onClose }) {
           <div className="form-row">
             <div className="input-group">
               <label>Student ID</label>
-              <input type="text" placeholder="e.g 23-00001" />
+              <input
+                type="text"
+                placeholder="e.g 23-00001"
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+              />
             </div>
             <div className="input-group">
               <label>College Department</label>
@@ -194,11 +241,21 @@ function RegisterStudent({ onClose }) {
           <div className="form-row">
             <div className="input-group">
               <label>Last Name</label>
-              <input type="text" placeholder="e.g. Dela Cruz" />
+              <input
+                type="text"
+                placeholder="e.g. Dela Cruz"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
             </div>
             <div className="input-group">
               <label>Year Level</label>
-              <input type="text" placeholder="e.g 3rd" />
+              <input
+                type="text"
+                placeholder="e.g 3rd"
+                value={yearLevel}
+                onChange={(e) => setYearLevel(e.target.value)}
+              />
             </div>
           </div>
 
@@ -220,7 +277,12 @@ function RegisterStudent({ onClose }) {
           <div className="form-row">
             <div className="input-group">
               <label>Middle Name</label>
-              <input type="text" placeholder="e.g Smith" />
+              <input
+                type="text"
+                placeholder="e.g Smith"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.target.value)}
+              />
             </div>
             <div className="input-group" />
           </div>
@@ -345,7 +407,7 @@ function RegisterStudent({ onClose }) {
             <button 
               className="btn register" 
               disabled={!scanComplete}
-              onClick={onClose}
+              onClick={handleRegister}
             >
               Register
             </button>
