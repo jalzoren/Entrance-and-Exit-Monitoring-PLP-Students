@@ -4,7 +4,7 @@ const app = require("./src/app");
 
 const loginRouter = require("./routes/login");
 const forgotPasswordRouter = require("./routes/forgotPassword");
-const registrationRoutes = require("./routes/registration"); // import this
+const registrationRoutes = require("./routes/registration");
 
 const PORT = process.env.PORT || 5000;
 
