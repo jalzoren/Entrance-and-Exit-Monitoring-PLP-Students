@@ -168,10 +168,10 @@ function RegisterStudent({ onClose }) {
         "http://localhost:5000/api/register",
         {
           student_id: studentId,
-          college: college,
-          last_name: lastName,
           first_name: firstName,
+          last_name: lastName,
           middle_name: middleName,
+          college_department: college,
           year_level: yearLevel,
           status: status,
           images: validImages
@@ -189,7 +189,7 @@ function RegisterStudent({ onClose }) {
       console.error(error);
   
       alert(
-        error.response?.data?.error ||
+        error.response?.data?.message ||
         "Registration failed"
       );
   
@@ -262,7 +262,12 @@ function RegisterStudent({ onClose }) {
           <div className="form-row">
             <div className="input-group">
               <label>First Name</label>
-              <input type="text" placeholder="e.g Juan" />
+              <input
+                type="text"
+                placeholder="e.g Juan"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
             </div>
             <div className="input-group">
               <label>Status</label>
