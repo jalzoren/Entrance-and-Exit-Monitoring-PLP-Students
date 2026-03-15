@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../css/Students.css';
 import RegisterStudent from '../components/RegisterStudent';
 import ImportStudent from '../components/ImportStudents';
 import { FiDownload, FiPlus, FiFilter } from 'react-icons/fi';
 import { IoMdArrowDropdown } from 'react-icons/io';
+import axios from 'axios';
 
 function Students() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -12,35 +13,84 @@ function Students() {
   const [registrationDate, setRegistrationDate] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false); // New state for import modal
-
-  // Sample data for demonstration - expanded to 15 students
-  const allStudents = [
-    { id: 1, studentId: '2021-001', fullName: 'John Doe', department: 'Engineering', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-15' },
-    { id: 2, studentId: '2021-002', fullName: 'Jane Smith', department: 'Science', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-08-20' },
-    { id: 3, studentId: '2021-003', fullName: 'Mike Johnson', department: 'Arts', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2022-09-10' },
-    { id: 4, studentId: '2021-004', fullName: 'Emily Brown', department: 'Business', yearLevel: '4th Year', enrollmentStatus: 'Active', dateRegistered: '2024-02-01' },
-    { id: 5, studentId: '2021-005', fullName: 'David Wilson', department: 'Engineering', yearLevel: '2nd Year', enrollmentStatus: 'Inactive', dateRegistered: '2023-11-12' },
-    { id: 6, studentId: '2021-006', fullName: 'Sarah Garcia', department: 'Science', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-20' },
-    { id: 7, studentId: '2021-007', fullName: 'James Martinez', department: 'Arts', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2023-05-15' },
-    { id: 8, studentId: '2021-008', fullName: 'Lisa Anderson', department: 'Business', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-09-08' },
-    { id: 9, studentId: '2021-009', fullName: 'Robert Taylor', department: 'Engineering', yearLevel: '4th Year', enrollmentStatus: 'Inactive', dateRegistered: '2022-12-03' },
-    { id: 10, studentId: '2021-010', fullName: 'Maria Thomas', department: 'Science', yearLevel: '3rd Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-05' },
-    { id: 11, studentId: '2021-011', fullName: 'Charles Lee', department: 'Arts', yearLevel: '1st Year', enrollmentStatus: 'Active', dateRegistered: '2024-02-10' },
-    { id: 12, studentId: '2021-012', fullName: 'Patricia White', department: 'Business', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2023-10-22' },
-    { id: 13, studentId: '2021-013', fullName: 'Joseph Harris', department: 'Engineering', yearLevel: '3rd Year', enrollmentStatus: 'Inactive', dateRegistered: '2023-07-18' },
-    { id: 14, studentId: '2021-014', fullName: 'Nancy Clark', department: 'Science', yearLevel: '4th Year', enrollmentStatus: 'Active', dateRegistered: '2023-06-14' },
-    { id: 15, studentId: '2021-015', fullName: 'Thomas Lewis', department: 'Arts', yearLevel: '2nd Year', enrollmentStatus: 'Active', dateRegistered: '2024-01-30' },
-  ];
+  const [showImportModal, setShowImportModal] = useState(false);
+  
+  // State for students data from database
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Pagination settings
   const recordsPerPage = 5;
-  const totalPages = Math.ceil(allStudents.length / recordsPerPage);
 
-  // Get current students for the page
+  // Fetch students from database
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+  try {
+    setLoading(true);
+    console.log('Fetching from:', 'http://localhost:5000/api/students');
+    
+    // Make sure to use the full URL or configure proxy
+    const response = await axios.get('http://localhost:5000/api/students');
+    
+    console.log('Full response:', response);
+    console.log('Response data:', response.data);
+    
+    // Check if response.data is an array
+    if (Array.isArray(response.data)) {
+      console.log('Setting students array:', response.data);
+      setStudents(response.data);
+    } else {
+      console.error('Data is not an array:', response.data);
+      setStudents([]);
+    }
+    setError(null);
+  } catch (err) {
+    console.error('Error fetching students:', err);
+    if (err.code === 'ERR_NETWORK') {
+      setError('Cannot connect to server. Make sure backend is running on port 5000');
+    } else {
+      setError('Failed to load students. Please try again.');
+    }
+    setStudents([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
+  // Filter students based on search and filters
+  const filteredStudents = students.filter(student => {
+    const matchesSearch = searchQuery === '' || 
+      student.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      student.student_id?.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesDepartment = department === '' || student.college_department === department;
+    const matchesYearLevel = yearLevel === '' || student.year_level === yearLevel;
+    
+    // Handle registration date filter
+    let matchesDate = true;
+    if (registrationDate && student.created_at) {
+      const studentDate = new Date(student.created_at);
+      matchesDate = studentDate.getFullYear().toString() === registrationDate;
+    }
+    
+    return matchesSearch && matchesDepartment && matchesYearLevel && matchesDate;
+  });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredStudents.length / recordsPerPage);
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentStudents = allStudents.slice(indexOfFirstRecord, indexOfLastRecord);
+  const currentStudents = filteredStudents.slice(indexOfFirstRecord, indexOfLastRecord);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, department, yearLevel, registrationDate]);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
@@ -50,26 +100,26 @@ function Students() {
 
   const handleAddClick = () => {
     setShowRegisterModal(true);
-    // Prevent body scrolling when modal is open
     document.body.style.overflow = 'hidden';
   };
 
   const handleImportClick = () => {
     setShowImportModal(true);
-    // Prevent body scrolling when modal is open
     document.body.style.overflow = 'hidden';
   };
 
   const handleCloseRegisterModal = () => {
     setShowRegisterModal(false);
-    // Restore body scrolling
     document.body.style.overflow = 'unset';
+    // Refresh the list after successful registration
+    fetchStudents();
   };
 
   const handleCloseImportModal = () => {
     setShowImportModal(false);
-    // Restore body scrolling
     document.body.style.overflow = 'unset';
+    // Refresh the list after successful import
+    fetchStudents();
   };
 
   const handleEdit = (studentId) => {
@@ -77,9 +127,20 @@ function Students() {
     // Add edit functionality here
   };
 
-  const handleDeactivate = (studentId, currentStatus) => {
-    console.log('Deactivate student:', studentId, 'Current status:', currentStatus);
-    // Add deactivate/activate functionality here
+  const handleStatusChange = async (studentId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Regular' ? 'Irregular' : 'Regular';
+      // Add API call to update status
+      await axios.put(`/api/students/${studentId}`, { status: newStatus });
+      
+      // Refresh the list
+      fetchStudents();
+      
+      console.log('Student status updated:', studentId, 'New status:', newStatus);
+    } catch (err) {
+      console.error('Error updating student status:', err);
+      alert('Failed to update student status. Please try again.');
+    }
   };
 
   const handleViewPhoto = (studentId) => {
@@ -87,12 +148,46 @@ function Students() {
     // Add view photo functionality here
   };
 
+  // Helper function to format full name
+  const formatFullName = (student) => {
+    if (!student) return '';
+    
+    const firstName = student.first_name || '';
+    const lastName = student.last_name || '';
+    const middleInitial = student.middle_name ? ` ${student.middle_name.charAt(0)}.` : '';
+    
+    return `${firstName} ${lastName}${middleInitial}`.trim();
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper function to get status badge class
+  const getStatusBadgeClass = (status) => {
+    if (!status) return 'unknown';
+    return status.toLowerCase();
+  };
+
   const renderPageNumbers = () => {
+    if (totalPages <= 1) return null;
+    
     const pages = [];
     const maxVisiblePages = 5;
     
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages are less than max visible
       for (let i = 1; i <= totalPages; i++) {
         pages.push(
           <button
@@ -105,7 +200,6 @@ function Students() {
         );
       }
     } else {
-      // Always show first page
       pages.push(
         <button
           key={1}
@@ -116,26 +210,21 @@ function Students() {
         </button>
       );
 
-      // Calculate start and end of visible pages
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(totalPages - 1, currentPage + 1);
       
-      // Adjust if at the beginning
       if (currentPage <= 2) {
         end = Math.min(totalPages - 1, 4);
       }
       
-      // Adjust if at the end
       if (currentPage >= totalPages - 1) {
         start = Math.max(2, totalPages - 3);
       }
       
-      // Add ellipsis after first page if needed
       if (start > 2) {
         pages.push(<span key="ellipsis1" className="ellipsis">...</span>);
       }
       
-      // Add middle pages
       for (let i = start; i <= end; i++) {
         pages.push(
           <button
@@ -148,12 +237,10 @@ function Students() {
         );
       }
       
-      // Add ellipsis before last page if needed
       if (end < totalPages - 1) {
         pages.push(<span key="ellipsis2" className="ellipsis">...</span>);
       }
       
-      // Always show last page
       pages.push(
         <button
           key={totalPages}
@@ -191,7 +278,7 @@ function Students() {
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            <option value="">Select College Department</option>
+            <option value="">All Departments</option>
             <option value="College of Nursing">College of Nursing</option>
             <option value="College of Engineering">College of Engineering</option>
             <option value="College of Education">College of Education</option>
@@ -210,11 +297,11 @@ function Students() {
             value={yearLevel}
             onChange={(e) => setYearLevel(e.target.value)}
           >
-            <option value="">Year Level</option>
-            <option value="1">1st Year</option>
-            <option value="2">2nd Year</option>
-            <option value="3">3rd Year</option>
-            <option value="4">4th Year</option>
+            <option value="">All Year Levels</option>
+            <option value="1st Year">1st Year</option>
+            <option value="2nd Year">2nd Year</option>
+            <option value="3rd Year">3rd Year</option>
+            <option value="4th Year">4th Year</option>
           </select>
 
           <select 
@@ -222,7 +309,7 @@ function Students() {
             value={registrationDate}
             onChange={(e) => setRegistrationDate(e.target.value)}
           >
-            <option value="">Registration Date</option>
+            <option value="">All Years</option>
             <option value="2024">2024</option>
             <option value="2023">2023</option>
             <option value="2022">2022</option>
@@ -232,7 +319,7 @@ function Students() {
           <input
             type="text"
             className="search-input"
-            placeholder="Search"
+            placeholder="Search by name or ID"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -250,90 +337,113 @@ function Students() {
 
         {/* Table Section */}
         <div className="table-container">
-          <table className="student-table">
-            <thead>
-              <tr>
-                <th>No.</th>
-                <th>Student ID</th>
-                <th>Full Name</th>
-                <th>College/Department</th>
-                <th>Year Level</th>
-                <th>Enrollment Status</th>
-                <th>Date Registered</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {currentStudents.map((student, index) => (
-                <tr key={student.id}>
-                  <td>{indexOfFirstRecord + index + 1}</td>
-                  <td>{student.studentId}</td>
-                  <td>{student.fullName}</td>
-                  <td>{student.department}</td>
-                  <td>{student.yearLevel}</td>
-                  <td>
-                    <span className={`status-badge ${student.enrollmentStatus.toLowerCase()}`}>
-                      {student.enrollmentStatus}
-                    </span>
-                  </td>
-                  <td>{student.dateRegistered}</td>
-                  <td className="action-cell">
-                    <div className="action-buttons-text">
-                      <button 
-                        className="action-text-btn edit-text-btn" 
-                        onClick={() => handleEdit(student.id)}
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        className="action-text-btn photo-text-btn" 
-                        onClick={() => handleViewPhoto(student.id)}
-                      >
-                        View Photo
-                      </button>
-                      <button 
-                        className={`action-text-btn ${student.enrollmentStatus === 'Active' ? 'deactivate-text-btn' : 'activate-text-btn'}`}
-                        onClick={() => handleDeactivate(student.id, student.enrollmentStatus)}
-                      >
-                        {student.enrollmentStatus === 'Active' ? 'Deactivate' : 'Activate'}
-                      </button>
-                    </div>
-                  </td>
+          {loading ? (
+            <div className="loading-state">Loading students...</div>
+          ) : error ? (
+            <div className="error-state">{error}</div>
+          ) : (
+            <table className="student-table">
+              <thead>
+                <tr>
+                  <th>No.</th>
+                  <th>Student ID</th>
+                  <th>Full Name</th>
+                  <th>College/Department</th>
+                  <th>Year Level</th>
+                  <th>Status</th>
+                  <th>Date Registered</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {currentStudents.length > 0 ? (
+                  currentStudents.map((student, index) => (
+                    <tr key={student.student_id}>
+                      <td>{indexOfFirstRecord + index + 1}</td>
+                      <td>{student.student_id || 'N/A'}</td>
+                      <td>{formatFullName(student)}</td>
+                      <td>{student.college_department || 'N/A'}</td>
+                      <td>{student.year_level || 'N/A'}</td>
+                      <td>
+                        <span className={`status-badge ${getStatusBadgeClass(student.status)}`}>
+                          {student.status || 'Unknown'}
+                        </span>
+                      </td>
+                      <td>{formatDate(student.created_at)}</td>
+                      <td className="action-cell">
+                        <div className="action-buttons-text">
+                          <button 
+                            className="action-text-btn edit-text-btn" 
+                            onClick={() => handleEdit(student.student_id)}
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            className="action-text-btn photo-text-btn" 
+                            onClick={() => handleViewPhoto(student.student_id)}
+                          >
+                            View Photo
+                          </button>
+                          <button 
+                            className={`action-text-btn ${student.status === 'Regular' ? 'deactivate-text-btn' : 'activate-text-btn'}`}
+                            onClick={() => handleStatusChange(student.student_id, student.status)}
+                          >
+                            {student.status === 'Regular' ? 'Mark Irregular' : 'Mark Regular'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="no-data">
+                      No students found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* Pagination Section */}
-        <div className="pagination">
-          <button
-            className="pagination-button"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            ← Previous
-          </button>
+        {!loading && !error && filteredStudents.length > 0 && (
+          <>
+            <div className="pagination">
+              <button
+                className="pagination-button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                ← Previous
+              </button>
 
-          <div className="page-numbers">
-            {renderPageNumbers()}
-          </div>
+              <div className="page-numbers">
+                {renderPageNumbers()}
+              </div>
 
-          <button
-            className="pagination-button"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next →
-          </button>
-        </div>
+              <button
+                className="pagination-button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next →
+              </button>
+            </div>
+
+            {/* Results count */}
+            <div className="results-count">
+              Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredStudents.length)} of {filteredStudents.length} students
+            </div>
+          </>
+        )}
       </div>
 
       {/* Register Student Modal */}
       {showRegisterModal && (
         <div className="modal-overlay" onClick={handleCloseRegisterModal}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <RegisterStudent onClose={handleCloseRegisterModal} />
+            <RegisterStudent onClose={handleCloseRegisterModal} onSuccess={fetchStudents} />
           </div>
         </div>
       )}
@@ -342,7 +452,8 @@ function Students() {
       {showImportModal && (
         <ImportStudent 
           isOpen={showImportModal} 
-          onClose={handleCloseImportModal} 
+          onClose={handleCloseImportModal}
+          onSuccess={fetchStudents}
         />
       )}
     </div>

@@ -246,4 +246,46 @@ router.get("/students", async (req, res) => {
 
 });
 
+/* --------------------------------------------------
+UPDATE STUDENT STATUS
+-------------------------------------------------- */
+
+router.put("/students/:student_id", async (req, res) => {
+  try {
+    const { student_id } = req.params;
+    const { status } = req.body;
+
+    if (!status || (status !== 'Regular' && status !== 'Irregular')) {
+      return res.status(400).json({
+        message: "Invalid status. Must be 'Regular' or 'Irregular'"
+      });
+    }
+
+    const [result] = await db.query(
+      `UPDATE students 
+       SET status = ?, updated_at = CURRENT_TIMESTAMP 
+       WHERE student_id = ?`,
+      [status, student_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        message: "Student not found"
+      });
+    }
+
+    res.json({
+      message: "Student status updated successfully",
+      student_id,
+      status
+    });
+
+  } catch (error) {
+    console.error("UPDATE ERROR:", error);
+    res.status(500).json({
+      message: "Failed to update student status"
+    });
+  }
+});
+
 module.exports = router;
