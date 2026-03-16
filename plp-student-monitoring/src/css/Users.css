@@ -1,0 +1,241 @@
+/* Users.css */
+
+:root {
+  --color-bg-main: #fcfbf4;
+  --color-primary: #548772;
+  --color-primary-dark: #01311d;
+  --color-accent: #d99201;
+  --color-text-dark: #01311d;
+  --color-text-black: #0f0f0f;
+  --color-text-light: #fafafa;
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-shadow-soft: rgba(0, 0, 0, 0.1);
+  --transition: 0.28s ease;
+}
+
+/* Page Container */
+
+.user-management {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: var(--color-bg-main);
+  min-height: 100vh;
+}
+
+/* Header */
+
+.header-card {
+  margin-bottom: 10px;
+}
+
+.header-card h1 {
+  color: var(--color-text-dark);
+  font-size: 24px;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: #666;
+  font-size: 14px;
+}
+
+.header-divider {
+  margin: 15px 0;
+  border: none;
+  border-top: 1px solid #eee;
+}
+
+/* Controls */
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  background-color: white;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px var(--color-shadow-soft);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-select {
+  padding: 8px 30px 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: white;
+  font-size: 13px;
+  min-width: 150px;
+  color: var(--color-text-dark);
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.filter-select:hover {
+  border-color: var(--color-primary-dark);
+}
+
+.search-input {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 13px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: var(--color-primary-dark);
+}
+
+/* Buttons */
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.add-button {
+  background-color: var(--color-primary-dark);
+  color: white;
+}
+
+.add-button:hover {
+  background-color: var(--color-primary);
+}
+
+.button-icon {
+  font-size: 16px;
+}
+
+/* Table */
+
+.table-container {
+  background-color: white;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px var(--color-shadow-soft);
+  margin-bottom: 20px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.user-table thead {
+  background-color: var(--color-primary-dark);
+}
+
+.user-table th {
+  padding: 12px 15px;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+}
+
+.user-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e9ecef;
+  color: var(--color-text-black);
+}
+
+.user-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Action Buttons */
+
+.action-cell {
+  white-space: nowrap;
+}
+
+.action-buttons-text {
+  display: flex;
+  gap: 8px;
+}
+
+.action-text-btn {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.edit-text-btn {
+  background-color: #e8f0fe;
+  color: var(--color-primary-dark);
+}
+
+.edit-text-btn:hover {
+  background-color: #d1e2fc;
+  transform: translateY(-1px);
+}
+
+/* Pagination */
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+}
+
+.pagination-button {
+  padding: 8px 16px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.pagination-button:hover:not(:disabled) {
+  background: #f5f5f5;
+}
+
+.pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-numbers {
+  display: flex;
+  gap: 6px;
+}
+
+.page-number {
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.page-number.active {
+  background-color: var(--color-primary-dark);
+  color: white;
+  border-color: var(--color-primary-dark);
+}
+
+/* Empty state */
+
+.no-data {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+}
