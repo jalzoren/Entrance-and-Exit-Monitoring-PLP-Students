@@ -11,7 +11,6 @@ import { IoMdArrowDropdown } from "react-icons/io";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 
 function Students() {
-  const [students, setStudents] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [department, setDepartment]  = useState("");
   const [yearLevel, setYearLevel]  = useState("");
@@ -76,25 +75,28 @@ function Students() {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
-  // ================= MODAL CONTROLS =================
   const handleAddClick = () => {
     setShowRegisterModal(true);
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
   };
 
   const handleImportClick = () => {
     setShowImportModal(true);
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = 'hidden';
   };
 
   const handleCloseRegisterModal = () => {
     setShowRegisterModal(false);
-    document.body.style.overflow = "unset";
+    document.body.style.overflow = 'unset';
+    // Refresh the list after successful registration
+    fetchStudents();
   };
 
   const handleCloseImportModal = () => {
     setShowImportModal(false);
-    document.body.style.overflow = "unset";
+    document.body.style.overflow = 'unset';
+    // Refresh the list after successful import
+    fetchStudents();
   };
 
   const handleImportSuccess = () => {
@@ -105,15 +107,136 @@ function Students() {
 
   // ================= ACTIONS =================
   const handleEdit = (studentId) => {
-    console.log("Edit:", studentId);
+    console.log('Edit student:', studentId);
+    // Add edit functionality here
   };
 
-  const handleDeactivate = (studentId, status) => {
-    console.log("Toggle status:", studentId, status);
+  const handleStatusChange = async (studentId, currentStatus) => {
+    try {
+      const newStatus = currentStatus === 'Regular' ? 'Irregular' : 'Regular';
+      // Add API call to update status
+      await axios.put(`/api/students/${studentId}`, { status: newStatus });
+      
+      // Refresh the list
+      fetchStudents();
+      
+      console.log('Student status updated:', studentId, 'New status:', newStatus);
+    } catch (err) {
+      console.error('Error updating student status:', err);
+      alert('Failed to update student status. Please try again.');
+    }
   };
 
   const handleViewPhoto = (studentId) => {
-    console.log("View photo:", studentId);
+    console.log('View photo for student:', studentId);
+    // Add view photo functionality here
+  };
+
+  // Helper function to format full name
+  const formatFullName = (student) => {
+    if (!student) return '';
+    
+    const firstName = student.first_name || '';
+    const lastName = student.last_name || '';
+    const middleInitial = student.middle_name ? ` ${student.middle_name.charAt(0)}.` : '';
+    
+    return `${firstName} ${lastName}${middleInitial}`.trim();
+  };
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).replace(/\//g, '-');
+    } catch (error) {
+      return 'Invalid Date';
+    }
+  };
+
+  // Helper function to get status badge class
+  const getStatusBadgeClass = (status) => {
+    if (!status) return 'unknown';
+    return status.toLowerCase();
+  };
+
+  const renderPageNumbers = () => {
+    if (totalPages <= 1) return null;
+    
+    const pages = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+    } else {
+      pages.push(
+        <button
+          key={1}
+          className={`page-number ${currentPage === 1 ? 'active' : ''}`}
+          onClick={() => handlePageChange(1)}
+        >
+          1
+        </button>
+      );
+
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      if (currentPage <= 2) {
+        end = Math.min(totalPages - 1, 4);
+      }
+      
+      if (currentPage >= totalPages - 1) {
+        start = Math.max(2, totalPages - 3);
+      }
+      
+      if (start > 2) {
+        pages.push(<span key="ellipsis1" className="ellipsis">...</span>);
+      }
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(
+          <button
+            key={i}
+            className={`page-number ${currentPage === i ? 'active' : ''}`}
+            onClick={() => handlePageChange(i)}
+          >
+            {i}
+          </button>
+        );
+      }
+      
+      if (end < totalPages - 1) {
+        pages.push(<span key="ellipsis2" className="ellipsis">...</span>);
+      }
+      
+      pages.push(
+        <button
+          key={totalPages}
+          className={`page-number ${currentPage === totalPages ? 'active' : ''}`}
+          onClick={() => handlePageChange(totalPages)}
+        >
+          {totalPages}
+        </button>
+      );
+    }
+    
+    return pages;
   };
 
   return (
@@ -121,7 +244,9 @@ function Students() {
       <header className="header-card">
         <h1>STUDENT MANAGEMENT</h1>
         <p className="subtitle">Dashboard / Student Management</p>
+        <p className="subtitle">Dashboard / Student Management</p>
       </header>
+      <hr className="header-divider"></hr>
 
       <hr className="header-divider" />
 
@@ -147,8 +272,7 @@ function Students() {
       )}
 
       <div className="student-management">
-
-        {/* ================= CONTROLS ================= */}
+        {/* Controls Section */}
         <div className="controls">
           <button type="button" className="sort-button">
             <FiFilter className="sort-icon" />
@@ -156,12 +280,12 @@ function Students() {
             <IoMdArrowDropdown className="dropdown-icon" />
           </button>
 
-          <select
+          <select 
             className="filter-select"
             value={department}
             onChange={(e) => setDepartment(e.target.value)}
           >
-            <option value="">Select College Department</option>
+            <option value="">All Departments</option>
             <option value="College of Nursing">College of Nursing</option>
             <option value="College of Engineering">College of Engineering</option>
             <option value="College of Education">College of Education</option>
@@ -171,58 +295,50 @@ function Students() {
             <option value="College of Hospitality Management">College of Hospitality Management</option>
           </select>
 
-          <select
+          <select 
             className="filter-select"
             value={yearLevel}
             onChange={(e) => setYearLevel(e.target.value)}
           >
-            <option value="">Year Level</option>
-            <option value="1st">1st</option>
-            <option value="2nd">2nd</option>
-            <option value="3rd">3rd</option>
-            <option value="4th">4th</option>
+            <option value="">All Year Levels</option>
+            <option value="1st Year">1st Year</option>
+            <option value="2nd Year">2nd Year</option>
+            <option value="3rd Year">3rd Year</option>
+            <option value="4th Year">4th Year</option>
           </select>
 
-          <select
+          <select 
             className="filter-select"
             value={registrationDate}
             onChange={(e) => setRegistrationDate(e.target.value)}
           >
-            <option value="">Registration Year</option>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
+            <option value="">All Years</option>
             <option value="2024">2024</option>
             <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
           </select>
 
           <input
             type="text"
             className="search-input"
-            placeholder="Search"
+            placeholder="Search by name or ID"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
 
-          <button
-            type="button"
-            className="action-button import-button"
-            onClick={handleImportClick}
-          >
+          <button className="action-button import-button" onClick={handleImportClick}>
             <FiDownload className="button-icon" />
             Import
           </button>
 
-          <button
-            type="button"
-            className="action-button add-button"
-            onClick={handleAddClick}
-          >
+          <button className="action-button add-button" onClick={handleAddClick}>
             <FiPlus className="button-icon" />
             Add
           </button>
         </div>
 
-        {/* ================= TABLE ================= */}
+        {/* Table Section */}
         <div className="table-container">
           <table className="student-table">
             <thead>
@@ -287,10 +403,10 @@ function Students() {
                       </div>
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* ================= PAGINATION ================= */}
@@ -325,19 +441,16 @@ function Students() {
         )}
       </div>
 
-      {/* ================= REGISTER MODAL ================= */}
+      {/* Register Student Modal */}
       {showRegisterModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <RegisterStudent
-              onClose={handleCloseRegisterModal}
-              refreshTable={fetchStudents}
-            />
+        <div className="modal-overlay" onClick={handleCloseRegisterModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <RegisterStudent onClose={handleCloseRegisterModal} onSuccess={fetchStudents} />
           </div>
         </div>
       )}
 
-      {/* ================= IMPORT MODAL ================= */}
+      {/* Import Student Modal */}
       {showImportModal && (
         <div className="modal-overlay">
           <div className="modal-content">

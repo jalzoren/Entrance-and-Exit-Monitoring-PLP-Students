@@ -1,9 +1,11 @@
 const express = require('express');
-const bcrypt = require("bcryptjs");
-const pool = require("../src/db");
-
+const bcrypt = require('bcrypt');
+const pool = require("../src/db"); 
 const router = express.Router();
 
+// ============================
+// 🔐 Secure Login Endpoint
+// ============================
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -15,6 +17,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // 1️⃣ Get user by email only
     const [rows] = await pool.query(
       'SELECT * FROM admins WHERE email = ?',
       [email]
@@ -29,6 +32,7 @@ router.post('/login', async (req, res) => {
 
     const user = rows[0];
 
+    // 2️⃣ Compare hashed password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -38,6 +42,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    // 3️⃣ Remove password before sending response
     const { password: _, ...userWithoutPassword } = user;
 
     res.json({

@@ -9,6 +9,7 @@ import Records from './adminpages/Records';
 import Students from './adminpages/Students';
 import Analytics from './adminpages/Analytics';
 import FaceRecognition from './pages/FaceRecognition';
+import Users from './superadminpages/Users'; 
 
 import Forgot from './pages/ForgotPass';
 import Forgot2 from './pages/ForgotPass2';
@@ -30,6 +31,7 @@ function App() {
             <Route path="/monitor" element={<Monitor />} />
             <Route path="/records" element={<Records />} />
             <Route path="/students" element={<Students />} />
+            <Route path="/users" element={<Users />} /> 
             <Route path="/analytics" element={<Analytics />} />
           </Route>
         </Route>
