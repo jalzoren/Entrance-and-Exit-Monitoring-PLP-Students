@@ -1,9 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { MdClose, MdVisibility, MdVisibilityOff } from "react-icons/md";
 import "../componentscss/AddUser.css";
 import Swal from 'sweetalert2';
 
-function AddUser({ onClose, onUserAdded }) {
+function EditUser({ onClose, onUserUpdated, userEmail }) {
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -15,6 +15,9 @@ function AddUser({ onClose, onUserAdded }) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [showLoadingPopup, setShowLoadingPopup] = useState(true);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
   // Convert to UPPERCASE
   const toUpperCase = (str) => {
@@ -37,8 +40,113 @@ function AddUser({ onClose, onUserAdded }) {
     setExtension(toUpperCase(e.target.value));
   };
 
+  useEffect(() => {
+    if (userEmail) {
+      fetchUserData();
+    }
+  }, [userEmail]);
+
+  const fetchUserData = async () => {
+    try {
+      setFetchLoading(true);
+      setShowLoadingPopup(true);
+      
+      const response = await fetch(`http://localhost:5000/api/users/${encodeURIComponent(userEmail)}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+
+      const userData = await response.json();
+      
+      // Parse fullname (format: "Last, First Middle Ext.")
+      const nameParts = userData.fullname.split(', ');
+      
+      // Last name is the first part
+      const lastName = nameParts[0] || '';
+      
+      // Get the first, middle, and extension
+      const restParts = nameParts[1] ? nameParts[1].split(' ') : [];
+      
+      // Check if there's an extension (JR., SR., III, etc.)
+      let firstName = '';
+      let middleName = '';
+      let extension = '';
+      
+      const possibleExtensions = ['JR.', 'SR.', 'III', 'IV', 'V', 'II', 'JR', 'SR'];
+      
+      if (restParts.length > 1) {
+        // Check if last word is an extension
+        const lastWord = restParts[restParts.length - 1].toUpperCase().replace('.', '');
+        if (possibleExtensions.includes(lastWord)) {
+          extension = restParts.pop();
+          // Now check if there's a middle name
+          if (restParts.length > 1) {
+            middleName = restParts.pop();
+          }
+          firstName = restParts.join(' ');
+        } else if (restParts.length > 1) {
+          // No extension, but multiple words - last word is middle name
+          middleName = restParts.pop();
+          firstName = restParts.join(' ');
+        } else {
+          firstName = restParts[0] || '';
+        }
+      } else {
+        firstName = restParts[0] || '';
+      }
+
+      setLastName(lastName);
+      setFirstName(firstName);
+      setMiddleName(middleName);
+      setExtension(extension);
+      setEmail(userData.email);
+      setRole(userData.role);
+      
+      setDataLoaded(true);
+      
+    } catch (err) {
+      console.error('Error fetching user:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to load user data. Please try again.',
+        confirmButtonColor: '#3085d6'
+      }).then(() => {
+        onClose();
+      });
+    } finally {
+      setFetchLoading(false);
+    }
+  };
+
+  // Add delay timers
+  useEffect(() => {
+    let loadingTimer;
+    
+    loadingTimer = setTimeout(() => {
+      if (dataLoaded) {
+        setShowLoadingPopup(false);
+      }
+    }, 2000);
+
+    return () => {
+      clearTimeout(loadingTimer);
+    };
+  }, [dataLoaded]);
+
+  useEffect(() => {
+    if (!fetchLoading && dataLoaded) {
+      const timer = setTimeout(() => {
+        setShowLoadingPopup(false);
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [fetchLoading, dataLoaded]);
+
   const validateForm = () => {
-    if (!lastName || !firstName || !email || !role || !password || !confirmPassword) {
+    if (!lastName || !firstName || !email || !role) {
       Swal.fire({
         icon: 'warning',
         title: 'Validation Error',
@@ -48,7 +156,6 @@ function AddUser({ onClose, onUserAdded }) {
       return false;
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       Swal.fire({
@@ -60,27 +167,29 @@ function AddUser({ onClose, onUserAdded }) {
       return false;
     }
 
-    // Validate password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Weak Password',
-        text: 'Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character',
-        confirmButtonColor: '#3085d6'
-      });
-      return false;
-    }
+    if (password) {
+      // Validate password strength if trying to change
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(password)) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Weak Password',
+          text: 'Password must contain at least 8 characters, one uppercase, one lowercase, one number and one special character',
+          confirmButtonColor: '#3085d6'
+        });
+        return false;
+      }
 
-    // Check if passwords match
-    if (password !== confirmPassword) {
-      Swal.fire({
-        icon: 'warning',
-        title: 'Password Mismatch',
-        text: 'Passwords do not match',
-        confirmButtonColor: '#3085d6'
-      });
-      return false;
+      // Check if passwords match
+      if (password !== confirmPassword) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Password Mismatch',
+          text: 'Passwords do not match',
+          confirmButtonColor: '#3085d6'
+        });
+        return false;
+      }
     }
 
     return true;
@@ -95,13 +204,13 @@ function AddUser({ onClose, onUserAdded }) {
 
     // Show confirmation dialog
     const result = await Swal.fire({
-      title: 'Confirm Add User',
-      text: 'Are you sure you want to add this user?',
+      title: 'Confirm Update',
+      text: 'Are you sure you want to update this user?',
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#3085d6',
       cancelButtonColor: '#d33',
-      confirmButtonText: 'Yes, add it!',
+      confirmButtonText: 'Yes, update it!',
       cancelButtonText: 'Cancel'
     });
 
@@ -111,19 +220,22 @@ function AddUser({ onClose, onUserAdded }) {
 
     setLoading(true);
 
-    const newUser = {
+    const updateData = {
       lastName,
       firstName,
       middleName,
       extension,
       email,
       role,
-      password
     };
+
+    if (password) {
+      updateData.password = password;
+    }
 
     try {
       Swal.fire({
-        title: 'Creating User...',
+        title: 'Updating User...',
         text: 'Please wait',
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -134,18 +246,18 @@ function AddUser({ onClose, onUserAdded }) {
         }
       });
 
-      const response = await fetch('http://localhost:5000/api/users', {
-        method: 'POST',
+      const response = await fetch(`http://localhost:5000/api/users/${encodeURIComponent(userEmail)}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(newUser),
+        body: JSON.stringify(updateData),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create user');
+        throw new Error(data.error || 'Failed to update user');
       }
 
       Swal.close();
@@ -154,23 +266,26 @@ function AddUser({ onClose, onUserAdded }) {
       await Swal.fire({
         icon: 'success',
         title: 'Success!',
-        text: 'User has been created successfully.',
+        text: 'User has been updated successfully.',
         timer: 2000,
         showConfirmButton: false
       });
 
-      onUserAdded(data);
+      const updatedUserResponse = await fetch(`http://localhost:5000/api/users/${encodeURIComponent(email)}`);
+      const updatedUser = await updatedUserResponse.json();
+
+      onUserUpdated(updatedUser);
       onClose();
       
     } catch (err) {
-      console.error('Error creating user:', err);
+      console.error('Error updating user:', err);
       
       Swal.close();
       
       Swal.fire({
         icon: 'error',
         title: 'Error!',
-        text: err.message || 'Failed to create user. Please try again.',
+        text: err.message || 'Failed to update user. Please try again.',
         confirmButtonColor: '#3085d6'
       });
     } finally {
@@ -207,11 +322,54 @@ function AddUser({ onClose, onUserAdded }) {
     setShowConfirmPassword(!showConfirmPassword);
   };
 
+  if (showLoadingPopup) {
+    return (
+      <div className="popup-overlay">
+        <div className="register-container" style={{ 
+          maxWidth: '400px', 
+          textAlign: 'center', 
+          padding: '40px 30px',
+          borderRadius: '12px',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+        }}>
+          <div className="loading-spinner">
+            <div style={{ 
+              border: '5px solid #f3f3f3',
+              borderTop: '5px solid #3085d6',
+              borderRadius: '50%',
+              width: '60px',
+              height: '60px',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 25px'
+            }}></div>
+            
+            <h3 style={{ 
+              fontSize: '22px', 
+              color: '#333', 
+              marginBottom: '15px',
+              fontWeight: '600'
+            }}>
+              Loading User Data
+            </h3>
+            
+            <p style={{ 
+              fontSize: '16px', 
+              color: '#666',
+              lineHeight: '1.5'
+            }}>
+              Please wait while we fetch the user information...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="popup-overlay">
       <div className="register-container">
         <div className="register-header">
-          <div className="register-text">ADD USER</div>
+          <div className="register-text">EDIT USER</div>
           <div className="register-close-btn" onClick={handleCancel}>
             <MdClose />
           </div>
@@ -221,7 +379,6 @@ function AddUser({ onClose, onUserAdded }) {
           <div className="register-form">
             <div className="form-note">* Required fields (All letters will be UPPERCASE)</div>
 
-            {/* ROW 1 */}
             <div className="form-row">
               <div className="input-group">
                 <label>Last Name <span className="required">*</span></label>
@@ -241,14 +398,12 @@ function AddUser({ onClose, onUserAdded }) {
                   type="email"
                   placeholder="e.g juandelacruz@plpasig.edu.ph"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={{ textTransform: 'lowercase' }}
-                  required
+                  disabled
+                  style={{ backgroundColor: '#f5f5f5', textTransform: 'lowercase' }}
                 />
               </div>
             </div>
 
-            {/* ROW 2 */}
             <div className="form-row">
               <div className="input-group">
                 <label>First Name <span className="required">*</span></label>
@@ -277,13 +432,12 @@ function AddUser({ onClose, onUserAdded }) {
               </div>
             </div>
 
-            {/* ROW 3 */}
             <div className="form-row">
               <div className="input-group">
                 <label>Middle Name</label>
                 <input
                   type="text"
-                  placeholder="e.g. SMITH"
+                  placeholder="e.g SMITH"
                   value={middleName}
                   onChange={handleMiddleNameChange}
                   style={{ textTransform: 'uppercase' }}
@@ -302,17 +456,16 @@ function AddUser({ onClose, onUserAdded }) {
               </div>
             </div>
 
-            {/* Password fields */}
+            {/* Password fields - only show if changing password */}
             <div className="form-row">
               <div className="input-group password-field">
-                <label>Password <span className="required">*</span></label>
+                <label>New Password <span className="optional">(Optional)</span></label>
                 <div className="password-input-wrapper">
                   <input
                     type={showPassword ? "text" : "password"}
-                    placeholder="Enter password"
+                    placeholder="Leave empty to keep current"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    required
                   />
                   <button 
                     type="button"
@@ -326,36 +479,37 @@ function AddUser({ onClose, onUserAdded }) {
                 <small className="password-hint">At least 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special</small>
               </div>
 
-              <div className="input-group password-field">
-                <label>Confirm Password <span className="required">*</span></label>
-                <div className="password-input-wrapper">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    placeholder="Confirm password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                  />
-                  <button 
-                    type="button"
-                    className="password-toggle-btn"
-                    onClick={toggleConfirmPasswordVisibility}
-                    tabIndex="-1"
-                  >
-                    {showConfirmPassword ? <MdVisibilityOff /> : <MdVisibility />}
-                  </button>
+              {password && (
+                <div className="input-group password-field">
+                  <label>Confirm Password <span className="required">*</span></label>
+                  <div className="password-input-wrapper">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      placeholder="Confirm new password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required={!!password}
+                    />
+                    <button 
+                      type="button"
+                      className="password-toggle-btn"
+                      onClick={toggleConfirmPasswordVisibility}
+                      tabIndex="-1"
+                    >
+                      {showConfirmPassword ? <MdVisibilityOff /> : <MdVisibility />}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
-            {/* BUTTONS */}
             <div className="form-actions">
               <button
                 type="submit"
                 className="btn add"
                 disabled={loading}
               >
-                {loading ? 'Adding...' : 'Add User'}
+                {loading ? 'Updating...' : 'Update User'}
               </button>
 
               <button
@@ -374,4 +528,4 @@ function AddUser({ onClose, onUserAdded }) {
   );
 }
 
-export default AddUser;
+export default EditUser;
