@@ -158,7 +158,6 @@ function Students() {
   };
 
   // ================= HELPERS =================
-  // Formats "Juan M. Dela Cruz"
   const formatFullName = (student) => {
     if (!student) return "";
     const firstName     = student.first_name || "";
