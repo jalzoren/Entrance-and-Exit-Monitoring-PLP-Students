@@ -12,7 +12,10 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import Swal from 'sweetalert2';
+import logo from "../assets/llogoplp.png";
 
+// Then use it
+<img src={logo} alt="Logo" className="brand-image" />
 import "../componentscss/Sidebar.css";
 
 export default function Sidebar() {
@@ -159,11 +162,8 @@ export default function Sidebar() {
         <div className="logo-container">
           {isOpen && (
             <div className="brand-text">
-              <img
-                src="/logo3.png"
-                alt="Logo"
-                className="brand-image"
-              />
+             <img src={logo} alt="Logo" className="brand-image" />
+
               <h1 className="brand-title">
                 {user.role === 'superadmin' 
                   ? 'Smart Entrance, Exit, and Attendance'
