@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import "../css/Users.css";
 import { FiPlus, FiEdit2, FiTrash2 } from "react-icons/fi";
 import AddUser from "../components/AddUser";
-// Import SweetAlert2
+import EditUser from "../components/EditUser";
 import Swal from 'sweetalert2';
 
 function Users() {
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditUser, setShowEditUser] = useState(false);
+  const [selectedUserEmail, setSelectedUserEmail] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,7 +18,6 @@ function Users() {
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 5;
 
-  // Fetch users from API
   const fetchUsers = async () => {
     try {
       setLoading(true);
@@ -26,18 +27,23 @@ function Users() {
       }
       const data = await response.json();
       
-      // Transform data to match your frontend structure
       const transformedUsers = data.map(user => {
-        // Parse fullname (assuming format: "Last, First Middle")
         const nameParts = user.fullname.split(', ');
         const lastName = nameParts[0] || '';
         const firstAndMiddle = nameParts[1] ? nameParts[1].split(' ') : [];
-        const firstName = firstAndMiddle[0] || '';
-        const middleName = firstAndMiddle.slice(1).join(' ') || '';
+        
+        let firstName = '';
+        let middleName = '';
+        
+        if (firstAndMiddle.length > 1) {
+          middleName = firstAndMiddle.pop();
+          firstName = firstAndMiddle.join(' ');
+        } else {
+          firstName = firstAndMiddle[0] || '';
+          middleName = '';
+        }
         
         return {
-          id: user.admin_id, // This is the ID number
-          username: user.email.split('@')[0], // Use email prefix as username
           email: user.email,
           full_name: user.fullname,
           firstName: firstName,
@@ -54,7 +60,6 @@ function Users() {
       console.error('Error fetching users:', err);
       setError('Failed to load users');
       
-      // Show error alert
       Swal.fire({
         icon: 'error',
         title: 'Error!',
@@ -66,21 +71,32 @@ function Users() {
     }
   };
 
-  // Load users on component mount
   useEffect(() => {
     fetchUsers();
   }, []);
 
-  // Handle new user added
   const handleUserAdded = (newUser) => {
-    // Transform the new user data
+    const nameParts = newUser.fullname.split(', ');
+    const lastName = nameParts[0] || '';
+    const firstAndMiddle = nameParts[1] ? nameParts[1].split(' ') : [];
+    
+    let firstName = '';
+    let middleName = '';
+    
+    if (firstAndMiddle.length > 1) {
+      middleName = firstAndMiddle.pop();
+      firstName = firstAndMiddle.join(' ');
+    } else {
+      firstName = firstAndMiddle[0] || '';
+      middleName = '';
+    }
+    
     const transformedUser = {
-      id: newUser.admin_id,
-      username: newUser.email.split('@')[0],
       email: newUser.email,
       full_name: newUser.fullname,
-      firstName: newUser.fullname.split(', ')[1]?.split(' ')[0] || '',
-      lastName: newUser.fullname.split(', ')[0] || '',
+      firstName: firstName,
+      lastName: lastName,
+      middleName: middleName,
       role: newUser.role,
       created: newUser.created
     };
@@ -88,7 +104,6 @@ function Users() {
     setUsers(prevUsers => [transformedUser, ...prevUsers]);
     setShowAddUser(false);
     
-    // Show success alert
     Swal.fire({
       icon: 'success',
       title: 'Success!',
@@ -98,40 +113,59 @@ function Users() {
     });
   };
 
-  const handleEdit = (id) => {
-    // Find the user to edit
-    const userToEdit = users.find(user => user.id === id);
+  const handleEdit = (email) => {
+    console.log("Editing user with email:", email); // Debug log
+    setSelectedUserEmail(email);
+    setShowEditUser(true);
+  };
+
+  const handleUserUpdated = (updatedUser) => {
+    const nameParts = updatedUser.fullname.split(', ');
+    const lastName = nameParts[0] || '';
+    const firstAndMiddle = nameParts[1] ? nameParts[1].split(' ') : [];
     
-    // Show edit prompt
+    let firstName = '';
+    let middleName = '';
+    
+    if (firstAndMiddle.length > 1) {
+      middleName = firstAndMiddle.pop();
+      firstName = firstAndMiddle.join(' ');
+    } else {
+      firstName = firstAndMiddle[0] || '';
+      middleName = '';
+    }
+    
+    const transformedUser = {
+      email: updatedUser.email,
+      full_name: updatedUser.fullname,
+      firstName: firstName,
+      lastName: lastName,
+      middleName: middleName,
+      role: updatedUser.role,
+      created: updatedUser.created
+    };
+    
+    setUsers(prevUsers => 
+      prevUsers.map(user => 
+        user.email === transformedUser.email ? transformedUser : user
+      )
+    );
+    
+    setShowEditUser(false);
+    setSelectedUserEmail(null);
+    
     Swal.fire({
-      title: 'Edit User',
-      text: `Edit user: ${userToEdit?.full_name}`,
-      icon: 'info',
-      showCancelButton: true,
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#d33',
-      confirmButtonText: 'Edit',
-      cancelButtonText: 'Cancel'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        // Implement your edit functionality here
-        console.log("Edit user:", id);
-        
-        Swal.fire({
-          icon: 'info',
-          title: 'Coming Soon',
-          text: 'Edit functionality will be implemented soon!',
-          confirmButtonColor: '#3085d6'
-        });
-      }
+      icon: 'success',
+      title: 'Updated!',
+      text: 'User has been updated successfully.',
+      timer: 2000,
+      showConfirmButton: false
     });
   };
 
-  const handleDelete = async (id) => {
-    // Find user for the confirmation message
-    const userToDelete = users.find(user => user.id === id);
+  const handleDelete = async (email) => {
+    const userToDelete = users.find(user => user.email === email);
     
-    // Show confirmation dialog
     const result = await Swal.fire({
       title: 'Are you sure?',
       text: `Are you sure you want to delete ${userToDelete?.full_name}? This action cannot be undone.`,
@@ -148,7 +182,6 @@ function Users() {
     }
     
     try {
-      // Show loading
       Swal.fire({
         title: 'Deleting...',
         text: 'Please wait',
@@ -161,7 +194,7 @@ function Users() {
         }
       });
       
-      const response = await fetch(`http://localhost:5000/api/users/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/users/${encodeURIComponent(email)}`, {
         method: 'DELETE',
       });
       
@@ -169,13 +202,9 @@ function Users() {
         throw new Error('Failed to delete user');
       }
       
-      // Close loading
       Swal.close();
+      setUsers(prevUsers => prevUsers.filter(user => user.email !== email));
       
-      // Update state
-      setUsers(prevUsers => prevUsers.filter(user => user.id !== id));
-      
-      // Show success alert
       Swal.fire({
         icon: 'success',
         title: 'Deleted!',
@@ -186,11 +215,7 @@ function Users() {
       
     } catch (err) {
       console.error('Error deleting user:', err);
-      
-      // Close loading
       Swal.close();
-      
-      // Show error alert
       Swal.fire({
         icon: 'error',
         title: 'Error!',
@@ -200,14 +225,11 @@ function Users() {
     }
   };
 
-  // Filter users based on role and search query
   const filteredUsers = users.filter((user) => {
     const matchesRole = roleFilter === "" || user.role === roleFilter;
     const matchesSearch = searchQuery === "" ||
-      user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.id.toString().toLowerCase().includes(searchQuery.toLowerCase());
+      user.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesRole && matchesSearch;
   });
 
@@ -224,7 +246,6 @@ function Users() {
 
   return (
     <div className="user-management">
-      {/* HEADER */}
       <header className="header-card">
         <h1>USER MANAGEMENT</h1>
         <p className="subtitle">Dashboard / User Management</p>
@@ -232,7 +253,6 @@ function Users() {
 
       <hr className="header-divider" />
 
-      {/* CONTROLS */}
       <div className="controls">
         <select
           className="filter-select"
@@ -248,7 +268,7 @@ function Users() {
         <input
           type="text"
           className="search-input"
-          placeholder="Search by ID, name, email or username"
+          placeholder="Search by name or email"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -262,7 +282,6 @@ function Users() {
         </button>
       </div>
 
-      {/* TABLE */}
       <div className="table-container">
         {loading ? (
           <div className="loading">
@@ -276,8 +295,6 @@ function Users() {
             <thead>
               <tr>
                 <th>No.</th>
-                <th>ID Number</th>
-                <th>Username</th>
                 <th>Full Name</th>
                 <th>Email</th>
                 <th>Role</th>
@@ -287,10 +304,8 @@ function Users() {
             <tbody>
               {currentUsers.length > 0 ? (
                 currentUsers.map((user, index) => (
-                  <tr key={user.id}>
+                  <tr key={user.email}>
                     <td>{indexOfFirstRecord + index + 1}</td>
-                    <td>{user.id}</td>
-                    <td>{user.username}</td>
                     <td>{user.full_name}</td>
                     <td>{user.email}</td>
                     <td>
@@ -301,14 +316,14 @@ function Users() {
                     <td className="action-cell">
                       <button
                         className="edit-btn"
-                        onClick={() => handleEdit(user.id)}
+                        onClick={() => handleEdit(user.email)}
                         title="Edit User"
                       >
                         <FiEdit2 /> Edit
                       </button>
                       <button
                         className="delete-btn"
-                        onClick={() => handleDelete(user.id)}
+                        onClick={() => handleDelete(user.email)}
                         title="Delete User"
                       >
                         <FiTrash2 /> Delete
@@ -318,7 +333,7 @@ function Users() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="7" className="no-data">
+                  <td colSpan="5" className="no-data">
                     No users found
                   </td>
                 </tr>
@@ -328,7 +343,6 @@ function Users() {
         )}
       </div>
 
-      {/* PAGINATION */}
       {!loading && !error && filteredUsers.length > 0 && (
         <div className="pagination">
           <button
@@ -363,11 +377,21 @@ function Users() {
         </div>
       )}
 
-      {/* ADD USER MODAL */}
       {showAddUser && (
         <AddUser 
           onClose={() => setShowAddUser(false)}
           onUserAdded={handleUserAdded}
+        />
+      )}
+
+      {showEditUser && selectedUserEmail && (
+        <EditUser
+          onClose={() => {
+            setShowEditUser(false);
+            setSelectedUserEmail(null);
+          }}
+          onUserUpdated={handleUserUpdated}
+          userEmail={selectedUserEmail}
         />
       )}
     </div>
