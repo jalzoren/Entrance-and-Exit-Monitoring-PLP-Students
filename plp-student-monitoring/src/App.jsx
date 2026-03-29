@@ -20,7 +20,7 @@ import Analytics from "./pages/adminpages/Analytics";
 
 // Super Admin Pages
 import Users from "./pages/superadminpages/Users";
-import SystemSettings from "./pages/superadminpages/SystemSettings";
+import SystemSettings from "./pages/superadminpages/SystemSettings/SystemSettings";
 import SuperDashboard from "./pages/superadminpages/SuperDashboard";
 import SuperStudents from "./pages/superadminpages/SuperStudents";
 
@@ -69,7 +69,6 @@ function AppRoutes() {
       <Route path="/forgotpass" element={<ForgotPass />} />
       <Route path="/forgotpass2" element={<ForgotPass2 />} />
       <Route path="/facerecog" element={<FaceRecognition />} />
-      <Route path="/registerstudent" element={<RegisterStudent />} />
 
       {/* Root path - redirect based on role */}
       <Route path="/" element={<RoleBasedRedirect />} />
@@ -83,22 +82,22 @@ function AppRoutes() {
           </ProtectedRoute>
         } />
         <Route path="/monitor" element={
-          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin']}>
+          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin', 'Super Admin']}>
             <Monitor />
           </ProtectedRoute>
         } />
         <Route path="/records" element={
-          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin']}>
+          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin', 'Super Admin']}>
             <Records />
           </ProtectedRoute>
         } />
         <Route path="/students" element={
-          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin']}>
+          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin', 'Super Admin']}>
             <Students />
           </ProtectedRoute>
         } />
         <Route path="/analytics" element={
-          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin']}>
+          <ProtectedRoute allowedRoles={['EEMS Admin', 'EAMS Admin', 'Super Admin']}>
             <Analytics />
           </ProtectedRoute>
         } />
