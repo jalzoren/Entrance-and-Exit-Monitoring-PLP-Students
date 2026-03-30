@@ -19,7 +19,6 @@ app = FastAPI()
 
 # ----------------------------------------------------
 # Models
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 recognizer = None
@@ -54,7 +53,6 @@ async def load_models():
 
 # ----------------------------------------------------
 # Request Models
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 class ImageRequest(BaseModel):
@@ -72,7 +70,6 @@ class EmbeddingResponse(BaseModel):
 
 # ----------------------------------------------------
 # Base64 → Image
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def base64_to_image(base64_string):
@@ -94,7 +91,6 @@ def base64_to_image(base64_string):
 
 # ----------------------------------------------------
 # Face Preprocess (ArcFace)
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def preprocess_face(face):
@@ -118,7 +114,6 @@ def preprocess_face(face):
 
 # ----------------------------------------------------
 # Face Quality
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def calculate_face_quality(face):
@@ -148,7 +143,6 @@ def calculate_face_quality(face):
 
 # ----------------------------------------------------
 # Face Detection
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def detect_faces(img, min_face_size):
@@ -190,7 +184,6 @@ def detect_faces(img, min_face_size):
 
 # ----------------------------------------------------
 # Embedding Generator
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def get_embedding(face):
@@ -213,7 +206,6 @@ def get_embedding(face):
 
 # ----------------------------------------------------
 # Cosine Similarity
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 def cosine(a, b):
@@ -222,7 +214,6 @@ def cosine(a, b):
 
 # ----------------------------------------------------
 # Generate Embedding
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 @app.post("/generate-embedding", response_model=EmbeddingResponse)
@@ -309,7 +300,6 @@ async def generate_embedding(data: ImageRequest):
 
 # ----------------------------------------------------
 # Health Check
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 @app.get("/health")
@@ -324,7 +314,6 @@ async def health():
 
 # ----------------------------------------------------
 # Similarity
-# (YOUR TEAMMATE'S CODE — UNTOUCHED)
 # ----------------------------------------------------
 
 class SimilarityRequest(BaseModel):

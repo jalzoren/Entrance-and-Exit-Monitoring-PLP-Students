@@ -123,9 +123,11 @@ router.post("/register", async (req, res) => {
       first_name,
       last_name,
       middle_name,
+      extension_name,   
       college_department,
       year_level,
       status,
+      email,       
       images
     } = req.body;
 
@@ -141,14 +143,16 @@ router.post("/register", async (req, res) => {
 
     await connection.query(
       `INSERT INTO students
-       (student_id, first_name, last_name, middle_name,
+      (student_id, email, first_name, last_name, middle_name, extension_name,
         college_department, year_level, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         student_id,
-        first_name,
-        last_name,
-        middle_name,
+        email?.trim().toLowerCase() ?? null,   // emails are lowercase by convention
+        first_name?.trim().toUpperCase(),
+        last_name?.trim().toUpperCase(),
+        middle_name?.trim().toUpperCase() || null,
+        extension_name?.trim() || null,
         college_department,
         year_level,
         status
@@ -298,7 +302,15 @@ UPDATE STUDENT STATUS
 router.put("/students/:student_id", async (req, res) => {
   try {
     const { student_id } = req.params;
-    const { status } = req.body;
+    const {
+      first_name,
+      last_name,
+      middle_name,
+      extension_name,
+      college_department,
+      year_level,
+      status
+    } = req.body;
 
     if (!status || (status !== 'Regular' && status !== 'Irregular')) {
       return res.status(400).json({
@@ -306,11 +318,24 @@ router.put("/students/:student_id", async (req, res) => {
       });
     }
 
+    
     const [result] = await db.query(
       `UPDATE students 
-       SET status = ?, updated_at = CURRENT_TIMESTAMP 
-       WHERE student_id = ?`,
-      [status, student_id]
+      SET first_name = ?, last_name = ?, middle_name = ?,
+          extension_name = ?, college_department = ?,
+          year_level = ?, status = ?,
+          updated_at = CURRENT_TIMESTAMP 
+      WHERE student_id = ?`,
+      [
+        first_name?.trim().toUpperCase(),
+        last_name?.trim().toUpperCase(),
+        middle_name?.trim().toUpperCase() || null,
+        extension_name?.trim() || null,
+        college_department,
+        year_level,
+        status,
+        student_id
+      ]
     );
 
     if (result.affectedRows === 0) {

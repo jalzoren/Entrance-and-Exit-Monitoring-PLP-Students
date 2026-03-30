@@ -30,6 +30,7 @@ function RegisterStudent({ onClose }) {
   const [captureStep, setCaptureStep] = useState(0);
   const [showCamera, setShowCamera] = useState(false);
   const [studentId, setStudentId] = useState("");
+  const [emailId, setEmailId] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [middleName, setMiddleName] = useState("");
@@ -39,6 +40,7 @@ function RegisterStudent({ onClose }) {
   const [status, setStatus] = useState("");
   const maxPhotos = 5;
 
+  const emailIdRef = useRef(null);
   const firstNameRef = useRef(null);
   const lastNameRef = useRef(null);
   const middleNameRef = useRef(null);
@@ -59,6 +61,7 @@ function RegisterStudent({ onClose }) {
   // Each key maps to an error message string, or "" when valid
   const [formErrors, setFormErrors] = useState({
     studentId:  "",
+    emailId:    "",
     lastName:   "",
     firstName:  "",
     college:    "",
@@ -78,16 +81,21 @@ function RegisterStudent({ onClose }) {
   // Checks all required fields and populates formErrors.
   // Returns true only when every required field has a value.
   const validateStep1 = () => {
-    const errors = {
+  const plpasigRegex = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
+  const errors = {
       studentId: !studentId.toString().trim()  ? "Student ID is required"        : "",
       lastName:  !lastName.trim()              ? "Last Name is required"          : "",
       firstName: !firstName.trim()             ? "First Name is required"         : "",
       college:   !college                      ? "College Department is required" : "",
       yearLevel: !yearLevel.toString().trim()  ? "Year Level is required"         : "",
       status:    !status                       ? "Status is required"             : "",
+      emailId:   !emailId.trim()
+                  ? "Email is required"
+                  : !plpasigRegex.test(emailId.trim())
+                  ? "Must be a valid @plpasig.edu.ph email"
+                  : "",
     };
     setFormErrors(errors);
-    // Valid when no error message exists
     return Object.values(errors).every(e => e === "");
   };
 
@@ -240,14 +248,16 @@ function RegisterStudent({ onClose }) {
       const response = await axios.post(
         "http://localhost:5000/api/register",
         {
-          student_id: studentId,
-          first_name: firstName,
-          last_name: lastName,
-          middle_name: middleName,
+          student_id:         studentId,
+          email:              emailId.trim().toLowerCase(),
+          first_name:         firstName,
+          last_name:          lastName,
+          middle_name:        middleName,
+          extension_name:     extension,
           college_department: college,
-          year_level: yearLevel,
-          status: status,
-          images: validImages
+          year_level:         yearLevel,
+          status:             status,
+          images:             validImages
         }
       );
   
@@ -349,19 +359,20 @@ function RegisterStudent({ onClose }) {
               {formErrors.firstName && <span className="field-error">{formErrors.firstName}</span>}
             </div>
             <div className="input-group">
-              <label>Student ID <span className="required">*</span></label>
+              <label>Email <span className="required">*</span></label>
               <input
-                type="number"
-                placeholder="e.g 2300001"
-                value={studentId}
-                onChange={(e) => { setStudentId(e.target.value); setFormErrors(p => ({...p, studentId: ""})); }}
-                className={formErrors.studentId ? "input-error" : ""}
-                ref={studentIdRef}
-                onKeyDown={(e) => handleEnter(e, collegeRef)}
+                type="email"
+                placeholder="e.g delacruz_juan@plpasig.edu.ph"
+                value={emailId}
+                onChange={(e) => { setEmailId(e.target.value); setFormErrors(p => ({...p, emailId: ""})); }}
+                className={formErrors.emailId ? "input-error" : ""}
+                ref={emailIdRef}
+                onKeyDown={(e) => handleEnter(e, studentIdRef)}
                 required
               />
-              {formErrors.studentId && <span className="field-error">{formErrors.studentId}</span>}
+              {formErrors.emailId && <span className="field-error">{formErrors.emailId}</span>}
             </div>
+            
           </div>
 
           <div className="form-row">
@@ -380,7 +391,36 @@ function RegisterStudent({ onClose }) {
               />
               {formErrors.lastName && <span className="field-error">{formErrors.lastName}</span>}
             </div>
+            <div className="input-group">
+              <label>Student ID <span className="required">*</span></label>
+              <input
+                type="number"
+                placeholder="e.g 2300001"
+                value={studentId}
+                onChange={(e) => { setStudentId(e.target.value); setFormErrors(p => ({...p, studentId: ""})); }}
+                className={formErrors.studentId ? "input-error" : ""}
+                ref={studentIdRef}
+                onKeyDown={(e) => handleEnter(e, collegeRef)}
+                required
+              />
+              {formErrors.studentId && <span className="field-error">{formErrors.studentId}</span>}
+            </div>
             
+          </div>
+
+          <div className="form-row">
+            <div className="input-group">
+              <label>Middle Name</label>
+              <input
+                type="text"
+                placeholder="e.g Smith"
+                value={middleName}
+                onChange={(e) => setMiddleName(e.target.value)}
+                style={{ textTransform: 'uppercase' }}
+                ref={middleNameRef}
+                onKeyDown={(e) => handleEnter(e, extensionRef)}
+              />
+            </div>
             <div className="input-group">
               <label>College Department <span className="required">*</span></label>
               <select
@@ -406,38 +446,8 @@ function RegisterStudent({ onClose }) {
 
           <div className="form-row">
             <div className="input-group">
-              <label>Middle Name</label>
-              <input
-                type="text"
-                placeholder="e.g Smith"
-                value={middleName}
-                onChange={(e) => setMiddleName(e.target.value)}
-                style={{ textTransform: 'uppercase' }}
-                ref={middleNameRef}
-                onKeyDown={(e) => handleEnter(e, extensionRef)}
-              />
-            </div>
-            <div className="input-group">
-              <label>Year Level <span className="required">*</span></label>
-              <input
-                type="number"
-                placeholder="e.g 3"
-                value={yearLevel}
-                onChange={(e) => { setYearLevel(e.target.value); setFormErrors(p => ({...p, yearLevel: ""})); }}
-                className={formErrors.yearLevel ? "input-error" : ""}
-                style={{ textTransform: 'uppercase' }}
-                ref={yearLevelRef}
-                onKeyDown={(e) => handleEnter(e, statusRef)}
-                required
-              />
-              {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="input-group">
               <label>Extension Name</label>
-              <select value={extension} onChange={(e) => setExtension(e.target.value)} ref={extensionRef} onKeyDown={(e) => handleEnter(e, studentIdRef)}>
+              <select value={extension} onChange={(e) => setExtension(e.target.value)} ref={extensionRef} onKeyDown={(e) => handleEnter(e, emailIdRef)}>
                 <option value="">Select Extension Name</option>
                 <option value="Jr.">Jr.</option>
                 <option value="Sr.">Sr.</option>
@@ -447,26 +457,43 @@ function RegisterStudent({ onClose }) {
                 <option value="IV">IV</option>
               </select>
             </div>
-            <div className="input-group">
-              <label>Status <span className="required">*</span></label>
-              <select
-                value={status}
-                onChange={(e) => { setStatus(e.target.value); setFormErrors(p => ({...p, status: ""})); }}
-                className={formErrors.status ? "input-error" : ""}
-                ref={statusRef}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleNext();
-                  }
-                }}
-                required
-              >
-                <option value="">Select Status</option>
-                <option value="Regular">Regular</option>
-                <option value="Irregular">Irregular</option>
-              </select>
-              {formErrors.status && <span className="field-error">{formErrors.status}</span>}
+            <div className='year-status'>
+              <div className="input-group">
+                <label>Year Level <span className="required">*</span></label>
+                <input
+                  type="number"
+                  placeholder="e.g 3"
+                  value={yearLevel}
+                  onChange={(e) => { setYearLevel(e.target.value); setFormErrors(p => ({...p, yearLevel: ""})); }}
+                  className={formErrors.yearLevel ? "input-error" : ""}
+                  style={{ textTransform: 'uppercase' }}
+                  ref={yearLevelRef}
+                  onKeyDown={(e) => handleEnter(e, statusRef)}
+                  required
+                />
+                {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+              </div>
+              <div className="input-group">
+                <label>Status <span className="required">*</span></label>
+                <select
+                  value={status}
+                  onChange={(e) => { setStatus(e.target.value); setFormErrors(p => ({...p, status: ""})); }}
+                  className={formErrors.status ? "input-error" : ""}
+                  ref={statusRef}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleNext();
+                    }
+                  }}
+                  required
+                >
+                  <option value="">Select Status</option>
+                  <option value="Regular">Regular</option>
+                  <option value="Irregular">Irregular</option>
+                </select>
+                {formErrors.status && <span className="field-error">{formErrors.status}</span>}
+              </div>
             </div>
           </div>
 

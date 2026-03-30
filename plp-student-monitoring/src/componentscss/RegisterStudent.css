@@ -231,6 +231,11 @@ body {
   flex-wrap: wrap;
 }
 
+.year-status{
+  display: flex;
+  gap: 20px;
+}
+
 .input-group {
   flex: 1 1 calc(50% - 10px);
   min-width: 200px;

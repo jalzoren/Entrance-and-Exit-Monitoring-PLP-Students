@@ -10,7 +10,7 @@ import {
   IoDocumentTextOutline,
 } from 'react-icons/io5';
 import '../componentscss/ImportStudents.css';
-import '../css/GlobalModal.css';
+//import '../css/GlobalModal.css';
 
 const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
   const [file, setFile] = useState(null);
@@ -22,6 +22,7 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
 
   const requiredColumns = [
     'Student ID',
+    'Email',
     'First Name',
     'Middle Name',  
     'Last Name',
@@ -259,6 +260,7 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
               </div>
               <div className="preview-row">
                 <span className="preview-cell">24-00001</span>
+                <span className="preview-cell">delacruz_juan@plpasig.edu.ph</span>
                 <span className="preview-cell">Juan</span>
                 <span className="preview-cell">Dela</span>
                 <span className="preview-cell">Cruz</span>

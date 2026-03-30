@@ -30,6 +30,7 @@ const upload = multer({
 // Required columns — Extension Name is NOT here (it is optional)
 const REQUIRED_COLUMNS = [
   "Student ID",
+  "Email",          
   "First Name",
   "Last Name",
   "Middle Name",
@@ -59,16 +60,16 @@ const VALID_YEAR_LEVELS = {
 };
 
 const VALID_STATUSES = ["Inactive", "Regular", "Irregular"];
-
 // Extension Name — allowed values when provided (empty string = no extension)
 const VALID_EXTENSIONS = ["", "Jr.", "Sr.", "I", "II", "III", "IV"];
-
 const STUDENT_ID_REGEX = /^\d{2}-\d{5}$/;
+const PLPASIG_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
 
 const validateRow = (row, rowNumber) => {
   const errors = [];
 
   const studentId      = (row["Student ID"]        || "").toString().trim();
+  const email = (row["Email"] || "").toString().trim();
   const firstName      = (row["First Name"]         || "").toString().trim();
   const lastName       = (row["Last Name"]          || "").toString().trim();
   const middleName     = (row["Middle Name"]        || "").toString().trim();
@@ -81,6 +82,7 @@ const validateRow = (row, rowNumber) => {
 
   // ── Required field presence ────────────────────────────────────────────────
   if (!studentId)        errors.push(`Row ${rowNumber}: Student ID is empty.`);
+  if (!email) errors.push(`Row ${rowNumber}: Email is empty.`);
   if (!firstName)        errors.push(`Row ${rowNumber}: First Name is empty.`);
   if (!middleName)       errors.push(`Row ${rowNumber}: Middle Name is empty.`);
   if (!lastName)         errors.push(`Row ${rowNumber}: Last Name is empty.`);
@@ -92,6 +94,12 @@ const validateRow = (row, rowNumber) => {
   if (studentId && !STUDENT_ID_REGEX.test(studentId)) {
     errors.push(
       `Row ${rowNumber}: Student ID "${studentId}" must follow format YY-NNNNN (e.g. 24-00001).`
+    );
+  }
+
+  if (email && !PLPASIG_EMAIL_REGEX.test(email)) {
+    errors.push(
+      `Row ${rowNumber}: Email "${email}" must be a valid @plpasig.edu.ph address (e.g. delacruz_juan@plpasig.edu.ph).`
     );
   }
 
@@ -171,6 +179,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       });
     }
 
+    // Duplicate checks — Student ID and Email must be unique within the file AND against the database
     const fileStudentIds   = rows.map((row) => row["Student ID"].toString().trim());
     const duplicatesInFile = fileStudentIds.filter(
       (id, index) => fileStudentIds.indexOf(id) !== index
@@ -179,6 +188,17 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
     if (duplicatesInFile.length > 0) {
       return res.status(400).json({
         message: `Duplicate Student IDs found within the file: ${[...new Set(duplicatesInFile)].join(", ")}.`,
+      });
+    }
+
+    const fileEmails = rows.map((row) => row["Email"].toString().trim().toLowerCase());
+    const duplicateEmails = fileEmails.filter(
+      (email, index) => fileEmails.indexOf(email) !== index
+    );
+
+    if (duplicateEmails.length > 0) {
+      return res.status(400).json({
+        message: `Duplicate Emails found within the file: ${[...new Set(duplicateEmails)].join(", ")}.`,
       });
     }
 
@@ -192,6 +212,19 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       const existingIds = existingRows.map((r) => r.student_id);
       return res.status(400).json({
         message: `These Student IDs already exist in the database: ${existingIds.join(", ")}.`,
+      });
+    }
+
+    const emailPlaceholders = fileEmails.map(() => "?").join(", ");
+    const [existingEmails] = await db.query(
+      `SELECT email FROM students WHERE email IN (${emailPlaceholders})`,
+      fileEmails
+    );
+
+    if (existingEmails.length > 0) {
+      const taken = existingEmails.map((r) => r.email);
+      return res.status(400).json({
+        message: `These Emails already exist in the database: ${taken.join(", ")}.`,
       });
     }
 
@@ -212,11 +245,20 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       try {
         await db.query(
           `INSERT INTO students
-            (student_id, first_name, last_name, middle_name, extension_name,
-             college_department, year_level, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
-          [studentId, firstName, lastName, middleName, extensionName,
-           collegeDepartment, yearLevel, status]
+            (student_id, email, first_name, last_name, middle_name, extension_name,
+            college_department, year_level, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+          [
+            studentId,
+            email.toLowerCase(),
+            firstName.toUpperCase(),
+            lastName.toUpperCase(),
+            middleName.toUpperCase() || null,
+            extensionName || null,          // already read from row["Extension Name"]
+            collegeDepartment,
+            yearLevel,
+            status
+          ]
         );
         insertedStudents.push(studentId);
       } catch (dbError) {

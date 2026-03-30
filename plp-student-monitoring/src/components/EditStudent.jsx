@@ -25,6 +25,7 @@ import {
   MdFace,
   MdOutlineFace,
   MdClose as MdDeleteIcon,
+  MdOpacity,
 } from "react-icons/md";
 import RegisterStudentCam from "./RegisterStudentCam";
 import "../componentscss/EditStudent.css";
@@ -72,6 +73,7 @@ function EditStudent({ student, onClose }) {
   const [activeTab, setActiveTab] = useState("info");
 
   // ── Tab 1: editable student fields ───────────────────────────────────────
+  const [email, setEmail] = useState(student.email || "");
   const [firstName,   setFirstName]   = useState(student.first_name        || "");
   const [lastName,    setLastName]    = useState(student.last_name         || "");
   const [middleName,  setMiddleName]  = useState(student.middle_name       || "");
@@ -418,7 +420,17 @@ function EditStudent({ student, onClose }) {
               {/* Student ID is read-only — never editable */}
               <div className="input-group">
                 <label>Student ID</label>
-                <input type="text" value={student.student_id} disabled className="input-disabled" />
+                <input type="text" value={student.student_id} disabled className="input-disabled" style={{ opacity: 0.6 }}/>
+              </div>
+              <div className="input-group">
+                <label>Email</label>
+                <input 
+                  type="text" 
+                  value={email} 
+                  disabled 
+                  className="input-disabled" 
+                  style={{ opacity: 0.6 }}
+                />
               </div>
             </div>
 
