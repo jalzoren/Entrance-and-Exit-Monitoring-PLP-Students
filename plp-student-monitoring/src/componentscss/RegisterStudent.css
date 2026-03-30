@@ -1,3 +1,4 @@
+/*RegisterStudent.css*/
 :root {
   @import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Oswald:wght@200..700&display=swap");
   --color-bg-main: #fcfbf4;
@@ -68,6 +69,154 @@ body {
 .register-close-btn:hover {
   opacity: 0.8;
 }
+
+/* ── TWO-STEP REGISTRATION STEPPER ── */
+
+.register-stepper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px 100px;
+  background: #fff;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Each step = circle + text label side by side */
+.stepper-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* Numbered / checkmark circle */
+.step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: 'Montserrat', sans-serif;
+  flex-shrink: 0;
+  transition: background 0.3s, border-color 0.3s, color 0.3s;
+}
+
+/* Active step — solid dark green */
+.step-active .step-circle {
+  background: var(--color-primary-dark);
+  color: #fff;
+  border: 2px solid var(--color-primary-dark);
+}
+
+/* Completed step — light green tint with checkmark */
+.step-done .step-circle {
+  background: #e6f4ec;
+  color: var(--color-primary-dark);
+  border: 2px solid var(--color-primary-dark);
+}
+
+/* Future step — grey outline */
+.step-pending .step-circle {
+  background: #f5f5f5;
+  color: #bbb;
+  border: 2px solid #ddd;
+}
+
+/* MdCheckCircle icon inside completed circle */
+.step-check-icon {
+  font-size: 1.15rem;
+  color: var(--color-primary-dark);
+}
+
+/* Text labels */
+.step-label {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+
+.step-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.step-subtitle {
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: 'Montserrat', sans-serif;
+}
+
+.step-active  .step-title,
+.step-active  .step-subtitle { color: var(--color-primary-dark); }
+
+.step-done    .step-title,
+.step-done    .step-subtitle { color: var(--color-primary-dark); opacity: 0.75; }
+
+.step-pending .step-title,
+.step-pending .step-subtitle { color: #bbb; }
+
+/* Connector line that stretches between the two steps */
+.stepper-line {
+  flex: 1;
+  height: 2px;
+  background: #ddd;
+  margin: 0 14px;
+  border-radius: 2px;
+  transition: background 0.4s;
+}
+
+/* Fills green when Step 2 becomes active */
+.stepper-line.line-filled {
+  background: var(--color-primary-dark);
+}
+
+
+/* ── FIELD VALIDATION ERRORS ─*/
+
+/* Red border on invalid input/select */
+.input-group input.input-error,
+.input-group select.input-error {
+  border-color: var(--color-red);
+  background-color: #fff5f5;
+}
+
+.input-group input.input-error:focus,
+.input-group select.input-error:focus {
+  border-color: var(--color-red);
+  box-shadow: 0 0 0 2px rgba(255, 46, 46, 0.15);
+}
+
+/* Small red message below the field */
+.field-error {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.76rem;
+  color: var(--color-red);
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 500;
+}
+
+/* Required asterisk colour */
+.required {
+  color: var(--color-red);
+  margin-left: 2px;
+}
+
+/* Small note above the form */
+.form-note {
+  font-size: 0.78rem;
+  color: #888;
+  font-family: 'Montserrat', sans-serif;
+  margin-bottom: 14px;
+}
+
+
 
 /* ===== STEP 1: Student Information Form ===== */
 .register-form {
@@ -765,6 +914,100 @@ body {
   position: relative;
   z-index: 1;
 }
+
+/* ── SWEETALERT2 CUSTOM THEME ────────────────────────────────────────────────
+   Matches the dark-green brand palette of the registration modal.
+   All classes use the customClass keys passed in each Swal.fire() call.
+─────────────────────────────────────────────────────────────────────────── */
+
+/* Popup card */
+.swal-popup {
+  border-radius: 12px !important;
+  padding: 32px 28px !important;
+  font-family: 'Montserrat', sans-serif !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25) !important;
+  max-width: 420px !important;
+}
+
+/* Title */
+.swal-title {
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  color: var(--color-primary-dark) !important;
+  margin-bottom: 8px !important;
+}
+
+/* Body text */
+.swal-text {
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 0.92rem !important;
+  color: #555 !important;
+  line-height: 1.55 !important;
+}
+
+/* Primary action button — dark green, used for success / error confirms */
+.swal-btn-primary {
+  background-color: var(--color-primary-dark) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 11px 32px !important;
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+}
+.swal-btn-primary:hover {
+  background-color: #024d2c !important;
+}
+
+/* Confirm button — red, used in the cancel-confirmation warning */
+.swal-btn-confirm {
+  background-color: var(--color-red) !important;
+  color: #fff !important;
+  border: none !important;
+  border-radius: 6px !important;
+  padding: 11px 28px !important;
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px !important;
+  cursor: pointer !important;
+  transition: background 0.2s !important;
+}
+.swal-btn-confirm:hover {
+  background-color: #b30000 !important;
+}
+
+/* Cancel button — outlined green, keeps the user in the form */
+.swal-btn-cancel {
+  background-color: transparent !important;
+  color: var(--color-primary-dark) !important;
+  border: 2px solid var(--color-primary-dark) !important;
+  border-radius: 6px !important;
+  padding: 9px 28px !important;
+  font-family: 'Montserrat', sans-serif !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.4px !important;
+  cursor: pointer !important;
+  transition: background 0.2s, color 0.2s !important;
+  margin-left: 10px !important;
+}
+.swal-btn-cancel:hover {
+  background-color: var(--color-primary-dark) !important;
+  color: #fff !important;
+}
+
+/* SweetAlert2 icon colours — tint the built-in icons to match our palette */
+.swal-popup .swal2-success-ring          { border-color: var(--color-primary) !important; }
+.swal-popup .swal2-success-line-tip,
+.swal-popup .swal2-success-line-long     { background-color: var(--color-primary-dark) !important; }
+.swal-popup .swal2-warning               { border-color: var(--color-accent) !important; color: var(--color-accent) !important; }
+
 
 @media (max-width: 500px) {
   .photo-delete-btn {

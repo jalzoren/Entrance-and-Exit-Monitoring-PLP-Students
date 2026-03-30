@@ -1,3 +1,4 @@
+// routes/registration.js
 const express = require("express");
 const axios = require("axios");
 const db = require("../src/db");
@@ -56,6 +57,50 @@ router.post("/validate-face", async (req, res) => {
       error: "Face validation failed"
     });
 
+  }
+});
+
+/* --------------------------------------------------
+VALIDATE FRAME
+-------------------------------------------------- */
+
+router.post("/validate-frame", async (req, res) => {
+  try {
+    const { image, expected_pose } = req.body;
+
+    if (!image) {
+      return res.status(400).json({ error: "image is required" });
+    }
+
+    // Forward to Python face service
+    const response = await axios.post(
+      "http://127.0.0.1:8000/validate-frame",
+      {
+        image,
+        expected_pose: expected_pose || "center",
+      },
+      {
+        // Tight timeout — this endpoint must be fast.
+        // If Python takes >1.5s something is wrong; don't block the UI.
+        timeout: 1500,
+      }
+    );
+ 
+    // Pass Python's response straight through to the frontend
+    // Shape: { face_detected, glasses_detected, pose_ok, pose_label, message }
+    res.json(response.data);
+ 
+  } catch (error) {
+    // On timeout or Python error, return a safe "not ready" response.
+    // The frontend handles this gracefully — it just keeps the check as failed.
+    console.error("validate-frame error:", error.message);
+    res.json({
+      face_detected:    false,
+      glasses_detected: false,
+      pose_ok:          false,
+      pose_label:       "error",
+      message:          "Validation service unavailable",
+    });
   }
 });
 

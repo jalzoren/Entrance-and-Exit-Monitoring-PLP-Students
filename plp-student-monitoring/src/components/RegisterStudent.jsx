@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+// RegisterStudent.jsx
+import React, { useState, useRef } from 'react';
 import axios from "axios";
+import Swal from 'sweetalert2';
 import '../componentscss/RegisterStudent.css';
 import { 
   MdClose, 
@@ -32,7 +34,37 @@ function RegisterStudent({ onClose }) {
   const [lastName, setLastName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [yearLevel, setYearLevel] = useState("");
+  const [college, setCollege] = useState("");
+  const [extension, setExtension] = useState("");
+  const [status, setStatus] = useState("");
   const maxPhotos = 5;
+
+  const firstNameRef = useRef(null);
+  const lastNameRef = useRef(null);
+  const middleNameRef = useRef(null);
+  const extensionRef = useRef(null);
+  const studentIdRef = useRef(null);
+  const collegeRef = useRef(null);
+  const yearLevelRef = useRef(null);
+  const statusRef = useRef(null);
+
+  const handleEnter = (e, nextRef) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // prevent form submit
+      nextRef.current?.focus();
+    }
+  };
+
+  // Tracks which required fields have failed validation
+  // Each key maps to an error message string, or "" when valid
+  const [formErrors, setFormErrors] = useState({
+    studentId:  "",
+    lastName:   "",
+    firstName:  "",
+    college:    "",
+    yearLevel:  "",
+    status:     "",
+  });
 
   const captureSteps = [
     { text: "Face in Center", instruction: "Look straight at the camera", icon: "center" },
@@ -42,8 +74,51 @@ function RegisterStudent({ onClose }) {
     { text: "Face in Down", instruction: "Tilt your face downward", icon: "down" }
   ];
 
-  const handleNext = () => setCurrentStep(2);
+  // ── Step 1 validation ─────────────────────────────────────────────────────
+  // Checks all required fields and populates formErrors.
+  // Returns true only when every required field has a value.
+  const validateStep1 = () => {
+    const errors = {
+      studentId: !studentId.toString().trim()  ? "Student ID is required"        : "",
+      lastName:  !lastName.trim()              ? "Last Name is required"          : "",
+      firstName: !firstName.trim()             ? "First Name is required"         : "",
+      college:   !college                      ? "College Department is required" : "",
+      yearLevel: !yearLevel.toString().trim()  ? "Year Level is required"         : "",
+      status:    !status                       ? "Status is required"             : "",
+    };
+    setFormErrors(errors);
+    // Valid when no error message exists
+    return Object.values(errors).every(e => e === "");
+  };
+
+  const handleNext = () => {
+    if (validateStep1()) setCurrentStep(2);
+  };
+
   const handlePrevious = () => setCurrentStep(1);
+
+  // ── Cancel / Close with confirmation ──────────────────────────────────────
+  // Prevents accidental dismissal of a partially filled form.
+  const handleClose = () => {
+    Swal.fire({
+      title:              "Cancel Registration?",
+      text:               "All entered information will be lost.",
+      icon:               "warning",
+      showCancelButton:   true,
+      confirmButtonText:  "Yes, cancel",
+      cancelButtonText:   "Keep editing",
+      customClass: {
+        popup:         "swal-popup",
+        title:         "swal-title",
+        htmlContainer: "swal-text",
+        confirmButton: "swal-btn-confirm",
+        cancelButton:  "swal-btn-cancel",
+      },
+      buttonsStyling: false,   // lets our CSS fully control button appearance
+    }).then((result) => {
+      if (result.isConfirmed) onClose();
+    });
+  };
 
   const openCamera = () => {
     setCaptureStep(0);
@@ -156,8 +231,6 @@ function RegisterStudent({ onClose }) {
     }
   };
 
-  const [status, setStatus] = useState("");
-  const [college, setCollege] = useState("");
 
   const handleRegister = async () => {
     try {
@@ -178,20 +251,43 @@ function RegisterStudent({ onClose }) {
         }
       );
   
-      alert("Student registered successfully");
-  
       console.log(response.data);
-  
+
+      // ── Success alert ────────────────────────────────────────────────────
+      await Swal.fire({
+        title:             "Student Registered!",
+        html:              `<p><strong>${firstName} ${lastName}</strong> has been successfully registered in the system.</p>`,
+        icon:              "success",
+        confirmButtonText: "Done",
+        customClass: {
+          popup:         "swal-popup",
+          title:         "swal-title",
+          htmlContainer: "swal-text",
+          confirmButton: "swal-btn-primary",
+        },
+        buttonsStyling: false,
+      });
+
       onClose();
   
     } catch (error) {
   
       console.error(error);
-  
-      alert(
-        error.response?.data?.message ||
-        "Registration failed"
-      );
+
+      // ── Error alert ──────────────────────────────────────────────────────
+      Swal.fire({
+        title:             "Registration Failed",
+        text:              error.response?.data?.message || "Something went wrong. Please try again.",
+        icon:              "error",
+        confirmButtonText: "Try Again",
+        customClass: {
+          popup:         "swal-popup",
+          title:         "swal-title",
+          htmlContainer: "swal-text",
+          confirmButton: "swal-btn-primary",
+        },
+        buttonsStyling: false,
+      });
   
     }
   };
@@ -201,81 +297,110 @@ function RegisterStudent({ onClose }) {
       <div className="register-header">
         <div className="register-text">REGISTER STUDENT</div>
         <div className="register-close">
-          <i className='register-close-btn' onClick={onClose}>
+          <i className='register-close-btn' onClick={handleClose}>
             <MdClose />
           </i>
         </div>
       </div>
 
+      {/* ── TWO-STEP PROGRESS STEPPER ─────────────────────────────────────── */}
+      <div className="register-stepper">
+
+        <div className={`stepper-step ${currentStep === 1 ? 'step-active' : 'step-done'}`}>
+          <div className="step-circle">
+            {currentStep > 1 ? <MdCheckCircle className="step-check-icon" /> : <span>1</span>}
+          </div>
+          <div className="step-label">
+            <span className="step-title">Step 1</span>
+            <span className="step-subtitle">Student Information</span>
+          </div>
+        </div>
+
+        <div className={`stepper-line ${currentStep === 2 ? 'line-filled' : ''}`} />
+
+        <div className={`stepper-step ${currentStep === 2 ? 'step-active' : 'step-pending'}`}>
+          <div className="step-circle"><span>2</span></div>
+          <div className="step-label">
+            <span className="step-title">Step 2</span>
+            <span className="step-subtitle">Face Registration</span>
+          </div>
+        </div>
+
+      </div>
+
       {currentStep === 1 ? (
         <div className="register-form">
+          <div className="form-note">* Required fields</div>
+
           <div className="form-row">
             <div className="input-group">
-              <label>Student ID</label>
+              <label>First Name <span className="required">*</span></label>
+              <input
+                type="text"
+                placeholder="e.g Juan"
+                value={firstName}
+                onChange={(e) => { setFirstName(e.target.value); setFormErrors(p => ({...p, firstName: ""})); }}
+                className={formErrors.firstName ? "input-error" : ""}
+                style={{ textTransform: 'uppercase' }}
+                ref={firstNameRef}
+                onKeyDown={(e) => handleEnter(e, lastNameRef)}
+                required
+              />
+              {formErrors.firstName && <span className="field-error">{formErrors.firstName}</span>}
+            </div>
+            <div className="input-group">
+              <label>Student ID <span className="required">*</span></label>
               <input
                 type="number"
                 placeholder="e.g 2300001"
                 value={studentId}
-                onChange={(e) => setStudentId(e.target.value)}
+                onChange={(e) => { setStudentId(e.target.value); setFormErrors(p => ({...p, studentId: ""})); }}
+                className={formErrors.studentId ? "input-error" : ""}
+                ref={studentIdRef}
+                onKeyDown={(e) => handleEnter(e, collegeRef)}
+                required
               />
+              {formErrors.studentId && <span className="field-error">{formErrors.studentId}</span>}
             </div>
+          </div>
+
+          <div className="form-row">
             <div className="input-group">
-              <label>College Department</label>
-              <select value={college} onChange={(e) => setCollege(e.target.value)}>
+              <label>Last Name <span className="required">*</span></label>
+              <input
+                type="text"
+                placeholder="e.g. Dela Cruz"
+                value={lastName}
+                onChange={(e) => { setLastName(e.target.value); setFormErrors(p => ({...p, lastName: ""})); }}
+                className={formErrors.lastName ? "input-error" : ""}
+                style={{ textTransform: 'uppercase' }}
+                ref={lastNameRef}
+                onKeyDown={(e) => handleEnter(e, middleNameRef)}
+                required
+              />
+              {formErrors.lastName && <span className="field-error">{formErrors.lastName}</span>}
+            </div>
+            
+            <div className="input-group">
+              <label>College Department <span className="required">*</span></label>
+              <select
+                value={college}
+                onChange={(e) => { setCollege(e.target.value); setFormErrors(p => ({...p, college: ""})); }}
+                className={formErrors.college ? "input-error" : ""}
+                ref={collegeRef}
+                onKeyDown={(e) => handleEnter(e, yearLevelRef)}
+                required
+              >
                 <option value="">Select College Department</option>
                 <option value="College of Nursing">College of Nursing</option>
                 <option value="College of Engineering">College of Engineering</option>
                 <option value="College of Education">College of Education</option>
                 <option value="College of Computer Studies">College of Computer Studies</option>
                 <option value="College of Arts and Science">College of Arts and Science</option>
-                <option value="College of Business and Accountancy">
-                  College of Business and Accountancy
-                </option>
-                <option value="College of Hospitality Management">
-                  College of Hospitality Management
-                </option>
+                <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+                <option value="College of Hospitality Management">College of Hospitality Management</option>
               </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="input-group">
-              <label>Last Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Dela Cruz"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-              />
-            </div>
-            <div className="input-group">
-              <label>Year Level</label>
-              <input
-                type="number"
-                placeholder="e.g 3rd"
-                value={yearLevel}
-                onChange={(e) => setYearLevel(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="input-group">
-              <label>First Name</label>
-              <input
-                type="text"
-                placeholder="e.g Juan"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-              />
-            </div>
-            <div className="input-group">
-              <label>Status</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="">Select Status</option>
-                <option value="Regular">Regular</option>
-                <option value="Irregular">Irregular</option>
-              </select>
+              {formErrors.college && <span className="field-error">{formErrors.college}</span>}
             </div>
           </div>
 
@@ -287,13 +412,66 @@ function RegisterStudent({ onClose }) {
                 placeholder="e.g Smith"
                 value={middleName}
                 onChange={(e) => setMiddleName(e.target.value)}
+                style={{ textTransform: 'uppercase' }}
+                ref={middleNameRef}
+                onKeyDown={(e) => handleEnter(e, extensionRef)}
               />
             </div>
-            <div className="input-group" />
+            <div className="input-group">
+              <label>Year Level <span className="required">*</span></label>
+              <input
+                type="number"
+                placeholder="e.g 3"
+                value={yearLevel}
+                onChange={(e) => { setYearLevel(e.target.value); setFormErrors(p => ({...p, yearLevel: ""})); }}
+                className={formErrors.yearLevel ? "input-error" : ""}
+                style={{ textTransform: 'uppercase' }}
+                ref={yearLevelRef}
+                onKeyDown={(e) => handleEnter(e, statusRef)}
+                required
+              />
+              {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="input-group">
+              <label>Extension Name</label>
+              <select value={extension} onChange={(e) => setExtension(e.target.value)} ref={extensionRef} onKeyDown={(e) => handleEnter(e, studentIdRef)}>
+                <option value="">Select Extension Name</option>
+                <option value="Jr.">Jr.</option>
+                <option value="Sr.">Sr.</option>
+                <option value="I">I</option>
+                <option value="II">II</option>
+                <option value="III">III</option>
+                <option value="IV">IV</option>
+              </select>
+            </div>
+            <div className="input-group">
+              <label>Status <span className="required">*</span></label>
+              <select
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); setFormErrors(p => ({...p, status: ""})); }}
+                className={formErrors.status ? "input-error" : ""}
+                ref={statusRef}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleNext();
+                  }
+                }}
+                required
+              >
+                <option value="">Select Status</option>
+                <option value="Regular">Regular</option>
+                <option value="Irregular">Irregular</option>
+              </select>
+              {formErrors.status && <span className="field-error">{formErrors.status}</span>}
+            </div>
           </div>
 
           <div className="form-actions">
-            <button className="btn cancel" onClick={onClose}>Cancel</button>
+            <button className="btn cancel" onClick={handleClose}>Cancel</button>
             <button className="btn next" onClick={handleNext}>Next</button>
           </div>
         </div>
@@ -306,8 +484,6 @@ function RegisterStudent({ onClose }) {
               <span>Registered Image: {uploadedPhotos}/{maxPhotos}</span>
             </div>
           </div>
-
-         
 
           <div className="photo-boxes-container">
             {[...Array(maxPhotos)].map((_, index) => (
@@ -356,7 +532,7 @@ function RegisterStudent({ onClose }) {
             ))}
           </div>
 
-          <div className="progress-container">
+           <div className="progress-container">
             <div className="progress-bar">
               <div 
                 className="progress-fill" 
