@@ -6,25 +6,27 @@ const ROWS_PER_PAGE = 10;
 
 function ArchiveTab() {
   const [search, setSearch] = useState('');
+  const [college, setCollege] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [archivedPrograms, setArchivedPrograms] = useState([
-    { id: 1, programCode: 'BSBS', programName: 'Bachelor of Science in Biosciences', department: 'College of Science', archivedDate: '2023-01-15', reason: 'Discontinued' },
-    { id: 2, programCode: 'BSCRIM', programName: 'Bachelor of Science in Criminology', department: 'College of Criminal Justice', archivedDate: '2023-03-20', reason: 'Low enrollment' },
-    { id: 3, programCode: 'BSARCHITECTURE', programName: 'Bachelor of Science in Architecture', department: 'College of Engineering', archivedDate: '2023-05-10', reason: 'Program restructuring' },
+    
   ]);
   const [selectedProgram, setSelectedProgram] = useState(null);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoreReason, setRestoreReason] = useState('');
+  const [restoreCollege, setRestoreCollege] = useState('');
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setCurrentPage(1);
   };
 
-  const filtered = archivedPrograms.filter((p) =>
-    [p.programCode, p.programName, p.department]
-      .join(' ').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = archivedPrograms.filter((p) => {
+    const matchesSearch = [p.programCode, p.programName, p.department]
+      .join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchesCollege = college === '' || p.department === college;
+    return matchesSearch && matchesCollege;
+  });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -34,6 +36,7 @@ function ArchiveTab() {
     setSelectedProgram(program);
     setShowRestoreModal(true);
     setRestoreReason('');
+    setRestoreCollege('');
   };
 
   const handleRestoreConfirm = () => {
@@ -41,10 +44,22 @@ function ArchiveTab() {
       alert('Please provide a reason for restoration.');
       return;
     }
+    if (!restoreCollege) {
+      alert('Please select a college department.');
+      return;
+    }
     setArchivedPrograms((prev) => prev.filter((p) => p.id !== selectedProgram.id));
     alert(`Program "${selectedProgram.programName}" has been restored successfully!`);
     setShowRestoreModal(false);
     setSelectedProgram(null);
+  };
+
+  const handleDepartmentChange = (progId, newDepartment) => {
+    setArchivedPrograms((prev) =>
+      prev.map((p) =>
+        p.id === progId ? { ...p, department: newDepartment } : p
+      )
+    );
   };
 
   return (
@@ -58,6 +73,16 @@ function ArchiveTab() {
           value={search}
           onChange={handleSearchChange}
         />
+        <select value={college} onChange={(e) => setCollege(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="">Select College Department</option>
+          <option value="College of Nursing">College of Nursing</option>
+          <option value="College of Engineering">College of Engineering</option>
+          <option value="College of Education">College of Education</option>
+          <option value="College of Computer Studies">College of Computer Studies</option>
+          <option value="College of Arts and Science">College of Arts and Science</option>
+          <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+          <option value="College of Hospitality Management">College of Hospitality Management</option>
+        </select>
         <span className="result-count">Total: {filtered.length}</span>
       </div>
 
@@ -82,7 +107,22 @@ function ArchiveTab() {
                   <td>{(safePage - 1) * ROWS_PER_PAGE + idx + 1}</td>
                   <td>{prog.programCode}</td>
                   <td>{prog.programName}</td>
-                  <td>{prog.department}</td>
+                  <td>
+                    <select
+                      value={prog.department}
+                      onChange={(e) => handleDepartmentChange(prog.id, e.target.value)}
+                      style={{ padding: '6px 8px', borderRadius: '4px', border: '1px solid #ccc', fontSize: '14px', width: '100%' }}
+                    >
+                      <option value="">Select College Department</option>
+                      <option value="College of Nursing">College of Nursing</option>
+                      <option value="College of Engineering">College of Engineering</option>
+                      <option value="College of Education">College of Education</option>
+                      <option value="College of Computer Studies">College of Computer Studies</option>
+                      <option value="College of Arts and Science">College of Arts and Science</option>
+                      <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+                      <option value="College of Hospitality Management">College of Hospitality Management</option>
+                    </select>
+                  </td>
                   <td>{prog.archivedDate}</td>
                   <td><span className="reason-badge">{prog.reason}</span></td>
                   <td>
@@ -154,6 +194,25 @@ function ArchiveTab() {
                 }}>
                   {selectedProgram.programCode} - {selectedProgram.programName}
                 </div>
+              </div>
+
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">College Department <span className="required">*</span></label>
+                <select
+                  value={restoreCollege}
+                  onChange={(e) => setRestoreCollege(e.target.value)}
+                  className="modal-input"
+                  style={{ height: 'auto', padding: '10px' }}
+                >
+                  <option value="">Select College Department</option>
+                  <option value="College of Nursing">College of Nursing</option>
+                  <option value="College of Engineering">College of Engineering</option>
+                  <option value="College of Education">College of Education</option>
+                  <option value="College of Computer Studies">College of Computer Studies</option>
+                  <option value="College of Arts and Science">College of Arts and Science</option>
+                  <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+                  <option value="College of Hospitality Management">College of Hospitality Management</option>
+                </select>
               </div>
 
               <div className="modal-field modal-full-width">

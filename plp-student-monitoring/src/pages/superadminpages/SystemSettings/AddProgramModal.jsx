@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import DepartmentSelect from './DepartmentSelect';
 import '../../../css/GlobalModal.css';
 
-function AddProgramModal({ onClose, onAdd, departments, onAddDepartment }) {
+function AddProgramModal({ onClose, onAdd }) {
   const [form, setForm] = useState({
     programCode: '',
     programName: '',
@@ -47,12 +46,16 @@ function AddProgramModal({ onClose, onAdd, departments, onAddDepartment }) {
 
             <div className="modal-field modal-full-width">
               <label className="modal-label">Department <span className="required">*</span></label>
-              <DepartmentSelect
-                value={form.department}
-                onChange={(val) => setForm((prev) => ({ ...prev, department: val }))}
-                departments={departments}
-                onAddDepartment={onAddDepartment}
-              />
+              <select name="department" value={form.department} onChange={handleChange} className="modal-select">
+                <option value="">Select College Department</option>
+                <option value="College of Nursing">College of Nursing</option>
+                <option value="College of Engineering">College of Engineering</option>
+                <option value="College of Education">College of Education</option>
+                <option value="College of Computer Studies">College of Computer Studies</option>
+                <option value="College of Arts and Science">College of Arts and Science</option>
+                <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+                <option value="College of Hospitality Management">College of Hospitality Management</option>
+              </select>
             </div>
 
             <div className="modal-field">

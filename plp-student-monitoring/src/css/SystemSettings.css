@@ -301,7 +301,7 @@ input:checked + .slider:before {
 
 .ep-topbar {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-around;
   align-items: center;
   gap: 14px;
 }

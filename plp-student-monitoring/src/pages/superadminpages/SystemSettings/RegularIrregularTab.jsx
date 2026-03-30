@@ -6,6 +6,7 @@ const ROWS_PER_PAGE = 10;
 
 function RegularIrregularTab() {
   const [search, setSearch] = useState('');
+  const [college, setCollege] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [students, setStudents] = useState([
     { id: 1, studentId: '24-00001', studentName: 'Juan Dela Cruz', college: 'College of Computer Studies', enrollmentStatus: 'Regular', yearLevel: '3rd Year' },
@@ -28,7 +29,8 @@ function RegularIrregularTab() {
     const matchesSearch = [s.studentId, s.studentName, s.college, s.yearLevel]
       .join(' ').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = filterStatus === '' || s.enrollmentStatus === filterStatus;
-    return matchesSearch && matchesStatus;
+    const matchesCollege = college === '' || s.college === college;
+    return matchesSearch && matchesStatus && matchesCollege;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
@@ -97,6 +99,21 @@ function RegularIrregularTab() {
             value={search}
             onChange={handleSearchChange}
           />
+          <select
+            className="filter-select"
+            value={college}
+            onChange={(e) => setCollege(e.target.value)}
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
+          >
+            <option value="">All Colleges</option>
+            <option value="College of Nursing">College of Nursing</option>
+            <option value="College of Engineering">College of Engineering</option>
+            <option value="College of Education">College of Education</option>
+            <option value="College of Computer Studies">College of Computer Studies</option>
+            <option value="College of Arts and Science">College of Arts and Science</option>
+            <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+            <option value="College of Hospitality Management">College of Hospitality Management</option>
+          </select>
           <select
             className="filter-select"
             value={filterStatus}

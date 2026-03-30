@@ -2,28 +2,19 @@ import React, { useState } from 'react';
 import EditProgramModal from './EditProgramModal';
 import AddProgramModal from './AddProgramModal';
 
-const DEFAULT_DEPARTMENTS = [
-  'College of Computer Studies',
-  'College of Engineering',
-  'College of Business',
-  'College of Arts and Sciences',
-  'College of Education',
-  'College of Nursing',
-];
-
 const ROWS_PER_PAGE = 10;
 
 function EditProgramTab() {
   const [search, setSearch] = useState('');
+  const [college, setCollege] = useState('');
+  const [programType, setProgramType] = useState('Undergraduate');
+  const [programStatus, setProgramStatus] = useState('Active');
   const [currentPage, setCurrentPage] = useState(1);
-  const [departments, setDepartments] = useState(DEFAULT_DEPARTMENTS);
   const [programs, setPrograms] = useState([
     { id: 1, programCode: 'BSCS', programName: 'Bachelor of Science in Computer Science', department: 'College of Computer Studies', programType: 'Undergraduate', programStatus: 'Active', dateCreated: '2023-06-01' },
     { id: 2, programCode: 'BSIT', programName: 'Bachelor of Science in Information Technology', department: 'College of Computer Studies', programType: 'Undergraduate', programStatus: 'Active', dateCreated: '2023-06-01' },
     { id: 3, programCode: 'MSCS', programName: 'Master of Science in Computer Science', department: 'College of Computer Studies', programType: 'Graduate', programStatus: 'Inactive', dateCreated: '2023-08-15' },
     { id: 4, programCode: 'BSECE', programName: 'Bachelor of Science in Electronics Engineering', department: 'College of Engineering', programType: 'Undergraduate', programStatus: 'Active', dateCreated: '2023-06-01' },
-    { id: 5, programCode: 'BSME', programName: 'Bachelor of Science in Mechanical Engineering', department: 'College of Engineering', programType: 'Undergraduate', programStatus: 'Active', dateCreated: '2023-06-01' },
-    { id: 6, programCode: 'MBA', programName: 'Master of Business Administration', department: 'College of Business', programType: 'Graduate', programStatus: 'Active', dateCreated: '2023-09-01' },
     { id: 7, programCode: 'BSN', programName: 'Bachelor of Science in Nursing', department: 'College of Nursing', programType: 'Undergraduate', programStatus: 'Active', dateCreated: '2023-06-01' },
   ]);
   const [editingProgram, setEditingProgram] = useState(null);
@@ -34,10 +25,14 @@ function EditProgramTab() {
     setCurrentPage(1);
   };
 
-  const filtered = programs.filter((p) =>
-    [p.programCode, p.programName, p.department, p.programType, p.programStatus]
-      .join(' ').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = programs.filter((p) => {
+    const matchesSearch = [p.programCode, p.programName, p.department]
+      .join(' ').toLowerCase().includes(search.toLowerCase());
+    const matchesCollege = college === '' || p.department === college;
+    const matchesType = p.programType === programType;
+    const matchesStatus = p.programStatus === programStatus;
+    return matchesSearch && matchesCollege && matchesType && matchesStatus;
+  });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -51,14 +46,28 @@ function EditProgramTab() {
     setPrograms((prev) => [...prev, { ...newProg, id: Date.now(), dateCreated: new Date().toISOString().split('T')[0] }]);
   };
 
-  const handleAddDepartment = (name) => {
-    setDepartments((prev) => [...prev, name]);
-  };
-
   return (
     <div className="edit-program-tab">
       <div className="ep-topbar">
         <input type="text" className="ep-search" placeholder="Search" value={search} onChange={handleSearchChange} />
+        <select value={college} onChange={(e) => setCollege(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="">Select College Department</option>
+          <option value="College of Nursing">College of Nursing</option>
+          <option value="College of Engineering">College of Engineering</option>
+          <option value="College of Education">College of Education</option>
+          <option value="College of Computer Studies">College of Computer Studies</option>
+          <option value="College of Arts and Science">College of Arts and Science</option>
+          <option value="College of Business and Accountancy">College of Business and Accountancy</option>
+          <option value="College of Hospitality Management">College of Hospitality Management</option>
+        </select>
+        <select value={programType} onChange={(e) => setProgramType(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="Undergraduate">Undergraduate</option>
+          <option value="Graduate">Graduate</option>
+        </select>
+        <select value={programStatus} onChange={(e) => setProgramStatus(e.target.value)} style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
         <button className="ep-add-btn" onClick={() => setShowAddModal(true)}>+ Add New Program</button>
       </div>
 
@@ -116,8 +125,6 @@ function EditProgramTab() {
           program={editingProgram}
           onClose={() => setEditingProgram(null)}
           onSave={handleSaveEdit}
-          departments={departments}
-          onAddDepartment={handleAddDepartment}
         />
       )}
 
@@ -125,8 +132,6 @@ function EditProgramTab() {
         <AddProgramModal
           onClose={() => setShowAddModal(false)}
           onAdd={handleAddProgram}
-          departments={departments}
-          onAddDepartment={handleAddDepartment}
         />
       )}
     </div>
