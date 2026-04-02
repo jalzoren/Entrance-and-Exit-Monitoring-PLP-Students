@@ -55,7 +55,7 @@ const INITIAL_RAW = {
   faceDetected: { passed: false, message: "Move closer — no face found"         },
   brightness:   { passed: false, message: "Ensure good lighting on your face"   },
   noMask:       { passed: false, message: "Remove any face covering or mask"    },
-  faceSharp:    { passed: false, message: "Hold still — image is too blurry"    }, // NEW
+  faceSharp:    { passed: false, message: "Hold still — image is too blurry"    }, 
   correctPose:  { passed: false, message: "Follow the direction shown"          },
   notMoving:    { passed: false, message: "Hold still…"                         },
 };
@@ -68,7 +68,7 @@ const PRIORITY_ORDER = [
   'faceDetected',
   'brightness',
   'noMask',
-  'faceSharp',    // NEW
+  'faceSharp',  
   'correctPose',
   'notMoving',
 ];
@@ -175,7 +175,7 @@ function RegisterStudentCam({
       faceDetected: { passed: false, message: "Move closer — no face found"       },
       brightness:   { passed: false, message: "Ensure good lighting on your face" },
       noMask:       { passed: false, message: "Remove any face covering or mask"  },
-      faceSharp:    { passed: false, message: "Hold still — image is too blurry"  }, // NEW
+      faceSharp:    { passed: false, message: "Hold still — image is too blurry"  },
       correctPose:  { passed: false, message: "Follow the direction shown"        },
       notMoving:    { passed: false, message: "Hold still…"                       },
     }));

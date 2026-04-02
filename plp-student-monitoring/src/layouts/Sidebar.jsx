@@ -48,7 +48,7 @@ export default function Sidebar() {
       return [
         { icon: <FiHome />, label: "Super Dashboard", path: "/superdashboard" },
         { icon: <FiUsers />, label: "User Management", path: "/users" },
-        { icon: <FiUsers />, label: "Student Management", path: "/superstudents" },
+        { icon: <FiUsers />, label: "Student Management", path: "/students" },
         { icon: <FiSettings />, label: "System Settings", path: "/systemsettings" },
         { type: 'separator', label: 'Entrance and Exit Monitoring' },
         { icon: <FiMonitor />, label: "Real-Time Monitor", path: "/monitor" },

@@ -12,6 +12,8 @@ import Login from "./pages/Login";
 import ForgotPass from "./pages/ForgotPass";
 import ForgotPass2 from "./pages/ForgotPass2";
 import FaceRecognition from "./pages/FaceRecognition";
+import MethodSelection from "./pages/MethodSelection";
+import AdminSelection from "./pages/AdminSelection";
 
 // Admin Pages
 import Dashboard from "./pages/adminpages/Dashboard";
@@ -71,6 +73,9 @@ function AppRoutes() {
       <Route path="/forgotpass" element={<ForgotPass />} />
       <Route path="/forgotpass2" element={<ForgotPass2 />} />
       <Route path="/facerecog" element={<FaceRecognition />} />
+      <Route path="/methodselection" element={<MethodSelection />} />
+      <Route path="/adminselection" element={<AdminSelection />} />
+
 
       {/* Root path - redirect based on role */}
       <Route path="/" element={<RoleBasedRedirect />} />

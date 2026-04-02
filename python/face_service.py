@@ -391,7 +391,7 @@ FOREHEAD_ID  = 10
 
 # ── Thresholds ────────────────────────────────────────────────────────────────
 
-BRIGHTNESS_MIN      = 60
+BRIGHTNESS_MIN      = 50
 BRIGHTNESS_MAX      = 210
 GLASSES_GLARE_RATIO = 0.06
 
@@ -400,7 +400,7 @@ GLASSES_GLARE_RATIO = 0.06
 # 80 is a good starting point for 480p webcams under normal indoor lighting.
 # Lower to 60 if older cameras are being falsely blocked.
 # Raise to 100 if embeddings still come back soft despite passing this gate.
-BLUR_THRESHOLD = 80.0
+BLUR_THRESHOLD = 70.0
 
 POSE_YAW_CENTER   = 25
 POSE_PITCH_CENTER = 25
