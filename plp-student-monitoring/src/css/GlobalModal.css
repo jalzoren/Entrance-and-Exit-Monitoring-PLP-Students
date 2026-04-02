@@ -361,11 +361,3 @@
   }
 }
 
-input[type="email"],
-input[type="password"] {
-  text-transform: none;
-}
-
-::placeholder {
-  text-transform: none;
-}
