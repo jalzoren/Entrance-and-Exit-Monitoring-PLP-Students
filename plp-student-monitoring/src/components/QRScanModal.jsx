@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import jsQR from "jsqr";
 import '../componentscss/QRScanModal.css';
+import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 
-function QRScanModal({ onClose }) {
+function QRScanModal({ onClose, mode = 'ENTRY' }) {
   const videoRef    = useRef(null);
   const canvasRef   = useRef(null);
   const streamRef   = useRef(null);
@@ -71,16 +72,25 @@ function QRScanModal({ onClose }) {
       const res = await fetch('http://localhost:5000/api/qrscan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ qr_data: qrData }),
+        body: JSON.stringify({
+          qr_data: qrData,
+          mode,        
+        }),
       });
-
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'QR scan failed.');
 
-      setStatus({ type: 'success', message: data.message || 'Entry recorded successfully.' });
+      setStatus({ type: 'success', message: data.message });
+      onClose();
+            showEntryExitAlert({
+              action:     data.action,
+              student:    data.student,
+              department: data.department,
+      });
+
     } catch (err) {
       setStatus({ type: 'error', message: err.message });
-      setScanned(false); // allow retry on error
+      setScanned(false);
     } finally {
       setLoading(false);
     }

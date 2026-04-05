@@ -1,10 +1,11 @@
 // ManualInputModal.jsx
 import { useState } from "react";
 import '../componentscss/ManualInputModal.css';
+import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 
-function ManualInputModal({ onClose }) {
+function ManualInputModal({ onClose, mode = 'ENTRY' }) {
   const [studentId, setStudentId] = useState('');
-  const [status, setStatus]       = useState(null); // { type: 'success'|'error', message }
+  const [status, setStatus]       = useState(null);
   const [loading, setLoading]     = useState(false);
 
   const handleSubmit = async () => {
@@ -12,23 +13,29 @@ function ManualInputModal({ onClose }) {
       setStatus({ type: 'error', message: 'Please enter your Student ID number.' });
       return;
     }
-
     setLoading(true);
     setStatus(null);
-
     try {
       const res = await fetch('http://localhost:5000/api/manualentry', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ student_id: studentId.trim() }),
+        body: JSON.stringify({
+          student_id: studentId.trim(),
+          mode,       
+        }),
       });
-
       const data = await res.json();
-
       if (!res.ok) throw new Error(data.message || 'Entry failed.');
 
-      setStatus({ type: 'success', message: data.message || 'Entry recorded successfully.' });
+      setStatus({ type: 'success', message: data.message });
       setStudentId('');
+      onClose();
+      showEntryExitAlert({
+        action:     data.action,
+        student:    data.student,
+        department: data.department,
+      });
+
     } catch (err) {
       setStatus({ type: 'error', message: err.message });
     } finally {

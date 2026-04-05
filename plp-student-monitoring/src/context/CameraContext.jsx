@@ -11,25 +11,21 @@ export const useCameraContext = () => {
 };
 
 export const CameraProvider = ({ children }) => {
-  const [cameraFrame, setCameraFrame] = useState(null);
-  const [cameraStatus, setCameraStatus] = useState('neutral');
-  const [detectedFace, setDetectedFace] = useState(null);
+  const [cameraFrame, setCameraFrame]     = useState(null);
+  const [cameraStatus, setCameraStatus]   = useState('neutral');
+  const [detectedFace, setDetectedFace]   = useState(null);
   const [isCameraActive, setIsCameraActive] = useState(false);
-  const [videoStream, setVideoStreamState] = useState(null);
-  
-  const videoRef = useRef(null);
-  const canvasRef = useRef(null);
-  const streamRef = useRef(null);
-  const frameIntervalRef = useRef(null);
-  const initAttemptedRef = useRef(false);
+  const [videoStream, setVideoStreamState]  = useState(null);
 
-  // Auto-initialize camera when context mounts
+  const videoRef         = useRef(null);
+  const canvasRef        = useRef(null);
+  const streamRef        = useRef(null);
+  const frameIntervalRef = useRef(null);
+
+  // ── Cleanup only on unmount ───────────────────────
+  // No auto-init here — camera is started explicitly
+  // by whichever component actually needs it.
   useEffect(() => {
-    if (!initAttemptedRef.current) {
-      initAttemptedRef.current = true;
-      initializeCamera();
-    }
-    
     return () => {
       if (streamRef.current) {
         console.log("🔴 Cleaning up camera stream");
@@ -41,25 +37,44 @@ export const CameraProvider = ({ children }) => {
     };
   }, []);
 
+  // ── Called explicitly by FaceRecognition component ─
   const initializeCamera = async () => {
+    // Guard: don't open a second stream if one already exists
+    if (streamRef.current) {
+      console.log("📷 Camera already initialized, skipping.");
+      return;
+    }
+
     try {
-      console.log("📷 Initializing camera from CameraContext...");
+      console.log("📷 Initializing camera...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } }
       });
-      
+
       streamRef.current = stream;
       setVideoStreamState(stream);
       setIsCameraActive(true);
       console.log("✅ Camera initialized successfully");
-      
-      // Start capturing frames
+
       startFrameCapture();
     } catch (err) {
       console.error("❌ Error initializing camera:", err);
       setIsCameraActive(false);
     }
   };
+
+  // ── Called explicitly to release the camera ───────
+  const releaseCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+      console.log("🔴 Camera released.");
+    }
+    stopFrameCapture();
+    setVideoStreamState(null);
+    setIsCameraActive(false);
+    setCameraFrame(null);
+  }, []);
 
   const updateCameraFrame = useCallback((imageData) => {
     if (!imageData) return;
@@ -88,23 +103,20 @@ export const CameraProvider = ({ children }) => {
       clearInterval(frameIntervalRef.current);
     }
 
-    console.log('▶️ CameraContext: Starting persistent frame capture');
+    console.log('▶️ CameraContext: Starting frame capture');
     frameIntervalRef.current = setInterval(() => {
       if (streamRef.current && videoRef.current) {
         try {
-          // Create a temporary video element if needed
           if (!videoRef.current.srcObject && streamRef.current) {
             videoRef.current.srcObject = streamRef.current;
           }
-          
+
           if (videoRef.current.videoWidth > 0 && videoRef.current.videoHeight > 0) {
-            // Create canvas for frame capture
             if (!canvasRef.current) {
               canvasRef.current = document.createElement('canvas');
             }
-            
             const ctx = canvasRef.current.getContext('2d');
-            canvasRef.current.width = videoRef.current.videoWidth;
+            canvasRef.current.width  = videoRef.current.videoWidth;
             canvasRef.current.height = videoRef.current.videoHeight;
             ctx.drawImage(videoRef.current, 0, 0);
             const frameData = canvasRef.current.toDataURL('image/jpeg', 0.7);
@@ -131,7 +143,6 @@ export const CameraProvider = ({ children }) => {
       streamRef.current = stream;
       setVideoStreamState(stream);
       setIsCameraActive(true);
-      
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -154,6 +165,8 @@ export const CameraProvider = ({ children }) => {
     isCameraActive,
     videoStream,
     videoRef,
+    initializeCamera,   // ← now exposed so components call it explicitly
+    releaseCamera,      // ← exposed so FaceRecognition can clean up on unmount
     updateCameraFrame,
     updateCameraStatus,
     resetCameraState,
@@ -164,7 +177,6 @@ export const CameraProvider = ({ children }) => {
 
   return (
     <CameraContext.Provider value={value}>
-      {/* Hidden video element for camera capture */}
       <video
         ref={videoRef}
         autoPlay

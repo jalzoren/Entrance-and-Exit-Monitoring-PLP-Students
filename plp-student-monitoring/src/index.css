@@ -30,3 +30,13 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* ── SweetAlert2 Entry/Exit Alert Overrides ──────── */
+.entry-alert-popup {
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5) !important;
+}
+
+.entry-alert-progress {
+  border-radius: 999px !important;
+  height: 3px !important;
+}

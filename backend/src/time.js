@@ -1,3 +1,4 @@
+// Route: GET /api/time.js
 const express = require("express");
 const router = express.Router();
 const db = require("./db");
@@ -21,4 +22,9 @@ router.get("/", async (req, res) => {
   }
 });
 
-module.exports = router;
+function getPhTime() {
+
+  return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+}
+
+module.exports =  { getPhTime, router} ;

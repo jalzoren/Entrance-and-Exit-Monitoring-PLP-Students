@@ -2,7 +2,7 @@ const express = require("express");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const timeRoute = require("./time");
+const { router: timeRoute } = require("./time");
 
 const app = express();
 

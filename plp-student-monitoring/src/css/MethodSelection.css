@@ -57,7 +57,7 @@
 
 .selection-title {
   font-family: 'Cinzel', serif;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  font-size: 40px;
   font-weight: 700;
   color: var(--color-text-light);
   margin: 0;
@@ -100,6 +100,49 @@
   color: var(--color-text-muted);
 }
 
+/* ── Mode Badge ───────────────────────────────────── */
+.mode-badge {
+  display: inline-block;
+  padding: 0.3rem 1.4rem;
+  border-radius: 999px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.entry-badge {
+  background: rgba(34, 197, 94, 0.18);
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  color: #ffffff;
+}
+
+.exit-badge {
+  background: rgba(239, 68, 68, 0.18);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #ffffff;
+}
+
+.emphasize-entry, .emphasize-keys, .emphasize-exit {
+  font-weight: 900;
+  color: var(--color-accent);
+  text-transform: uppercase;
+  background: rgba(217, 146, 1, 0.15);
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid rgba(217, 146, 1, 0.3);
+  font-size: 1.1rem;
+  line-height: 2rem;
+}
+
+
+.emphasize-keys {
+  text-transform: none !important;
+  font-weight: 600;
+  color: rgb(255, 207, 110);
+}
+
 /* ── Selection Cards ──────────────────────────────── */
 
 .selections {
@@ -113,15 +156,15 @@
   font-size: 1rem;
   font-family: 'Montserrat', sans-serif;
   color: var(--color-text-muted);
-  margin: 0;
+  margin: 5px;
+  padding: 5px;
   text-align: center;
-
 }
 
 .selection-options {
   display: grid;
   grid-template-columns: repeat(4, minmax(180px, 220px));
-  gap: 1.2rem;
+  gap: 1.3rem;
   justify-content: center;
   padding: 1rem;
 }
@@ -154,7 +197,7 @@
     1px 1px 3px rgba(0, 0, 0, 0.3),
     -1px -1px 2px rgba(255, 255, 255, 0.03),
     inset 3px 3px 8px rgba(0, 0, 0, 0.55),
-    inset -2px -2px 5px rgba(255, 255, 255, 0.5);
+    inset -2px -2px 5px rgba(255, 255, 255, 0.1);
 }
 
 .selection-card:active {

@@ -3,19 +3,21 @@ import { useState } from "react";
 import '../componentscss/VisitorModal.css';
 import '../css/GlobalModal.css';
 
-const REASONS = [
-  'Meeting with Faculty',
-  'Enrollment / Registration',
-  'Library Access',
-  'Event / Activity',
-  'Delivery / Pickup',
-  'Other',
-];
 
 function VisitorModal({ onClose }) {
   const [form, setForm]       = useState({ fullName: '', reason: '', otherReason: '' });
   const [status, setStatus]   = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const REASONS = [
+    'Meeting with Faculty',
+    'Enrollment / Registration',
+    'Library Access',
+    'Event / Activity',
+    'Delivery / Pickup',
+    'Other',
+  ];
+
 
   const update = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
