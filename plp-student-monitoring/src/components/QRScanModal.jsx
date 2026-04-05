@@ -16,27 +16,43 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
 
   // ── Start camera ──────────────────────────────────
   useEffect(() => {
+    let isMounted = true; // track component mounted state
+  
     const startCamera = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: 'environment' }
         });
+  
+        if (!isMounted) {
+          // Component unmounted before stream ready
+          stream.getTracks().forEach(track => track.stop());
+          return;
+        }
+  
         streamRef.current = stream;
+  
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play();
+          try {
+            await videoRef.current.play();
+          } catch (err) {
+            console.warn('Video play interrupted:', err.message);
+          }
           rafRef.current = requestAnimationFrame(scanFrame);
         }
-      } catch {
+      } catch (err) {
+        console.error('Camera error:', err);
         setStatus({ type: 'error', message: 'Camera access denied or unavailable.' });
       }
     };
-
+  
     startCamera();
-
+  
     return () => {
+      isMounted = false;
       cancelAnimationFrame(rafRef.current);
-      streamRef.current?.getTracks().forEach(t => t.stop());
+      streamRef.current?.getTracks().forEach(track => track.stop());
     };
   }, []);
 

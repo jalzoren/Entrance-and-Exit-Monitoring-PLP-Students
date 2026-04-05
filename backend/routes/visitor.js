@@ -17,7 +17,6 @@ router.post('/', async (req, res) => {
   if (!email?.trim())
     return res.status(400).json({ message: 'Email is required.' });
 
-  // basic email format check
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email))
     return res.status(400).json({ message: 'Invalid email format.' });
@@ -28,41 +27,64 @@ router.post('/', async (req, res) => {
   try {
     const now = getPhTime();
 
+    const today = now.getFullYear() + '-' +
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(now.getDate()).padStart(2, '0');
+
+    const [existingLogs] = await db.query(
+      `SELECT * FROM visitor_logs
+       WHERE email = ? AND DATE(log_time) = ? AND action = 'ENTRY'`,
+      [email.trim(), today]
+    );
+
+    if (existingLogs.length > 0) {
+      return res.status(409).json({
+        message: `Visitor ${full_name.trim()} has already entered today.`,
+        action: 'ALREADY_ENTERED',
+      });
+    }
+  
     const qrToken = uuidv4();
     const qrData = `VISITOR_EXIT:${qrToken}`;
-    const qrImage = await QRCode.toDataURL(qrData);
+    const qrImage = await QRCode.toDataURL(qrData); 
 
     await db.query(
-      `INSERT INTO visitor_logs (full_name, email, reason, other_reason, action, log_time)
-       VALUES (?, ?, ?, ?, 'ENTRY', ?)`,
+      `INSERT INTO visitor_logs (full_name, email, reason, other_reason, action, log_time, qr_token)
+       VALUES (?, ?, ?, ?, 'ENTRY', ?, ?)`,
       [
         full_name.trim(),
         email.trim(),
         reason.trim(),
         other_reason?.trim() || null,
         now,
+        qrToken,
       ]
     );
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: 'your_email@gmail.com',       // 🔴 CHANGE THIS
-        pass: 'your_app_password_here',     // 🔴 Gmail App Password
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
       },
     });
 
     await transporter.sendMail({
-      from: '"Visitor System" <your_email@gmail.com>',
+      from: `"Visitor System" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Your Visitor QR Code (EXIT PASS)',
       html: `
         <h3>Hello ${full_name},</h3>
-        <p>Here is your QR code for EXIT.</p>
+        <p>Here is your QR code for EXIT:</p>
         <p>Please present this when leaving the premises.</p>
-        <img src="${qrImage}" />
+        <img src="cid:visitorqr" style="max-width:100%;height:auto;" />
         <p><b>Do not share this QR code.</b></p>
       `,
+      attachments: [{
+        filename: 'visitor_qr.png',
+        content: Buffer.from(qrImage.split(',')[1], 'base64'),
+        cid: 'visitorqr'
+      }]
     });
 
     return res.json({
