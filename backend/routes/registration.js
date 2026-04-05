@@ -125,6 +125,7 @@ router.post("/register", async (req, res) => {
       middle_name,
       extension_name,   
       college_department,
+      program,
       year_level,
       status,
       email,       
@@ -144,8 +145,8 @@ router.post("/register", async (req, res) => {
     await connection.query(
       `INSERT INTO students
       (student_id, email, first_name, last_name, middle_name, extension_name,
-        college_department, year_level, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        college_department, program_name, year_level, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         student_id,
         email?.trim().toLowerCase() ?? null,   // emails are lowercase by convention
@@ -154,6 +155,7 @@ router.post("/register", async (req, res) => {
         middle_name?.trim().toUpperCase() || null,
         extension_name?.trim() || null,
         college_department,
+        program || null,
         year_level,
         status
       ]
@@ -273,6 +275,7 @@ router.get("/students", async (req, res) => {
         last_name,
         middle_name,
         college_department,
+        program_name,
         year_level,
         status,
         created_at,
@@ -308,6 +311,7 @@ router.put("/students/:student_id", async (req, res) => {
       middle_name,
       extension_name,
       college_department,
+      program_name,
       year_level,
       status
     } = req.body;
@@ -322,7 +326,7 @@ router.put("/students/:student_id", async (req, res) => {
     const [result] = await db.query(
       `UPDATE students 
       SET first_name = ?, last_name = ?, middle_name = ?,
-          extension_name = ?, college_department = ?,
+          extension_name = ?, college_department = ?, program_name = ?,
           year_level = ?, status = ?,
           updated_at = CURRENT_TIMESTAMP 
       WHERE student_id = ?`,
@@ -332,6 +336,7 @@ router.put("/students/:student_id", async (req, res) => {
         middle_name?.trim().toUpperCase() || null,
         extension_name?.trim() || null,
         college_department,
+        program_name || null,
         year_level,
         status,
         student_id
@@ -373,6 +378,7 @@ router.get("/archived-students", async (req, res) => {
         middle_name,
         extension_name,
         college_department,
+        program_name,
         year_level,
         status,
         created_at,

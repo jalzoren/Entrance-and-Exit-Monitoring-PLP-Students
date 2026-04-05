@@ -19,6 +19,7 @@ function Archive() {
   const [showRestoreModal, setShowRestoreModal] = useState(false);
   const [restoreReason, setRestoreReason] = useState('');
   const [restoreCollege, setRestoreCollege] = useState('');
+  const [restoreProgram, setRestoreProgram] = useState('');
   const [restoreYearLevel, setRestoreYearLevel] = useState('');
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
@@ -66,6 +67,7 @@ function Archive() {
     setShowRestoreModal(true);
     setRestoreReason('');
     setRestoreCollege(student.college_department);
+    setRestoreProgram(student.program_name || '');
     setRestoreYearLevel(student.year_level);
     setRestoreStatus(student.status === 'Inactive' ? 'Regular' : student.status);
   };
@@ -109,6 +111,7 @@ function Archive() {
         middle_name: selectedStudent.middle_name || '',
         extension_name: selectedStudent.extension_name || '',
         college_department: restoreCollege,
+        program_name: restoreProgram,
         year_level: restoreYearLevel,
         status: restoreStatus
       });
@@ -196,6 +199,7 @@ function Archive() {
               <th>Student ID</th>
               <th>Full Name</th>
               <th>College/Department</th>
+              <th>Program</th>
               <th>Year Level</th>
               <th>Status</th>
               <th>Archived Date</th>
@@ -205,11 +209,11 @@ function Archive() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="tab-empty">Loading archived students...</td>
+                <td colSpan={9} className="tab-empty">Loading archived students...</td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={8} className="tab-empty" style={{ color: 'red' }}>Error: {error}</td>
+                <td colSpan={9} className="tab-empty" style={{ color: 'red' }}>Error: {error}</td>
               </tr>
             ) : paginated.length > 0 ? (
               paginated.map((student, idx) => {
@@ -220,6 +224,11 @@ function Archive() {
                     <td>{student.student_id}</td>
                     <td>{fullName}</td>
                     <td>{student.college_department}</td>
+                    <td>
+                      <span title={student.program_name || 'No program'} style={{ cursor: 'pointer' }}>
+                        {student.program_name ? (student.program_name.length > 25 ? `${student.program_name.substring(0, 25)}...` : student.program_name) : 'N/A'}
+                      </span>
+                    </td>
                     <td>{student.year_level}</td>
                     <td>
                       <span className={`status-badge ${getStatusBadgeClass(student.status)}`}>
@@ -242,7 +251,7 @@ function Archive() {
               })
             ) : (
               <tr>
-                <td colSpan={8} className="tab-empty">No archived students found.</td>
+                <td colSpan={9} className="tab-empty">No archived students found.</td>
               </tr>
             )}
           </tbody>
@@ -317,8 +326,18 @@ function Archive() {
                   <option value="College of Arts and Science">College of Arts and Science</option>
                   <option value="College of Business and Accountancy">College of Business and Accountancy</option>
                   <option value="College of Hospitality Management">College of Hospitality Management</option>
-                  <option value="College of ITGIRLS">College of ITGIRLS</option>
                 </select>
+              </div>
+
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">Program</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  placeholder="e.g., Bachelor of Science in Information Technology"
+                  value={restoreProgram}
+                  onChange={(e) => setRestoreProgram(e.target.value)}
+                />
               </div>
 
               <div style={{ display: 'flex', gap: '15px', marginBottom: '15px' }}>
