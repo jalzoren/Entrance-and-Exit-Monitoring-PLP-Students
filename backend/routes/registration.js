@@ -312,9 +312,9 @@ router.put("/students/:student_id", async (req, res) => {
       status
     } = req.body;
 
-    if (!status || (status !== 'Regular' && status !== 'Irregular')) {
+    if (!status || (status !== 'Regular' && status !== 'Irregular' && status !== 'Inactive')) {
       return res.status(400).json({
-        message: "Invalid status. Must be 'Regular' or 'Irregular'"
+        message: "Invalid status. Must be 'Regular', 'Irregular', or 'Inactive'"
       });
     }
 
@@ -354,6 +354,40 @@ router.put("/students/:student_id", async (req, res) => {
     console.error("UPDATE ERROR:", error);
     res.status(500).json({
       message: "Failed to update student status"
+    });
+  }
+});
+
+/* --------------------------------------------------
+GET ARCHIVED STUDENTS
+-------------------------------------------------- */
+
+router.get("/archived-students", async (req, res) => {
+  try {
+    const [rows] = await db.query(`
+      SELECT
+        student_id,
+        email,
+        first_name,
+        last_name,
+        middle_name,
+        extension_name,
+        college_department,
+        year_level,
+        status,
+        created_at,
+        updated_at
+      FROM students
+      WHERE status = 'Inactive'
+      ORDER BY updated_at DESC
+    `);
+
+    res.json(rows);
+
+  } catch (error) {
+    console.error("FETCH ARCHIVED ERROR:", error);
+    res.status(500).json({
+      message: "Failed to fetch archived students"
     });
   }
 });
