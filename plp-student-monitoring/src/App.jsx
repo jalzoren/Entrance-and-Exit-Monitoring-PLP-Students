@@ -11,9 +11,8 @@ import DashboardLayout from "./layouts/DashboardLayout";
 import Login from "./pages/Login";
 import ForgotPass from "./pages/ForgotPass";
 import ForgotPass2 from "./pages/ForgotPass2";
-import FaceRecognition from "./pages/FaceRecognition";
-import EntranceMethodSelection from './pages/EntranceMethodSelection';
-import ExitMethodSelection     from './pages/ExitMethodSelection';
+import EntranceFaceRecognition from "./pages/EntranceFaceRecognition";
+import ExitFaceRecognition from "./pages/ExitFaceRecognition";
 
 // Admin Pages
 import Dashboard from "./pages/adminpages/Dashboard";
@@ -72,9 +71,8 @@ function AppRoutes() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgotpass" element={<ForgotPass />} />
       <Route path="/forgotpass2" element={<ForgotPass2 />} />
-      <Route path="/facerecog" element={<FaceRecognition />} />
-      <Route path="/entrance" element={<EntranceMethodSelection />} />
-      <Route path="/exit" element={<ExitMethodSelection />} />
+      <Route path="/entrance" element={<EntranceFaceRecognition mode="ENTRY"/>} />
+      <Route path="/exit"     element={<ExitFaceRecognition mode="EXIT"/>} />
 
 
       {/* Root path - redirect based on role */}
