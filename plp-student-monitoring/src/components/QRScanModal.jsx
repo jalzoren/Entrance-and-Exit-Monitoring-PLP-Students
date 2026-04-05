@@ -93,17 +93,22 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
           mode,        
         }),
       });
+  
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'QR scan failed.');
-
+  
       setStatus({ type: 'success', message: data.message });
+      
+      // Determine the name: student or visitor
+      const name = data.student || data.visitor || "Unknown";
+  
       onClose();
-            showEntryExitAlert({
-              action:     data.action,
-              student:    data.student,
-              department: data.department,
+      showEntryExitAlert({
+        action:     data.action,
+        student:    name,
+        department: data.department, // undefined for visitor, safe to leave
       });
-
+  
     } catch (err) {
       setStatus({ type: 'error', message: err.message });
       setScanned(false);
