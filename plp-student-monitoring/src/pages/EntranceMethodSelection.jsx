@@ -38,9 +38,11 @@ function EntranceMethodSelection() {
   useEffect(() => {
     const handleKeyDown = (e) => {
       const key = e.key.toLowerCase();
+
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       const selected = methods.find(m => m.key === key);
       if (selected) {
+        e.preventDefault();
         setActiveKey(key);
         selected.action();
         setTimeout(() => setActiveKey(null), 150);

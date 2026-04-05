@@ -62,6 +62,7 @@ function ManualInputModal({ onClose, mode = 'ENTRY' }) {
             onChange={e => setStudentId(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSubmit()}
             disabled={loading}
+            autoFocus
             required
           />
           <p className="modal-hint">Enter your PLP student ID number as it appears on your school ID.</p>

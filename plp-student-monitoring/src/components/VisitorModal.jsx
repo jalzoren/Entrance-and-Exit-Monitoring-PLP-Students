@@ -81,6 +81,8 @@ function VisitorModal({ onClose }) {
             value={form.fullName}
             onChange={e => update('fullName', e.target.value)}
             disabled={loading}
+            autoFocus
+            required
           />
 
           <label className="modal-label">Reason for Visit</label>
