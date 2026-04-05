@@ -1,5 +1,6 @@
-:root {
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Oswald:wght@200..700&display=swap');
+
+:root {
   --color-bg-main: #fcfbf4;
   --color-primary: #548772;
   --color-primary-dark: #01311d;
