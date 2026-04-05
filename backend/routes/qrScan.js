@@ -1,4 +1,3 @@
-// qrScan.js
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
@@ -13,37 +12,66 @@ router.post('/', async (req, res) => {
   if (!mode || !['ENTRY', 'EXIT'].includes(mode))
     return res.status(400).json({ message: 'Invalid mode. Must be ENTRY or EXIT.' });
 
-
-  const match = qr_data.match(/\[([^\]]+)\]/);
-
-  console.log('[QR Raw Data]:', JSON.stringify(qr_data));
-  console.log('[QR Extracted ID]:', match ? match[1].trim() : 'NO MATCH FOUND');
-
-  if (!match)
-    return res.status(400).json({
-      message: 'Invalid QR code format. Could not read student ID.',
-    });
-
-  const student_id = match[1].trim(); 
-
-  console.log('[DB Query student_id]:', student_id);
+  const now = getPhTime();
 
   try {
-    const [rows] = await db.query(
+    // ── VISITOR EXIT ───────────────────────────────
+    if (qr_data.startsWith('VISITOR_EXIT:')) {
+      if (mode !== 'EXIT') {
+        return res.status(400).json({ message: 'Visitor QR can only be used for EXIT.' });
+      }
+
+      const qrToken = qr_data.split(':')[1];
+
+      // Check if visitor exists and has not exited yet
+      const [rows] = await db.query(
+        'SELECT * FROM visitor_logs WHERE qr_token = ? AND action = "ENTRY"',
+        [qrToken]
+      );
+
+      if (!rows.length) {
+        return res.status(409).json({ message: 'Visitor already exited or QR invalid.' });
+      }
+
+      const visitor = rows[0];
+
+      // Update visitor log to EXIT
+      await db.query(
+        'UPDATE visitor_logs SET action = "EXIT", log_time = ? WHERE visitor_id = ?',
+        [now, visitor.visitor_id]
+      );
+
+      return res.json({
+        message: `EXIT recorded for visitor ${visitor.full_name}.`,
+        action: 'EXIT',
+        student: visitor.full_name,   // unify key with student for frontend
+      });
+    }
+
+    // ── STUDENT ENTRY/EXIT ─────────────────────────
+    const match = qr_data.match(/\[([^\]]+)\]/);
+    if (!match) {
+      return res.status(400).json({
+        message: 'Invalid QR code format. Could not read student ID.',
+      });
+    }
+
+    const student_id = match[1].trim();
+
+    const [studentRows] = await db.query(
       'SELECT * FROM students WHERE student_id = ?',
       [student_id]
     );
 
-    if (!rows.length)
+    if (!studentRows.length)
       return res.status(404).json({ message: 'Student not found. Invalid QR code.' });
 
-    const student  = rows[0];
+    const student  = studentRows[0];
     const fullName = `${student.last_name}, ${student.first_name}`;
-    const now = getPhTime();
 
     const today = now.getFullYear() + '-' +
-      String(now.getMonth() + 1).padStart(2, '0') + '-' +
-      String(now.getDate()).padStart(2, '0');
+                  String(now.getMonth() + 1).padStart(2, '0') + '-' +
+                  String(now.getDate()).padStart(2, '0');
 
     const [lastLogs] = await db.query(
       `SELECT action FROM entry_exit_logs
@@ -75,12 +103,14 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // Record authentication
     const [authResult] = await db.query(
       `INSERT INTO authentication (student_id, method, auth_status, timestamp)
        VALUES (?, 'QR Code', 'SUCCESS', ?)`,
       [student_id, now]
     );
 
+    // Insert entry/exit log
     await db.query(
       `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time)
        VALUES (?, ?, ?, ?)`,
@@ -91,7 +121,7 @@ router.post('/', async (req, res) => {
       message: `${mode} recorded for ${fullName}.`,
       action: mode,
       student: fullName,
-      department: student.college_department, 
+      department: student.college_department,
     });
 
   } catch (err) {
