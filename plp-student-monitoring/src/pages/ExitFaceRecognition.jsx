@@ -1,28 +1,24 @@
-// FaceRecognition.jsx
+// ExitFaceRecognition.jsx
 import { useRef, useEffect, useState, useCallback } from "react";
 import "../css/FaceRecognition.css";
-import { useNavigate } from "react-router-dom";
-import { useLogContext } from "../context/LogContext";
-import { useCameraContext } from "../context/CameraContext";
+import { useLogContext } from "../context/LogContext.jsx";
+import { useCameraContext } from "../context/CameraContext.jsx";
 import { showEntryExitAlert } from "../components/ShowEntryExitAlerts.jsx";
 import Swal from "sweetalert2";
 import { LuScanQrCode } from "react-icons/lu";
 import { RiInputField } from "react-icons/ri";
-import { FaUserClock } from "react-icons/fa";
 import { LuVideo, LuVideoOff } from "react-icons/lu";
-import ManualInputModal from "../components/ManualInputModal";
-import QRScanModal from "../components/QRScanModal";
-import VisitorModal from "../components/VisitorModal";
+import ManualInputModal from "../components/ManualInputModal.jsx";
+import QRScanModal from "../components/QRScanModal.jsx";
 
-function FaceRecognition({ mode = 'ENTRY' }) {
-  const navigate = useNavigate();
+function FaceRecognition({ mode = 'EXIT' }) {
   const videoRef        = useRef(null);
   const hasActed        = useRef(false);
   const failCountRef    = useRef(0);
   const scanIntervalRef = useRef(null);
   const cameraOnRef     = useRef(false);
 
-  const { addLog, addFailedLog } = useLogContext();
+  const { addLog } = useLogContext();
   const {
     updateCameraFrame,
     updateCameraStatus,
@@ -34,6 +30,24 @@ function FaceRecognition({ mode = 'ENTRY' }) {
   const [cameraStatus, setCameraStatus] = useState('neutral');
   const [activeModal, setActiveModal]   = useState(null);
   const [activeKey, setActiveKey]       = useState(null);
+
+  // ── Pause camera when any modal is open ───────────────────────────────
+  const wasOnBeforeModalRef = useRef(false);
+
+  // the useEffect becomes:
+  useEffect(() => {
+    if (activeModal !== null) {
+      // Modal opened — remember camera state, then pause
+      wasOnBeforeModalRef.current = cameraOnRef.current;
+      clearInterval(scanIntervalRef.current);
+      setCameraOn(false);
+    } else {
+      // Modal closed — restore camera if it was on before
+      if (wasOnBeforeModalRef.current) {
+        setCameraOn(true);
+      }
+    }
+  }, [activeModal]);
 
   // ── Keep ref in sync with state so callbacks can read it ──
   useEffect(() => {
@@ -59,13 +73,13 @@ function FaceRecognition({ mode = 'ENTRY' }) {
 
   // ── Greeting ──────────────────────────────────────
   const greetings = [
-    "Mabuhay! Ready to learn",
-    "Kamusta! Let's start the day",
-    "Magandang Araw",
-    "Magandang Araw! Keep it up",
-    "Kumusta? Attendance check",
-    "Hi! Ready for class",
-    "Maligayang pagdating!",
+    "Ingat sa labas!",
+    "Salamat! Bumalik ka agad ha,",
+    "See you later,",
+    "Take care out there,",
+    "Hanggang muli,",
+    "Stay safe,",
+    "Come back soon,",
   ];
   const [greetingIdx, setGreetingIdx] = useState(0);
   const [fade, setFade] = useState(true);
@@ -84,8 +98,7 @@ function FaceRecognition({ mode = 'ENTRY' }) {
   // ── Alt methods ───────────────────────────────────
   const altMethods = [
     { key: 'q', action: () => setActiveModal('qr'),      icon: <LuScanQrCode />, label: 'Scan QR',      desc: 'Scan your student ID code.' },
-    { key: 'm', action: () => setActiveModal('manual'),  icon: <RiInputField />, label: 'Manual Input', desc: 'Enter Student ID number manually.' },
-    { key: 'v', action: () => setActiveModal('visitor'), icon: <FaUserClock />,  label: 'Visitor',      desc: 'Register for a temporary pass.' },
+    { key: 'm', action: () => setActiveModal('manual'),  icon: <RiInputField />, label: 'Manual Input', desc: 'Enter Student ID number manually.' }
   ];
 
   // ── Keyboard shortcuts ────────────────────────────
@@ -149,12 +162,15 @@ function FaceRecognition({ mode = 'ENTRY' }) {
   }, [cameraOn]);
 
   // ── restartScan ───────────────────────────────────
+
+  const captureAndSendRef = useRef(null);
+
   const restartScan = useCallback(() => {
     if (!cameraOnRef.current) return;
     hasActed.current     = false;
     failCountRef.current = 0;
     clearInterval(scanIntervalRef.current);
-    scanIntervalRef.current = setInterval(captureAndSend, 2000);
+    scanIntervalRef.current = setInterval(() => captureAndSendRef.current?.(), 2000); 
   }, []);
 
   // ── Recognition loop ──────────────────────────────
@@ -264,6 +280,10 @@ function FaceRecognition({ mode = 'ENTRY' }) {
     }
   }, [mode, addLog, updateCameraStatus, restartScan]);
 
+  useEffect(() => {
+    captureAndSendRef.current = captureAndSend;
+  }, [captureAndSend]);
+
   // ── Start scan loop when camera turns on ─────────
   useEffect(() => {
     if (!cameraOn) return;
@@ -286,10 +306,7 @@ function FaceRecognition({ mode = 'ENTRY' }) {
         {/* Corner brackets */}
         <div className="fr-corner fr-tl" /><div className="fr-corner fr-tr" />
         <div className="fr-corner fr-bl" /><div className="fr-corner fr-br" />
-
-        {/* Scan line — only when camera is on and neutral */}
-        {cameraOn && cameraStatus === 'neutral' && <div className="fr-scan-line" />}
-
+        
         {/* Status text */}
         <div className="camera-text">
           {!cameraOn                               && 'Camera is off. Press Start Camera to begin scanning.'}
@@ -335,17 +352,16 @@ function FaceRecognition({ mode = 'ENTRY' }) {
         </div>
 
         <div className={`fr-mode-badge ${mode === 'ENTRY' ? 'fr-badge-entry' : 'fr-badge-exit'}`}>
-          {mode}
+          {mode === 'ENTRY' ? 'ENTRANCE' : 'EXIT'}
         </div>
 
         <p className="fr-alt-prompt">
           If Face Scan failed to identify please choose an alternative.<br />
-          Press <span className="fr-key-hint">Q, M{mode === 'ENTRY' ? ', or V' : ''}</span> to proceed instantly.
+          Press <span className="fr-key-hint">Q, or M</span> to proceed instantly.
         </p>
 
-        <div className="fr-alt-methods">
+        <div className="fr-alt-methods" style={{ gridTemplateColumns: 'repeat(2, minmax(180px, 220px))' }}>
           {altMethods
-            .filter(m => mode === 'EXIT' ? m.key !== 'v' : true)
             .map(({ key, action, icon, label, desc }) => (
               <div
                 key={key}
@@ -367,7 +383,6 @@ function FaceRecognition({ mode = 'ENTRY' }) {
 
       {activeModal === 'qr'      && <QRScanModal      mode={mode} onClose={() => setActiveModal(null)} />}
       {activeModal === 'manual'  && <ManualInputModal  mode={mode} onClose={() => setActiveModal(null)} />}
-      {activeModal === 'visitor' && <VisitorModal                  onClose={() => setActiveModal(null)} />}
     </div>
   );
 }

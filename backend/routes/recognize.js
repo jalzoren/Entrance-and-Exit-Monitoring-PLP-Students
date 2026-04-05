@@ -1,17 +1,16 @@
-// routes/recognize.js
+// recognize.js
 const express = require("express");
-const router = express.Router();
-const axios = require("axios");
-const pool = require("../src/db"); // MySQL connection
-const { cosineSimilarity } = require("../src/utils"); // helper
+const router  = express.Router();
+const axios   = require("axios");
+const pool    = require("../src/db");
+const { cosineSimilarity } = require("../src/utils");
+const { getPhTime } = require("../src/time");
 
 router.post("/recognize", async (req, res) => {
   try {
-    const { image } = req.body;
+    const { image, mode = 'ENTRY' } = req.body;
 
-    // -------------------------
-    // Step 1: Send image to Python FastAPI
-    // -------------------------
+    // ── Step 1: Python embedding ──────────────────
     const pyResponse = await axios.post("http://127.0.0.1:8000/generate-embedding", {
       images: [image]
     });
@@ -19,97 +18,107 @@ router.post("/recognize", async (req, res) => {
     const data = pyResponse.data;
 
     if (!data.success || data.embeddings.length === 0) {
-      console.log("No faces detected or embedding failed");
-      return res.json({ detected: false, authenticated: false });
+      console.log("❌ No face detected");
+      return res.json({ recognized: false });
     }
 
     const capturedEmbedding = data.embeddings[0];
-    console.log("Captured embedding quality:", data.quality_scores[0]);
 
-    // -------------------------
-    // Step 2: Fetch all stored embeddings
-    // -------------------------
+    // ── Step 2: Compare embeddings ────────────────
     const [rows] = await pool.query(
-      "SELECT student_id, face_embedding, face_position FROM student_face_embeddings"
+      "SELECT student_id, face_embedding FROM student_face_embeddings"
     );
 
-    console.log("Number of stored embeddings:", rows.length);
-
-    // -------------------------
-    // Step 3: Compare embeddings
-    // -------------------------
-    let matchedStudent = null;
-    let maxSimilarity = 0;
-    let matchedPosition = null;
+    let matchedStudentId = null;
+    let maxSimilarity    = 0;
 
     for (const row of rows) {
       const storedEmbedding = JSON.parse(row.face_embedding);
       const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
-
-      console.log(`Comparing to student ${row.student_id} (${row.face_position}), similarity: ${sim.toFixed(3)}`);
-
       if (sim > 0.75 && sim > maxSimilarity) {
-        maxSimilarity = sim;
-        matchedStudent = row.student_id;
-        matchedPosition = row.face_position;
+        maxSimilarity    = sim;
+        matchedStudentId = row.student_id;
       }
     }
 
-    if (!matchedStudent) {
-      console.log("No matching student found.");
-      return res.json({
-        detected: true,
-        authenticated: false,
-        time: new Date().toLocaleTimeString()
-      });
+    if (!matchedStudentId) {
+      console.log("❌ No match found (below 0.75 threshold)");
+      return res.json({ recognized: false });
     }
 
-    // -------------------------
-    // Step 4: Determine ENTRY/EXIT
-    // -------------------------
-    const [lastLogRows] = await pool.query(
-      "SELECT action FROM entry_exit_logs WHERE student_id = ? ORDER BY log_time DESC LIMIT 1",
-      [matchedStudent]
+    console.log(`✅ Matched: ${matchedStudentId} | Similarity: ${(maxSimilarity * 100).toFixed(1)}%`);
+
+    // ── Step 3: Get student info ──────────────────
+    const [studentRows] = await pool.query(
+      "SELECT * FROM students WHERE student_id = ?",
+      [matchedStudentId]
     );
 
-    let action = "ENTRY"; // default
-    if (lastLogRows.length > 0 && lastLogRows[0].action === "ENTRY") {
-      action = "EXIT";
+    if (!studentRows.length) {
+      console.log(`❌ Student ${matchedStudentId} not found in students table`);
+      return res.json({ recognized: false });
     }
 
-    const now = new Date(); // proper timestamp
-    console.log(`Student ${matchedStudent} authenticated. Action: ${action}`);
+    const student  = studentRows[0];
+    const fullName = `${student.last_name}, ${student.first_name}`;
+    const now      = getPhTime();
+    const today    = now.getFullYear() + '-' +
+      String(now.getMonth() + 1).padStart(2, '0') + '-' +
+      String(now.getDate()).padStart(2, '0');
 
-    // -------------------------
-    // Step 5: Insert into entry_exit_logs
-    // -------------------------
+    // ── Step 4: Validate mode ─────────────────────
+    const [lastLogs] = await pool.query(
+      `SELECT action FROM entry_exit_logs
+       WHERE student_id = ? AND DATE(log_time) = ?
+       ORDER BY log_time DESC LIMIT 1`,
+      [matchedStudentId, today]
+    );
+
+    const lastAction = lastLogs.length ? lastLogs[0].action : null;
+    console.log(`[${mode}] ${fullName} | Last action today: ${lastAction ?? 'NONE'}`);
+
+    if (mode === 'ENTRY' && lastAction === 'ENTRY') {
+      console.log(`⚠️ Already entered: ${fullName}`);
+      return res.json({ recognized: true, validated: false, action: 'ALREADY_ENTERED', message: `You've already entered the school.`, student: fullName, student_id: matchedStudentId, department: student.college_department });
+    }
+
+    if (mode === 'EXIT' && lastAction === 'EXIT') {
+      console.log(`⚠️ Already exited: ${fullName}`);
+      return res.json({ recognized: true, validated: false, action: 'ALREADY_EXITED', message: `You've already exited the school.`, student: fullName, student_id: matchedStudentId, department: student.college_department });
+    }
+
+    if (mode === 'EXIT' && !lastAction) {
+      console.log(`⚠️ No entry found today: ${fullName}`);
+      return res.json({ recognized: true, validated: false, action: 'NO_ENTRY', message: `No entry record found for today. Please enter first.`, student: fullName, student_id: matchedStudentId, department: student.college_department });
+    }
+
+    // ── Step 5: Log entry/exit ────────────────────
     const [authInsert] = await pool.query(
-      "INSERT INTO authentication (student_id, method, auth_status, accuracy, duration, timestamp) VALUES (?, 'FACIAL', 'SUCCESS', ?, ?, NOW())",
-      [matchedStudent, (maxSimilarity*100).toFixed(2), 0, now]
+      `INSERT INTO authentication (student_id, method, auth_status, accuracy, duration, timestamp)
+       VALUES (?, 'FACIAL', 'SUCCESS', ?, 0, ?)`,
+      [matchedStudentId, (maxSimilarity * 100).toFixed(2), now]
     );
-
-    const auth_id = authInsert.insertId;
 
     await pool.query(
-      "INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time) VALUES (?, ?, ?, NOW())",
-      [matchedStudent, auth_id, action, now]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time) VALUES (?, ?, ?, ?)`,
+      [matchedStudentId, authInsert.insertId, mode, now]
     );
 
-    // -------------------------
-    // Step 6: Respond to React UI
-    // -------------------------
+    console.log(`✅ ${mode} logged: ${fullName}`);
+
     return res.json({
-      detected: true,
-      authenticated: true,
-      name: matchedStudent,
-      department: "BSIT", // fetch from students table if needed
-      time: now.toLocaleTimeString(),
-      log_type: action
+      recognized: true,
+      validated:  true,
+      action:     mode,
+      student:    fullName,
+      student_id: matchedStudentId,
+      department: student.college_department,
+      accuracy:   (maxSimilarity * 100).toFixed(1),
     });
 
   } catch (err) {
-    console.error("Recognition Error:", err.message);
-    return res.json({ detected: false, authenticated: false });
+    console.error("❌ Recognition error:", err.message);
+    return res.json({ recognized: false });
   }
 });
 
