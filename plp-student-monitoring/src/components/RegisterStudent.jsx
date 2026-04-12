@@ -14,12 +14,11 @@ import {
   MdArrowForward,
   MdFace,
   MdOutlineFace,
-  MdFlipCameraIos,
   MdClose as MdDeleteIcon
 } from "react-icons/md";
 import RegisterStudentCam from './RegisterStudentCam';
 
-function RegisterStudent({ onClose }) {
+function RegisterStudent({ onClose, onSuccess }) {
   const [currentStep, setCurrentStep] = useState(1);
   const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [isScanning, setIsScanning] = useState(false);
@@ -55,84 +54,7 @@ function RegisterStudent({ onClose }) {
   const yearLevelRef = useRef(null);
   const statusRef = useRef(null);
 
-  // Fetch departments and programs from backend
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const deptResponse = await fetch('http://localhost:5000/api/departments');
-        const deptData = await deptResponse.json();
-        setDepartments(deptData);
-        
-        const progResponse = await fetch('http://localhost:5000/api/programs');
-        const progData = await progResponse.json();
-        setPrograms(progData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-      }
-    };
-    fetchData();
-  }, []);
-
-  // Filter programs when department changes
-  useEffect(() => {
-    if (college) {
-      const filtered = programs.filter(prog => prog.department === college);
-      setFilteredPrograms(filtered);
-      setProgram('');
-    } else {
-      setFilteredPrograms([]);
-      setProgram('');
-    }
-  }, [college, programs]);
-
-  // Auto-generate email 
-  useEffect(() => {
-    if (emailManuallyEdited) return;
-
-    const cleanLast  = lastName.trim().toLowerCase().replace(/\s+/g, "");
-    const cleanFirst = firstName.trim().toLowerCase().replace(/\s+/g, "");
-
-    if (!cleanLast) {
-      setEmailId("");
-      return;
-    }
-
-    const generated = cleanFirst
-      ? `${cleanLast}_${cleanFirst}@plpasig.edu.ph`
-      : `${cleanLast}@plpasig.edu.ph`;
-
-    setEmailId(generated);
-    setFormErrors(prev => ({ ...prev, emailId: "" }));
-  }, [firstName, lastName, emailManuallyEdited]);
-
-  // Handle Enter key to move focus to next field
-  const handleEnter = (e, nextRef) => {
-    if (e.key === "Enter") {
-      e.preventDefault(); // prevent form submit
-      nextRef.current?.focus();
-    }
-  };
-
-  // Format student ID input as "YY-XXXXX" ----------------------
-  const handleStudentIdChange = (e) => {
-    // Strip everything except digits
-    const digits = e.target.value.replace(/\D/g, "");
-
-    let formatted = digits;
-
-    // Auto-insert dash after the first 2 digits
-    if (digits.length >= 2) {
-      const year   = digits.slice(0, 2);
-      const number = digits.slice(2, 7); // max 5 digits after the dash
-      formatted = number.length > 0 ? `${year}-${number}` : year;
-    }
-
-    setStudentId(formatted);
-    setFormErrors(p => ({ ...p, studentId: "" }));
-  };
-
   // Tracks which required fields have failed validation
-  // Each key maps to an error message string, or "" when valid
   const [formErrors, setFormErrors] = useState({
     studentId:  "",
     emailId:    "",
@@ -152,57 +74,150 @@ function RegisterStudent({ onClose }) {
     { text: "Face in Down", instruction: "Tilt your face downward", icon: "down" }
   ];
 
-  // ── Step 1 validation ─────────────────────────────────────────────────────
-  // Checks all required fields and populates formErrors.
-  // Returns true only when every required field has a value.
+  // Fetch departments and programs from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const deptResponse = await fetch('http://localhost:5000/api/departments');
+        const deptData = await deptResponse.json();
+        // Extract department names from the response objects
+        const departmentNames = Array.isArray(deptData) 
+          ? deptData.map(dept => typeof dept === 'object' ? dept.dept_name || dept.name || dept : dept)
+          : [];
+        setDepartments(departmentNames);
+        
+        const progResponse = await fetch('http://localhost:5000/api/programs');
+        const progData = await progResponse.json();
+        setPrograms(Array.isArray(progData) ? progData : []);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        Swal.fire({
+          title: "Connection Error",
+          text: "Failed to connect to server. Please check if the backend is running.",
+          icon: "error",
+          confirmButtonText: "OK",
+          customClass: {
+            popup: "swal-popup",
+            confirmButton: "swal-btn-primary",
+          },
+          buttonsStyling: false,
+        });
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Filter programs when department changes
+  useEffect(() => {
+    if (college) {
+      const filtered = programs.filter(prog => {
+        const progDept = typeof prog === 'object' ? prog.department : null;
+        return progDept === college;
+      });
+      setFilteredPrograms(filtered);
+      setProgram('');
+      setFormErrors(prev => ({ ...prev, program: "" }));
+    } else {
+      setFilteredPrograms([]);
+      setProgram('');
+    }
+  }, [college, programs]);
+
+  // Auto-generate email
+  useEffect(() => {
+    if (emailManuallyEdited) return;
+
+    const cleanLast = lastName.trim().toLowerCase().replace(/\s+/g, "");
+    const cleanFirst = firstName.trim().toLowerCase().replace(/\s+/g, "");
+
+    if (!cleanLast) {
+      setEmailId("");
+      return;
+    }
+
+    const generated = cleanFirst
+      ? `${cleanLast}_${cleanFirst}@plpasig.edu.ph`
+      : `${cleanLast}@plpasig.edu.ph`;
+
+    setEmailId(generated);
+    setFormErrors(prev => ({ ...prev, emailId: "" }));
+  }, [firstName, lastName, emailManuallyEdited]);
+
+  // Handle Enter key to move focus to next field
+  const handleEnter = (e, nextRef) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (nextRef?.current) {
+        nextRef.current.focus();
+      }
+    }
+  };
+
+  // Format student ID input as "YY-XXXXX"
+  const handleStudentIdChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, "");
+    let formatted = digits;
+
+    if (digits.length >= 2) {
+      const year = digits.slice(0, 2);
+      const number = digits.slice(2, 7);
+      formatted = number.length > 0 ? `${year}-${number}` : year;
+    }
+
+    setStudentId(formatted);
+    setFormErrors(prev => ({ ...prev, studentId: "" }));
+  };
+
+  // Step 1 validation
   const validateStep1 = () => {
-  const plpasigRegex = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
-  const errors = {
+    const plpasigRegex = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
+    const errors = {
       studentId: !studentId.toString().trim()
-                  ? "Student ID is required"
-                  : !/^\d{2}-(?!00000)\d{5}$/.test(studentId.trim())
-                  ? "Format must be YY-NNNNN (e.g. 23-00290), number 00001–99999"
-                  : "",
-      lastName:  !lastName.trim()              ? "Last Name is required"          : "",
-      firstName: !firstName.trim()             ? "First Name is required"         : "",
-      college:   !college                      ? "College Department is required" : "",
-      program:   !program                      ? "Program is required"            : "",
-      yearLevel: !yearLevel.toString().trim()  ? "Year Level is required"         : "",
-      status:    !status                       ? "Status is required"             : "",
-      emailId:   !emailId.trim()
-                  ? "Email is required"
-                  : !plpasigRegex.test(emailId.trim())
-                  ? "Must be a valid @plpasig.edu.ph email"
-                  : "",
+        ? "Student ID is required"
+        : !/^\d{2}-(?!00000)\d{5}$/.test(studentId.trim())
+        ? "Format must be YY-NNNNN (e.g. 23-00290), number 00001–99999"
+        : "",
+      lastName: !lastName.trim() ? "Last Name is required" : "",
+      firstName: !firstName.trim() ? "First Name is required" : "",
+      college: !college ? "College Department is required" : "",
+      program: !program ? "Program is required" : "",
+      yearLevel: !yearLevel.toString().trim() ? "Year Level is required" : "",
+      status: !status ? "Status is required" : "",
+      emailId: !emailId.trim()
+        ? "Email is required"
+        : !plpasigRegex.test(emailId.trim())
+        ? "Must be a valid @plpasig.edu.ph email"
+        : "",
     };
     setFormErrors(errors);
     return Object.values(errors).every(e => e === "");
   };
 
   const handleNext = () => {
-    if (validateStep1()) setCurrentStep(2);
+    if (validateStep1()) {
+      setCurrentStep(2);
+    }
   };
 
   const handlePrevious = () => setCurrentStep(1);
 
-  // ── Cancel / Close with confirmation ──────────────────────────────────────
-  // Prevents accidental dismissal of a partially filled form.
+  // Cancel / Close with confirmation
   const handleClose = () => {
     Swal.fire({
-      title:              "Cancel Registration?",
-      text:               "All entered information will be lost.",
-      icon:               "warning",
-      showCancelButton:   true,
-      confirmButtonText:  "Yes, cancel",
-      cancelButtonText:   "Keep editing",
+      title: "Cancel Registration?",
+      text: "All entered information will be lost.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes, cancel",
+      cancelButtonText: "Keep editing",
       customClass: {
-        popup:         "swal-popup",
-        title:         "swal-title",
+        popup: "swal-popup",
+        title: "swal-title",
         htmlContainer: "swal-text",
         confirmButton: "swal-btn-confirm",
-        cancelButton:  "swal-btn-cancel",
+        cancelButton: "swal-btn-cancel",
       },
-      buttonsStyling: false,   // lets our CSS fully control button appearance
+      buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed) onClose();
     });
@@ -235,44 +250,82 @@ function RegisterStudent({ onClose }) {
     
     const newCount = newPreviews.filter(photo => photo !== null).length;
     setUploadedPhotos(newCount);
-    
-    if (scanComplete) setScanComplete(false);
+    setScanComplete(false);
+    setScanError(false);
   };
 
   const handleScan = async () => {
     try {
-  
       setIsScanning(true);
       setScanError(false);
-  
+
       const validImages = photoPreviews.filter(img => img !== null);
-  
+
       if (validImages.length !== 5) {
         setScanError(true);
+        Swal.fire({
+          title: "Incomplete Photos",
+          text: "Please capture all 5 photos before scanning.",
+          icon: "warning",
+          confirmButtonText: "OK",
+          customClass: {
+            popup: "swal-popup",
+            confirmButton: "swal-btn-primary",
+          },
+          buttonsStyling: false,
+        });
         setIsScanning(false);
         return;
       }
-  
+
       const response = await axios.post(
         "http://localhost:5000/api/validate-face",
         { images: validImages }
       );
-  
+
       console.log("Validation result:", response.data);
-  
-      setScanComplete(true);
-  
+
+      if (response.data.success) {
+        setScanComplete(true);
+        Swal.fire({
+          title: "Success!",
+          text: "All photos have been verified successfully.",
+          icon: "success",
+          confirmButtonText: "OK",
+          customClass: {
+            popup: "swal-popup",
+            confirmButton: "swal-btn-primary",
+          },
+          buttonsStyling: false,
+        });
+      } else {
+        setScanError(true);
+        Swal.fire({
+          title: "Validation Failed",
+          text: response.data.message || "Face validation failed. Please retake the photos.",
+          icon: "error",
+          confirmButtonText: "Try Again",
+          customClass: {
+            popup: "swal-popup",
+            confirmButton: "swal-btn-primary",
+          },
+          buttonsStyling: false,
+        });
+      }
     } catch (error) {
-  
-      console.error(error);
-  
-      alert(
-        error.response?.data?.error ||
-        "Face validation failed"
-      );
-  
+      console.error("Scan error:", error);
       setScanError(true);
-  
+      Swal.fire({
+        title: "Error",
+        text: error.response?.data?.error || "Face validation failed. Please try again.",
+        icon: "error",
+        confirmButtonText: "OK",
+        customClass: {
+          popup: "swal-popup",
+          confirmButton: "swal-btn-primary",
+        },
+        buttonsStyling: false,
+      });
     } finally {
       setIsScanning(false);
     }
@@ -285,6 +338,7 @@ function RegisterStudent({ onClose }) {
       case 0: 
         return (
           <div className="face-icon-center">
+            <MdFace className="direction-face-icon" />
           </div>
         );
       case 1: 
@@ -319,67 +373,75 @@ function RegisterStudent({ onClose }) {
     }
   };
 
-
   const handleRegister = async () => {
+    if (!scanComplete) {
+      Swal.fire({
+        title: "Photos Not Verified",
+        text: "Please scan and verify all photos before registering.",
+        icon: "warning",
+        confirmButtonText: "OK",
+        customClass: {
+          popup: "swal-popup",
+          confirmButton: "swal-btn-primary",
+        },
+        buttonsStyling: false,
+      });
+      return;
+    }
+
     try {
-  
       const validImages = photoPreviews.filter(img => img !== null);
-  
+
       const response = await axios.post(
         "http://localhost:5000/api/register",
         {
-          student_id:         studentId,
-          email:              emailId.trim().toLowerCase(),
-          first_name:         firstName,
-          last_name:          lastName,
-          middle_name:        middleName,
-          extension_name:     extension,
+          student_id: studentId,
+          email: emailId.trim().toLowerCase(),
+          first_name: firstName,
+          last_name: lastName,
+          middle_name: middleName,
+          extension_name: extension,
           college_department: college,
-          program:            program,
-          year_level:         yearLevel,
-          status:             status,
-          images:             validImages
+          program: program,
+          year_level: parseInt(yearLevel),
+          status: status,
+          images: validImages
         }
       );
-  
+
       console.log(response.data);
 
-      // ── Success alert ────────────────────────────────────────────────────
       await Swal.fire({
-        title:             "Student Registered!",
-        html:              `<p><strong>${firstName} ${lastName}</strong> has been successfully registered in the system.</p>`,
-        icon:              "success",
+        title: "Student Registered!",
+        html: `<p><strong>${firstName} ${lastName}</strong> has been successfully registered in the system.</p>`,
+        icon: "success",
         confirmButtonText: "Done",
         customClass: {
-          popup:         "swal-popup",
-          title:         "swal-title",
+          popup: "swal-popup",
+          title: "swal-title",
           htmlContainer: "swal-text",
           confirmButton: "swal-btn-primary",
         },
         buttonsStyling: false,
       });
 
+      if (onSuccess) onSuccess();
       onClose();
-  
     } catch (error) {
-  
-      console.error(error);
-
-      // ── Error alert ──────────────────────────────────────────────────────
+      console.error("Registration error:", error);
       Swal.fire({
-        title:             "Registration Failed",
-        text:              error.response?.data?.message || "Something went wrong. Please try again.",
-        icon:              "error",
+        title: "Registration Failed",
+        text: error.response?.data?.message || "Something went wrong. Please try again.",
+        icon: "error",
         confirmButtonText: "Try Again",
         customClass: {
-          popup:         "swal-popup",
-          title:         "swal-title",
+          popup: "swal-popup",
+          title: "swal-title",
           htmlContainer: "swal-text",
           confirmButton: "swal-btn-primary",
         },
         buttonsStyling: false,
       });
-  
     }
   };
 
@@ -394,9 +456,8 @@ function RegisterStudent({ onClose }) {
         </div>
       </div>
 
-      {/* ── TWO-STEP PROGRESS STEPPER ─────────────────────────────────────── */}
+      {/* TWO-STEP PROGRESS STEPPER */}
       <div className="register-stepper">
-
         <div className={`stepper-step ${currentStep === 1 ? 'step-active' : 'step-done'}`}>
           <div className="step-circle">
             {currentStep > 1 ? <MdCheckCircle className="step-check-icon" /> : <span>1</span>}
@@ -416,12 +477,12 @@ function RegisterStudent({ onClose }) {
             <span className="step-subtitle">Face Registration</span>
           </div>
         </div>
-
       </div>
 
       {currentStep === 1 ? (
         <div className="register-form">
           <div className="form-note">* Required fields</div>
+          
           <div className="form-row">
             <div className="input-group">
               <label>Last Name <span className="required">*</span></label>
@@ -431,8 +492,8 @@ function RegisterStudent({ onClose }) {
                 value={lastName}
                 onChange={(e) => {
                   setLastName(e.target.value);
-                  setEmailManuallyEdited(false); // re-enable auto-fill when name changes
-                  setFormErrors(p => ({...p, lastName: ""}));
+                  setEmailManuallyEdited(false);
+                  setFormErrors(prev => ({...prev, lastName: ""}));
                 }}
                 className={formErrors.lastName ? "input-error" : ""}
                 style={{ textTransform: 'uppercase' }}
@@ -442,6 +503,7 @@ function RegisterStudent({ onClose }) {
               />
               {formErrors.lastName && <span className="field-error">{formErrors.lastName}</span>}
             </div>
+            
             <div className="input-group">
               <label>Student ID <span className="required">*</span></label>
               <input
@@ -468,8 +530,8 @@ function RegisterStudent({ onClose }) {
                 value={firstName}
                 onChange={(e) => {
                   setFirstName(e.target.value);
-                  setEmailManuallyEdited(false); // re-enable auto-fill when name changes
-                  setFormErrors(p => ({...p, firstName: ""}));
+                  setEmailManuallyEdited(false);
+                  setFormErrors(prev => ({...prev, firstName: ""}));
                 }}
                 className={formErrors.firstName ? "input-error" : ""}
                 style={{ textTransform: 'uppercase' }}
@@ -479,24 +541,29 @@ function RegisterStudent({ onClose }) {
               />
               {formErrors.firstName && <span className="field-error">{formErrors.firstName}</span>}
             </div>
+            
             <div className="input-group">
               <label>College Department <span className="required">*</span></label>
               <select
                 value={college}
-                onChange={(e) => { setCollege(e.target.value); setFormErrors(p => ({...p, college: ""})); }}
+                onChange={(e) => { 
+                  setCollege(e.target.value); 
+                  setFormErrors(prev => ({...prev, college: ""}));
+                }}
                 className={formErrors.college ? "input-error" : ""}
                 ref={collegeRef}
                 onKeyDown={(e) => handleEnter(e, programRef)}
                 required
               >
                 <option value="">Select College Department</option>
-                {departments.map((dept) => (
-                  <option key={dept} value={dept}>{dept}</option>
+                {departments.map((dept, index) => (
+                  <option key={index} value={dept}>
+                    {typeof dept === 'string' ? dept : dept?.dept_name || dept?.name || JSON.stringify(dept)}
+                  </option>
                 ))}
               </select>
               {formErrors.college && <span className="field-error">{formErrors.college}</span>}
             </div>
-            
           </div>
 
           <div className="form-row">
@@ -512,11 +579,15 @@ function RegisterStudent({ onClose }) {
                 onKeyDown={(e) => handleEnter(e, extensionRef)}
               />
             </div>
+            
             <div className="input-group">
               <label>Program <span className="required">*</span></label>
               <select
                 value={program}
-                onChange={(e) => { setProgram(e.target.value); setFormErrors(p => ({...p, program: ""})); }}
+                onChange={(e) => { 
+                  setProgram(e.target.value); 
+                  setFormErrors(prev => ({...prev, program: ""}));
+                }}
                 className={formErrors.program ? "input-error" : ""}
                 ref={programRef}
                 onKeyDown={(e) => handleEnter(e, yearLevelRef)}
@@ -524,8 +595,10 @@ function RegisterStudent({ onClose }) {
                 required
               >
                 <option value="">{college ? "Select Program" : "Select Department First"}</option>
-                {filteredPrograms.map((prog) => (
-                  <option key={prog.id} value={prog.programName}>{prog.programName} ({prog.programCode})</option>
+                {filteredPrograms.map((prog, index) => (
+                  <option key={index} value={prog.programName || prog.name || prog}>
+                    {prog.programName || prog.name || prog} {prog.programCode ? `(${prog.programCode})` : ''}
+                  </option>
                 ))}
               </select>
               {formErrors.program && <span className="field-error">{formErrors.program}</span>}
@@ -535,7 +608,12 @@ function RegisterStudent({ onClose }) {
           <div className="form-row">
             <div className="input-group">
               <label>Extension Name</label>
-              <select value={extension} onChange={(e) => setExtension(e.target.value)} ref={extensionRef} onKeyDown={(e) => handleEnter(e, studentIdRef)}>
+              <select 
+                value={extension} 
+                onChange={(e) => setExtension(e.target.value)} 
+                ref={extensionRef} 
+                onKeyDown={(e) => handleEnter(e, studentIdRef)}
+              >
                 <option value="">Select Extension Name</option>
                 <option value="Jr.">Jr.</option>
                 <option value="Sr.">Sr.</option>
@@ -545,21 +623,26 @@ function RegisterStudent({ onClose }) {
                 <option value="IV">IV</option>
               </select>
             </div>
+            
             <div className="input-group">
-                <label>Year Level <span className="required">*</span></label>
-                <input
-                  type="number"
-                  placeholder="e.g 3"
-                  value={yearLevel}
-                  onChange={(e) => { setYearLevel(e.target.value); setFormErrors(p => ({...p, yearLevel: ""})); }}
-                  className={formErrors.yearLevel ? "input-error" : ""}
-                  style={{ textTransform: 'uppercase' }}
-                  ref={yearLevelRef}
-                  onKeyDown={(e) => handleEnter(e, statusRef)}
-                  required
-                />
-                {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
-              </div>
+              <label>Year Level <span className="required">*</span></label>
+              <input
+                type="number"
+                placeholder="e.g 3"
+                value={yearLevel}
+                onChange={(e) => { 
+                  setYearLevel(e.target.value); 
+                  setFormErrors(prev => ({...prev, yearLevel: ""}));
+                }}
+                className={formErrors.yearLevel ? "input-error" : ""}
+                min="1"
+                max="5"
+                ref={yearLevelRef}
+                onKeyDown={(e) => handleEnter(e, statusRef)}
+                required
+              />
+              {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+            </div>
           </div>
 
           <div className="form-row">
@@ -571,8 +654,8 @@ function RegisterStudent({ onClose }) {
                 value={emailId}
                 onChange={(e) => {
                   setEmailId(e.target.value);
-                  setEmailManuallyEdited(true);  // user took control — stop auto-fill
-                  setFormErrors(p => ({...p, emailId: ""}));
+                  setEmailManuallyEdited(true);
+                  setFormErrors(prev => ({...prev, emailId: ""}));
                 }}
                 className={formErrors.emailId ? "input-error" : ""}
                 ref={emailIdRef}
@@ -581,11 +664,15 @@ function RegisterStudent({ onClose }) {
               />
               {formErrors.emailId && <span className="field-error">{formErrors.emailId}</span>}
             </div>
+            
             <div className="input-group">
               <label>Status <span className="required">*</span></label>
               <select
                 value={status}
-                onChange={(e) => { setStatus(e.target.value); setFormErrors(p => ({...p, status: ""})); }}
+                onChange={(e) => { 
+                  setStatus(e.target.value); 
+                  setFormErrors(prev => ({...prev, status: ""}));
+                }}
                 className={formErrors.status ? "input-error" : ""}
                 ref={statusRef}
                 onKeyDown={(e) => {
@@ -666,7 +753,7 @@ function RegisterStudent({ onClose }) {
             ))}
           </div>
 
-           <div className="progress-container">
+          <div className="progress-container">
             <div className="progress-bar">
               <div 
                 className="progress-fill" 
@@ -692,10 +779,10 @@ function RegisterStudent({ onClose }) {
             </div>
           )}
 
-          {scanError && (
+          {scanError && !isScanning && (
             <div className="scan-error">
               <MdError className="error-icon" />
-              <span>Scan failed. Please ensure {maxPhotos} photos are captured.</span>
+              <span>Scan failed. Please ensure all 5 photos are captured and try again.</span>
             </div>
           )}
 
@@ -709,10 +796,10 @@ function RegisterStudent({ onClose }) {
           <button 
             className="scan-button"
             onClick={handleScan}
-            disabled={isScanning || uploadedPhotos === 0}
+            disabled={isScanning || uploadedPhotos !== maxPhotos}
           >
             <MdCameraAlt className="scan-icon" />
-            Scan and Save
+            {isScanning ? "Scanning..." : "Scan and Verify"}
           </button>
 
           <div className="photo-form-actions">
