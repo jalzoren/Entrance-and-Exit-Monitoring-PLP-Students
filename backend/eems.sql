@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 05, 2026 at 04:41 PM
+-- Generation Time: Apr 12, 2026 at 09:02 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -70,7 +70,17 @@ INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, 
 (48, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-05 03:35:00'),
 (49, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-05 03:35:44'),
 (50, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-05 04:00:39'),
-(51, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-05 04:03:03');
+(51, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-05 04:03:03'),
+(52, '23-00174', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:32:16'),
+(53, '23-00174', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:32:26'),
+(54, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:33:10'),
+(55, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:34:08'),
+(56, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:34:14'),
+(57, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:36:43'),
+(58, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:40:21'),
+(59, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:40:57'),
+(60, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:41:37'),
+(61, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:41:57');
 
 -- --------------------------------------------------------
 
@@ -80,22 +90,19 @@ INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, 
 
 CREATE TABLE `departments` (
   `id` int(11) NOT NULL,
-  `dept_name` varchar(100) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `dept_code` varchar(20) NOT NULL,
+  `dept_name` varchar(100) NOT NULL,
+  `status` enum('Active','Inactive') DEFAULT 'Active',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Dumping data for table `departments`
 --
 
-INSERT INTO `departments` (`id`, `dept_name`) VALUES
-(5, 'College of Arts and Science'),
-(6, 'College of Business and Accountancy'),
-(12, 'College of Computer Studies'),
-(3, 'College of Education'),
-(2, 'College of Engineering'),
-(7, 'College of Hospitality Management'),
-(13, 'College of ITGIRLS'),
-(1, 'College of Nursing');
+INSERT INTO `departments` (`id`, `dept_code`, `dept_name`, `status`, `created_at`, `updated_at`) VALUES
+(1, '', 'College of Computer Studies', 'Active', '2026-04-12 14:20:34', '2026-04-12 14:20:34');
 
 -- --------------------------------------------------------
 
@@ -119,7 +126,17 @@ INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `log
 (48, '23-00298', 48, 'ENTRY', '2026-04-05 03:35:00'),
 (49, '23-00298', 49, 'EXIT', '2026-04-05 03:35:44'),
 (50, '23-00298', 50, 'ENTRY', '2026-04-05 04:00:39'),
-(51, '23-00298', 51, 'EXIT', '2026-04-05 04:03:03');
+(51, '23-00298', 51, 'EXIT', '2026-04-05 04:03:03'),
+(52, '23-00174', 52, 'ENTRY', '2026-04-06 16:32:16'),
+(53, '23-00174', 53, 'ENTRY', '2026-04-06 16:32:26'),
+(54, '23-00174', 54, 'ENTRY', '2026-04-06 16:33:10'),
+(55, '23-00298', 55, 'ENTRY', '2026-04-06 16:34:08'),
+(56, '23-00298', 56, 'ENTRY', '2026-04-06 16:34:14'),
+(57, '23-00298', 57, 'ENTRY', '2026-04-06 16:36:43'),
+(58, '23-00298', 58, 'ENTRY', '2026-04-06 16:40:21'),
+(59, '23-00298', 59, 'ENTRY', '2026-04-06 16:40:57'),
+(60, '23-00298', 60, 'ENTRY', '2026-04-06 16:41:37'),
+(61, '23-00298', 61, 'ENTRY', '2026-04-06 16:41:57');
 
 -- --------------------------------------------------------
 
@@ -145,7 +162,8 @@ INSERT INTO `programs` (`id`, `programCode`, `programName`, `department`, `progr
 (10, 'BSIT', 'Bachelor of Science in Information Technology', 'College of Business and Accountancy', 'Undergraduate', 'Active', '2026-04-05'),
 (11, 'BSN', 'Bachelor of Science in Nursing', 'College of Nursing', 'Undergraduate', 'Inactive', '2026-04-05'),
 (12, 'IT GIRLS-GHORLS', 'BSIT3E', 'College of ITGIRLS', 'Graduate', 'Active', '2026-04-05'),
-(13, 'BSCS', 'Bachelor of Science in Computer Science', 'College of Computer Studies', 'Undergraduate', 'Active', '2026-04-05');
+(13, 'BSCS', 'Bachelor of Science in Computer Science', 'College of Computer Studies', 'Undergraduate', 'Active', '2026-04-05'),
+(14, 'BSCeee', 'Bachelor of Science in Computer Computer', 'College of BSIT', 'Undergraduate', 'Active', '2026-04-06');
 
 -- --------------------------------------------------------
 
@@ -161,8 +179,9 @@ CREATE TABLE `students` (
   `middle_name` varchar(50) DEFAULT NULL,
   `extension_name` varchar(11) DEFAULT NULL,
   `college_department` varchar(100) NOT NULL,
+  `program_name` varchar(200) DEFAULT NULL,
   `year_level` int(11) NOT NULL,
-  `status` enum('Regular','Irregular') NOT NULL,
+  `status` enum('Regular','Irregular','Inactive') NOT NULL DEFAULT 'Regular',
   `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -171,9 +190,9 @@ CREATE TABLE `students` (
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`student_id`, `email`, `first_name`, `last_name`, `middle_name`, `extension_name`, `college_department`, `year_level`, `status`, `created_at`, `updated_at`) VALUES
-('23-00174', 'flavier_laurencejames@plpasig.edu.ph', 'LAURENCE JAMES', 'FLAVIER', 'LETANA', 'Jr.', 'College of Computer Studies', 3, 'Regular', '2026-03-30 08:35:17', '2026-04-04 20:42:15'),
-('23-00298', 'bitancor_jerimiah@plpasig.edu.ph', 'JERIMIAH', 'BITANCOR', 'AMORA', NULL, 'College of Computer Studies', 3, 'Regular', '2026-03-30 08:40:35', '2026-04-04 20:42:29');
+INSERT INTO `students` (`student_id`, `email`, `first_name`, `last_name`, `middle_name`, `extension_name`, `college_department`, `program_name`, `year_level`, `status`, `created_at`, `updated_at`) VALUES
+('23-00174', 'flavier_laurencejames@plpasig.edu.ph', 'LAURENCE JAMES', 'FLAVIER', 'LETANA', NULL, 'College of Computer Studies', NULL, 3, 'Regular', '2026-03-30 08:35:17', '2026-04-06 01:29:33'),
+('23-00298', 'bitancor_jerimiah@plpasig.edu.ph', 'JERIMIAH', 'BITANCOR', 'AMORA', NULL, 'College of Computer Studies', NULL, 3, 'Regular', '2026-03-30 08:40:35', '2026-04-12 14:51:59');
 
 -- --------------------------------------------------------
 
@@ -231,7 +250,8 @@ CREATE TABLE `visitor_logs` (
 INSERT INTO `visitor_logs` (`visitor_id`, `full_name`, `email`, `reason`, `other_reason`, `action`, `log_time`, `qr_token`) VALUES
 (6, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:46:35', '143439a8-4141-4f15-8894-be9b11f1897d'),
 (7, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:58:59', 'a5405905-787f-4f14-b09f-83b02cfa5061'),
-(8, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 07:20:24', 'b06fc5d1-27ed-4252-98d4-9e2d1f0a16f3');
+(8, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 07:20:24', 'b06fc5d1-27ed-4252-98d4-9e2d1f0a16f3'),
+(9, 'Lynn Czyla ALpuerto', 'bitancor1234amora@gmail.com', 'Event / Activity', NULL, 'ENTRY', '2026-04-06 16:43:58', '95cc9628-2458-4539-bd43-9cda18de7a9e');
 
 --
 -- Indexes for dumped tables
@@ -255,7 +275,10 @@ ALTER TABLE `authentication`
 --
 ALTER TABLE `departments`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `dept_name` (`dept_name`);
+  ADD UNIQUE KEY `dept_code` (`dept_code`),
+  ADD UNIQUE KEY `dept_name` (`dept_name`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_dept_name` (`dept_name`);
 
 --
 -- Indexes for table `entry_exit_logs`
@@ -307,25 +330,25 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
 
 --
 -- AUTO_INCREMENT for table `programs`
 --
 ALTER TABLE `programs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
 -- AUTO_INCREMENT for table `student_face_embeddings`
@@ -337,7 +360,7 @@ ALTER TABLE `student_face_embeddings`
 -- AUTO_INCREMENT for table `visitor_logs`
 --
 ALTER TABLE `visitor_logs`
-  MODIFY `visitor_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
+  MODIFY `visitor_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
 
 --
 -- Constraints for dumped tables

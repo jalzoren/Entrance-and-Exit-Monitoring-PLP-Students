@@ -14,7 +14,13 @@ import {
   FiUsers, 
   FiUserCheck, 
   FiAlertTriangle 
+  
 } from "react-icons/fi";
+
+import { BsPersonFillExclamation } from "react-icons/bs";
+import { BsPersonFillCheck } from "react-icons/bs";
+import { BsFillPeopleFill } from "react-icons/bs";
+
 import { IoMdArrowDropdown } from "react-icons/io";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 
@@ -295,7 +301,7 @@ function Students() {
       {/* Dashboard Stat Cards - Now based on STATUS */}
       <div className="stats-container">
         <div className="stat-card all-students">
-          <div className="stat-icon"><FiUsers /></div>
+          <div className="stat-icon"><BsFillPeopleFill /></div>
           <div className="stat-details">
             <h3>All Students</h3>
             <p className="stat-number">{allStudentsCount}</p>
@@ -303,7 +309,7 @@ function Students() {
         </div>
 
         <div className="stat-card regular-students">
-          <div className="stat-icon"><FiUserCheck /></div>
+          <div className="stat-icon"><BsPersonFillCheck /></div>
           <div className="stat-details">
             <h3>Regular Students</h3>
             <p className="stat-number">{regularStudentsCount}</p>
@@ -311,7 +317,7 @@ function Students() {
         </div>
 
         <div className="stat-card irregular-students">
-          <div className="stat-icon"><FiAlertTriangle /></div>
+          <div className="stat-icon"><BsPersonFillExclamation /></div>
           <div className="stat-details">
             <h3>Irregular Students</h3>
             <p className="stat-number">{irregularStudentsCount}</p>
