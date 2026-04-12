@@ -7,7 +7,7 @@ const ROWS_PER_PAGE = 10;
 
 function DepartmentsTab() {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Active');
   const [currentPage, setCurrentPage] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ function DepartmentsTab() {
     try {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
-      if (statusFilter && statusFilter !== 'All') params.append('status', statusFilter);
+      params.append('status', 'Active');
 
       const url = `http://localhost:5000/api/departments${params.toString() ? `?${params}` : ''}`;
       console.log("Fetching from URL:", url);
@@ -67,7 +67,7 @@ function DepartmentsTab() {
 
   useEffect(() => {
     fetchDepartments();
-  }, [search, statusFilter]);
+  }, [search]);
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(departments.length / ROWS_PER_PAGE));
@@ -177,7 +177,8 @@ function DepartmentsTab() {
 
         if (!response.ok) throw new Error('Failed to archive department');
 
-        await fetchDepartments();
+        // Remove department from local state immediately
+        setDepartments((prev) => prev.filter((d) => d.id !== deptId));
 
         Swal.fire({
           icon: 'success',
@@ -212,15 +213,6 @@ function DepartmentsTab() {
           value={search} 
           onChange={(e) => setSearch(e.target.value)} 
         />
-        <select 
-          value={statusFilter} 
-          onChange={(e) => setStatusFilter(e.target.value)} 
-          style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
-        >
-          <option value="All">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </select>
         <button className="ep-add-btn" onClick={() => setShowAddModal(true)}>+ Add New Department</button>
       </div>
 

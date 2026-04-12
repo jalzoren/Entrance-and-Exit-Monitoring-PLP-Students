@@ -241,6 +241,40 @@ router.get('/programs', async (req, res) => {
     }
 });
 
+// Get archived programs
+router.get('/programs/archived', async (req, res) => {
+    try {
+        const { search, department, programType } = req.query;
+        
+        let query = 'SELECT * FROM programs WHERE programStatus = "Inactive"';
+        let params = [];
+        
+        if (search) {
+            query += ' AND (programCode LIKE ? OR programName LIKE ? OR department LIKE ?)';
+            const searchPattern = `%${search}%`;
+            params.push(searchPattern, searchPattern, searchPattern);
+        }
+        
+        if (department && department !== 'All') {
+            query += ' AND department = ?';
+            params.push(department);
+        }
+        
+        if (programType && programType !== 'All') {
+            query += ' AND programType = ?';
+            params.push(programType);
+        }
+        
+        query += ' ORDER BY id DESC';
+        
+        const [rows] = await pool.query(query, params);
+        res.json(rows);
+    } catch (error) {
+        console.error('Error fetching archived programs:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Get single program by ID
 router.get('/programs/:id', async (req, res) => {
     try {
@@ -280,7 +314,7 @@ router.post('/programs', async (req, res) => {
     }
 });
 
-// Update program
+// Update program (PUT)
 router.put('/programs/:id', async (req, res) => {
     try {
         const { programCode, programName, department, programType, programStatus } = req.body;
@@ -304,6 +338,32 @@ router.put('/programs/:id', async (req, res) => {
         res.json(updatedProgram[0]);
     } catch (error) {
         console.error('Error updating program:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Partial update program (PATCH) - for status updates
+router.patch('/programs/:id', async (req, res) => {
+    try {
+        const { programStatus } = req.body;
+        
+        if (!programStatus) {
+            return res.status(400).json({ error: 'programStatus is required' });
+        }
+        
+        const [result] = await pool.query(
+            'UPDATE programs SET programStatus = ? WHERE id = ?',
+            [programStatus, req.params.id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'Program not found' });
+        }
+        
+        const [updatedProgram] = await pool.query('SELECT * FROM programs WHERE id = ?', [req.params.id]);
+        res.json(updatedProgram[0]);
+    } catch (error) {
+        console.error('Error updating program status:', error);
         res.status(500).json({ error: 'Database error' });
     }
 });

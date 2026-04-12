@@ -9,7 +9,7 @@ function EditProgramTab() {
   const [search, setSearch] = useState('');
   const [college, setCollege] = useState('');
   const [programType, setProgramType] = useState('All');
-  const [programStatus, setProgramStatus] = useState('All');
+  const [programStatus, setProgramStatus] = useState('Active');
   const [currentPage, setCurrentPage] = useState(1);
   const [departments, setDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -36,7 +36,7 @@ function EditProgramTab() {
       if (search) params.append('search', search);
       if (college) params.append('department', college);
       if (programType && programType !== 'All') params.append('programType', programType);
-      if (programStatus && programStatus !== 'All') params.append('programStatus', programStatus);
+      params.append('programStatus', 'Active');
       
       const response = await fetch(`http://localhost:5000/api/programs?${params}`);
       const data = await response.json();
@@ -61,7 +61,7 @@ function EditProgramTab() {
 
   useEffect(() => {
     fetchPrograms();
-  }, [search, college, programType, programStatus]);
+  }, [search, college, programType]);
 
   const filtered = programs;
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
@@ -144,7 +144,8 @@ function EditProgramTab() {
         
         if (!response.ok) throw new Error('Failed to archive');
         
-        await fetchPrograms();
+        // Remove program from local state immediately
+        setPrograms((prev) => prev.filter((p) => p.id !== program.id));
         
         Swal.fire({
           icon: 'success',
@@ -199,15 +200,6 @@ function EditProgramTab() {
           <option value="All">All Types</option>
           <option value="Undergraduate">Undergraduate</option>
           <option value="Graduate">Graduate</option>
-        </select>
-        <select 
-          value={programStatus} 
-          onChange={(e) => setProgramStatus(e.target.value)} 
-          style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
-        >
-          <option value="All">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
         </select>
         <button className="ep-add-btn" onClick={() => setShowAddModal(true)}>+ Add New Program</button>
       </div>

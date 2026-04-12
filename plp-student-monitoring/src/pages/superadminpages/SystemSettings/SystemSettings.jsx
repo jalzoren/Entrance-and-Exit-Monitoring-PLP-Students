@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import GeneralSettings from './GeneralSettings';
 import EditProgramTab from './EditProgramTab';
-import Archive from './Archive';
+import ArchivedStudents from './ArchivedStudents';
+import ArchivedPrograms from './ArchivedPrograms';
+import ArchivedDepartments from './ArchivedDepartments';
 import Irregular from './Irregular';
 import DepartmentsTab from './DepartmentsTab'; // Import the new component
 import "../../../css/SystemSettings.css";
@@ -34,7 +36,9 @@ const allTabs = [
   'Departments',
   'Programs',
   'Regular and Irregular',   // ← kept here but will be hidden
-  'Archive'
+  'Archived Students',
+  'Archived Programs',
+  'Archived Departments'
 ];
 
 // Filter out the tab you want to hide
@@ -76,7 +80,11 @@ const tabs = allTabs.filter(tab => tab !== 'Regular and Irregular');
        
        
        {/**  {activeTab === 'Regular and Irregular' && <Irregular />}*/} 
-                    {activeTab === 'Archive' && <Archive />}
+                    {activeTab === 'Archived Students' && <ArchivedStudents />}
+
+          {activeTab === 'Archived Programs' && <ArchivedPrograms />}
+
+          {activeTab === 'Archived Departments' && <ArchivedDepartments />}
 
         </div>
       </div>

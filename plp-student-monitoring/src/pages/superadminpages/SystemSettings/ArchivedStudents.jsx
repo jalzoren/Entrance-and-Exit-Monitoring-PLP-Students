@@ -13,6 +13,7 @@ function Archive() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [archivedStudents, setArchivedStudents] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -23,6 +24,20 @@ function Archive() {
   const [restoreYearLevel, setRestoreYearLevel] = useState('');
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
+
+  // ── Fetch departments from backend ────────────────────────────
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await fetch('http://localhost:5000/api/departments?status=Active');
+        const data = await response.json();
+        setDepartments(Array.isArray(data) ? data : []);
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+      }
+    };
+    fetchDepartments();
+  }, []);
 
   // ── Fetch archived students on component mount ──────────────────────────
   useEffect(() => {
@@ -168,14 +183,12 @@ function Archive() {
           onChange={(e) => setCollege(e.target.value)} 
           style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '14px' }}
         >
-          <option value="">All Colleges</option>
-          <option value="College of Nursing">College of Nursing</option>
-          <option value="College of Engineering">College of Engineering</option>
-          <option value="College of Education">College of Education</option>
-          <option value="College of Computer Studies">College of Computer Studies</option>
-          <option value="College of Arts and Science">College of Arts and Science</option>
-          <option value="College of Business and Accountancy">College of Business and Accountancy</option>
-          <option value="College of Hospitality Management">College of Hospitality Management</option>
+          <option value="">All Departments</option>
+          {departments.map((dept) => (
+            <option key={dept.id} value={dept.dept_name}>
+              {dept.dept_name}
+            </option>
+          ))}
         </select>
         <select 
           value={statusFilter} 
