@@ -295,7 +295,7 @@ router.post('/', async (req, res) => {
       <div class="email-wrapper">
         <div class="email-header">
           <h1>EXIT PASS</h1>
-          <p>Visitor Management System</p>
+          <p>Entry Exit Monitoring System</p>
         </div>
         
         <div class="email-content">
