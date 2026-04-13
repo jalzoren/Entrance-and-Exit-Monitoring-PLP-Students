@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import '../componentscss/GenerateReportFilter.css';
 import '../css/GlobalModal.css';
-import { MdClose } from "react-icons/md";
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 
-function GenerateReportFilter({ onClose, onGenerate }) {
+function GenerateReportFilter({ onClose, onGenerate, onDownloadPDF }) {
   const [filters, setFilters] = useState({
     dateFrom: null,
     dateTo: null,
@@ -49,9 +48,19 @@ function GenerateReportFilter({ onClose, onGenerate }) {
     
     console.log('Generating report with filters:', reportFilters);
     
+    // First apply filters to get filtered data
     if (onGenerate) {
       onGenerate(reportFilters);
     }
+    
+    // Then trigger PDF download after filters are applied
+    // Give a small delay to ensure state updates
+    setTimeout(() => {
+      if (onDownloadPDF) {
+        onDownloadPDF();
+      }
+    }, 500);
+    
     onClose();
   };
 
@@ -218,7 +227,7 @@ function GenerateReportFilter({ onClose, onGenerate }) {
             onClick={handleGenerate}
             type="button"
           >
-            Generate
+            Generate Report
           </button>
         </div>
       </div>

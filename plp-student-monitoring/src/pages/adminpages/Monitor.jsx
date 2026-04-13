@@ -3,6 +3,13 @@ import "../../css/RealTimeMonitor.css";
 import '../../css/Monitor.css';
 import { useLogContext } from "../../context/LogContext";
 import { useCameraContext } from "../../context/CameraContext";
+import { 
+  exportLogsToXML, 
+  downloadXML, 
+  importLogsFromXML, 
+  readXMLFile,
+  downloadXSLT 
+} from "../../utils/xmlUtils";
 
 function LogEntry({ log, animDelay }) {
   return (
@@ -26,7 +33,7 @@ function LogEntry({ log, animDelay }) {
 }
 
 export default function Monitor() {
-  const { logs: contextLogs, studentsInside } = useLogContext();
+  const { logs: contextLogs, studentsInside, addLog, clearLogs } = useLogContext();
   const { 
     cameraStatus, 
     detectedFace, 
@@ -37,9 +44,13 @@ export default function Monitor() {
   
   const [activeFilter, setActiveFilter] = useState('all');
   const [filteredLogs, setFilteredLogs] = useState([]);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importPreview, setImportPreview] = useState([]);
+  const [importError, setImportError] = useState('');
   const logRef = useRef(null);
   const localVideoRef = useRef(null);
   const [streamAttached, setStreamAttached] = useState(false);
+  const fileInputRef = useRef(null);
 
   // Calculate counts for each filter
   const totalLogsCount = contextLogs.length;
@@ -111,6 +122,69 @@ export default function Monitor() {
     }
   };
 
+  // Export logs to XML
+  const exportToXML = () => {
+    const xmlContent = exportLogsToXML(
+      filteredLogs, 
+      totalLogsCount, 
+      studentsInside, 
+      entranceCount, 
+      exitCount, 
+      failedCount,
+      true
+    );
+    downloadXML(xmlContent);
+  };
+
+  // Export XSLT
+  const exportXSLT = () => {
+    downloadXSLT();
+  };
+
+  // Import XML file
+  const importFromXML = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    setImportError('');
+    try {
+      const xmlContent = await readXMLFile(file);
+      const logs = await importLogsFromXML(xmlContent);
+      setImportPreview(logs);
+      setShowImportModal(true);
+    } catch (err) {
+      setImportError(`Error importing XML: ${err.message}`);
+      console.error('Import error:', err);
+    }
+  };
+
+  // Confirm import
+  const confirmImport = () => {
+    if (importPreview.length > 0) {
+      // Add imported logs
+      importPreview.forEach(log => {
+        addLog(log);
+      });
+      
+      setShowImportModal(false);
+      setImportPreview([]);
+      setImportError('');
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  // Cancel import
+  const cancelImport = () => {
+    setShowImportModal(false);
+    setImportPreview([]);
+    setImportError('');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const getStatusText = () => {
     if (!isCameraActive) return 'Camera offline - Go to Face Recognition';
     if (cameraStatus === 'detected' && detectedFace) {
@@ -161,98 +235,54 @@ export default function Monitor() {
                 Failed Attempts ({failedCount})
               </button>
             </div>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px',
+              marginLeft: 'auto'
+            }}>
+              <button
+                onClick={exportToXML}
+                className="rtm-filter-btn"
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white'
+                }}
+              >
+                Export XML
+              </button>
+              <button
+                onClick={exportXSLT}
+                className="rtm-filter-btn"
+                style={{
+                  backgroundColor: '#FF9800',
+                  color: 'white'
+                }}
+              >
+                Download XSLT
+              </button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".xml"
+                onChange={importFromXML}
+                style={{ display: 'none' }}
+                id="xml-import-input"
+              />
+              <button
+                onClick={() => document.getElementById('xml-import-input').click()}
+                className="rtm-filter-btn"
+                style={{
+                  backgroundColor: '#2196F3',
+                  color: 'white'
+                }}
+              >
+                Import XML
+              </button>
+            </div>
           </div>
 
           <div className="rtm-body">
-            <div className="rtm-left-panel">
-              <div className="rtm-avatar-box">
-                {isCameraActive && videoStream ? (
-                  <>
-                    <video 
-                      ref={localVideoRef}
-                      autoPlay 
-                      playsInline
-                      muted
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        transform: 'scaleX(-1)',
-                        WebkitTransform: 'scaleX(-1)',
-                      }}
-                      onLoadedMetadata={() => console.log("Monitor Video: Ready")}
-                      onError={(e) => console.error("Monitor Video error:", e)}
-                    />
-                    {detectedFace && cameraStatus === "detected" && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '10px',
-                        left: '10px',
-                        right: '10px',
-                        backgroundColor: 'rgba(13, 51, 33, 0.95)',
-                        color: '#00ff41',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        zIndex: 10,
-                        border: '1px solid #00ff41',
-                        animation: 'slideUp 0.3s ease-out'
-                      }}>
-                        {detectedFace.name}
-                      </div>
-                    )}
-                    {cameraStatus === "unauthorized" && (
-                      <div style={{
-                        position: 'absolute',
-                        bottom: '10px',
-                        left: '10px',
-                        right: '10px',
-                        backgroundColor: 'rgba(255, 0, 0, 0.95)',
-                        color: '#fff',
-                        padding: '10px',
-                        borderRadius: '4px',
-                        fontSize: '13px',
-                        fontWeight: 'bold',
-                        textAlign: 'center',
-                        zIndex: 10,
-                        border: '1px solid #ff0000',
-                        animation: 'slideUp 0.3s ease-out'
-                      }}>
-                        UNAUTHORIZED
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <svg viewBox="0 0 100 120" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <circle cx="50" cy="38" r="24" stroke="#0d3321" strokeWidth="3" />
-                    <path
-                      d="M10 115c0-22 18-40 40-40s40 18 40 40"
-                      stroke="#0d3321"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                )}
-
-                <div className="rtm-corner tl" />
-                <div className="rtm-corner tr" />
-                <div className="rtm-corner bl" />
-                <div className="rtm-corner br" />
-                <div className="rtm-scan-line" />
-              </div>
-             
-              <div className="rtm-status-text">
-                {getStatusText().split('\n').map((line, i) => (
-                  <span key={i}>
-                    {line}
-                    {i < getStatusText().split('\n').length - 1 && <br />}
-                  </span>
-                ))}
-              </div>
-            </div>
-
+            {/* Log panel */}
             <div className="rtm-log-panel" ref={logRef}>
               {filteredLogs.length === 0 ? (
                 <div className="rtm-empty-state">
@@ -267,6 +297,96 @@ export default function Monitor() {
           </div>
         </div>
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            backgroundColor: '#1a1a1a',
+            borderRadius: '8px',
+            padding: '20px',
+            width: '80%',
+            maxWidth: '600px',
+            maxHeight: '80%',
+            overflow: 'auto',
+            border: '1px solid #00ff41'
+          }}>
+            <h3 style={{ color: '#00ff41', marginBottom: '15px' }}>Import XML Data</h3>
+            <p>Found {importPreview.length} logs to import:</p>
+            <div style={{
+              maxHeight: '300px',
+              overflow: 'auto',
+              marginBottom: '20px',
+              border: '1px solid #333',
+              borderRadius: '4px',
+              padding: '10px'
+            }}>
+              {importPreview.slice(0, 10).map((log, idx) => (
+                <div key={idx} style={{
+                  padding: '5px',
+                  borderBottom: '1px solid #333',
+                  fontSize: '12px'
+                }}>
+                  {log.failed ? (
+                    <span style={{ color: '#ff4444' }}>Failed Attempt - {log.time}</span>
+                  ) : (
+                    <span style={{ color: '#00ff41' }}>{log.name} - {log.action} ({log.time})</span>
+                  )}
+                </div>
+              ))}
+              {importPreview.length > 10 && (
+                <div style={{ padding: '5px', color: '#888' }}>
+                  ... and {importPreview.length - 10} more
+                </div>
+              )}
+            </div>
+            {importError && (
+              <div style={{ color: '#ff4444', marginBottom: '15px', padding: '10px', backgroundColor: 'rgba(255,0,0,0.1)', borderRadius: '4px' }}>
+                {importError}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={cancelImport}
+                style={{
+                  backgroundColor: '#666',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmImport}
+                style={{
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '4px',
+                  cursor: 'pointer'
+                }}
+              >
+                Import {importPreview.length} Logs
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

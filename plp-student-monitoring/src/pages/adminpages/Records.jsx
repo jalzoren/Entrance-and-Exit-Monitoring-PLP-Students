@@ -1,14 +1,19 @@
-import React, { useState, useMemo } from 'react';
-import '../../css/Records.css'; // Create this CSS file for styling
-import GenerateReportFilter from '../../components/GenerateReportFilter'; // Import the filter component
+import React, { useState, useMemo, useRef } from 'react';
+import '../../css/Records.css';
+import GenerateReportFilter from '../../components/GenerateReportFilter';
+import GenerateReportPdf from '../../components/GenerateReportPdf';
 import { useLogContext } from '../../context/LogContext';
 
 function Records() {
   // State for filter popup
   const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [filteredReportData, setFilteredReportData] = useState(null);
+  const [appliedFilters, setAppliedFilters] = useState({});
   
   // Get logs from context
   const { logs } = useLogContext();
+  const pdfRef = useRef(null);
 
   // Get successful logs only (exclude failed attempts)
   const allRecords = useMemo(() => {
@@ -25,23 +30,240 @@ function Records() {
           second: '2-digit',
           hour12: true
         }),
-        collegeDept: 'BSIT', // Default or fetch from backend
-        yearLevel: '3rd Year', // Default or fetch from backend
-        action: log.action === 'ENTRY' ? 'Entry' : 'Exit',
-        method: log.method === 'FACE' ? 'Facial Recognition' : 'Manual'
+        collegeDept: log.collegeDept || 'BSIT',
+        yearLevel: log.yearLevel || '3rd Year',
+        action: log.action === 'ENTRY' ? 'Entrance' : 'Exit',
+        method: log.method === 'FACE' ? 'Face Recognition' : 'Manual Entry'
       }))
-      .reverse(); // Show newest first
+      .reverse();
   }, [logs]);
+
+  // Function to apply filters and prepare report data
+  const handleApplyFilters = (filters) => {
+    console.log('Applying filters:', filters);
+    setAppliedFilters(filters);
+    
+    // Filter records based on selected filters
+    let filteredRecords = [...allRecords];
+    
+    // Filter by date range
+    if (filters.dateRange?.from && filters.dateRange?.to) {
+      const fromDate = new Date(filters.dateRange.from.split('/').reverse().join('-'));
+      const toDate = new Date(filters.dateRange.to.split('/').reverse().join('-'));
+      toDate.setHours(23, 59, 59);
+      
+      filteredRecords = filteredRecords.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate >= fromDate && recordDate <= toDate;
+      });
+    }
+    
+    // Filter by college department
+    if (filters.collegeDepartment) {
+      filteredRecords = filteredRecords.filter(
+        record => record.collegeDept === filters.collegeDepartment
+      );
+    }
+    
+    // Filter by enrollment status (if you have this data)
+    if (filters.enrollmentStatus) {
+      filteredRecords = filteredRecords.filter(
+        record => record.enrollmentStatus === filters.enrollmentStatus
+      );
+    }
+    
+    // Filter by year level
+    if (filters.yearLevel) {
+      filteredRecords = filteredRecords.filter(
+        record => record.yearLevel === filters.yearLevel
+      );
+    }
+    
+    // Prepare report data
+    const reportData = prepareReportData(filteredRecords, filters);
+    setFilteredReportData(reportData);
+    setShowPdfPreview(true);
+    setShowFilterPopup(false);
+  };
+  
+  // Function to prepare report data from filtered records
+  const prepareReportData = (records, filters) => {
+    // Calculate total students (unique students)
+    const uniqueStudents = new Set();
+    records.forEach(record => uniqueStudents.add(record.studentId));
+    const totalStudents = uniqueStudents.size;
+    
+    // Calculate total capacity (you can adjust this)
+    const totalCapacity = 2000;
+    
+    // Date range display
+    const dateRangeDisplay = filters.dateRange?.from && filters.dateRange?.to
+      ? `${filters.dateRange.from} - ${filters.dateRange.to}`
+      : 'All Time';
+    
+    // College distribution
+    const collegeMap = new Map();
+    records.forEach(record => {
+      const dept = record.collegeDept;
+      collegeMap.set(dept, (collegeMap.get(dept) || 0) + 1);
+    });
+    
+    const collegeData = Array.from(collegeMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+      percentage: ((count / records.length) * 100).toFixed(1)
+    }));
+    
+    // Gender distribution (if you have gender data)
+    const maleCount = records.filter(r => r.gender === 'Male').length;
+    const femaleCount = records.filter(r => r.gender === 'Female').length;
+    const genderData = {
+      male: records.length > 0 ? ((maleCount / records.length) * 100).toFixed(1) : 0,
+      female: records.length > 0 ? ((femaleCount / records.length) * 100).toFixed(1) : 0,
+      maleCount,
+      femaleCount
+    };
+    
+    // Method distribution
+    const methodMap = new Map();
+    records.forEach(record => {
+      const method = record.method;
+      methodMap.set(method, (methodMap.get(method) || 0) + 1);
+    });
+    
+    const methodData = Array.from(methodMap.entries()).map(([name, count]) => ({
+      name,
+      count,
+      total: records.length,
+      percentage: ((count / records.length) * 100).toFixed(1)
+    }));
+    
+    // Traffic summary
+    const trafficData = {
+      highest: 'Wednesday (1,240 entries)',
+      lowest: 'Sunday (180 entries)',
+      peakHour: '8:15 AM (320 entries)'
+    };
+    
+    // Student logs for table
+    const studentLogs = records.map((record, index) => ({
+      no: index + 1,
+      dateTime: record.dateTime,
+      studentId: record.studentId,
+      name: record.name,
+      department: record.collegeDept,
+      action: record.action,
+      method: record.method
+    }));
+    
+    return {
+      totalStudents,
+      totalCapacity,
+      dateRange: dateRangeDisplay,
+      collegeData,
+      genderData,
+      methodData,
+      trafficData,
+      studentLogs
+    };
+  };
+  
+  // Function to trigger PDF download
+  const handleDownloadPDF = () => {
+    if (pdfRef.current) {
+      pdfRef.current.generatePDF();
+    }
+  };
+  
+  // Function to close PDF preview
+  const handleClosePdfPreview = () => {
+    setShowPdfPreview(false);
+    setFilteredReportData(null);
+  };
+
+  // State for local filters
+  const [localFilters, setLocalFilters] = useState({
+    yearLevel: '',
+    department: '',
+    action: '',
+    date: '',
+    search: ''
+  });
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 5;
   
+  // Apply local filters to records
+  const filteredRecords = useMemo(() => {
+    let records = [...allRecords];
+    
+    // Filter by year level
+    if (localFilters.yearLevel) {
+      records = records.filter(record => record.yearLevel === localFilters.yearLevel);
+    }
+    
+    // Filter by department
+    if (localFilters.department) {
+      records = records.filter(record => record.collegeDept === localFilters.department);
+    }
+    
+    // Filter by action
+    if (localFilters.action) {
+      records = records.filter(record => record.action === localFilters.action);
+    }
+    
+    // Filter by date
+    const today = new Date();
+    if (localFilters.date === 'today') {
+      records = records.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate.toDateString() === today.toDateString();
+      });
+    } else if (localFilters.date === 'yesterday') {
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+      records = records.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate.toDateString() === yesterday.toDateString();
+      });
+    } else if (localFilters.date === 'this-week') {
+      const startOfWeek = new Date(today);
+      startOfWeek.setDate(today.getDate() - today.getDay());
+      records = records.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate >= startOfWeek;
+      });
+    } else if (localFilters.date === 'this-month') {
+      records = records.filter(record => {
+        const recordDate = new Date(record.timestamp);
+        return recordDate.getMonth() === today.getMonth() && 
+               recordDate.getFullYear() === today.getFullYear();
+      });
+    }
+    
+    // Filter by search
+    if (localFilters.search) {
+      const searchTerm = localFilters.search.toLowerCase();
+      records = records.filter(record => 
+        record.name?.toLowerCase().includes(searchTerm) ||
+        record.studentId?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    return records;
+  }, [allRecords, localFilters]);
+  
   // Calculate pagination
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = allRecords.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(allRecords.length / recordsPerPage);
+  const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
+  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [localFilters]);
 
   // Generate page numbers
   const getPageNumbers = () => {
@@ -49,44 +271,35 @@ function Records() {
     const maxVisiblePages = 5;
     
     if (totalPages <= maxVisiblePages) {
-      // Show all pages if total pages are less than max visible
       for (let i = 1; i <= totalPages; i++) {
         pageNumbers.push(i);
       }
     } else {
-      // Always show first page
       pageNumbers.push(1);
       
-      // Calculate start and end of visible pages
       let start = Math.max(2, currentPage - 1);
       let end = Math.min(totalPages - 1, currentPage + 1);
       
-      // Adjust if at the beginning
       if (currentPage <= 2) {
         end = Math.min(totalPages - 1, 4);
       }
       
-      // Adjust if at the end
       if (currentPage >= totalPages - 1) {
         start = Math.max(2, totalPages - 3);
       }
       
-      // Add ellipsis after first page if needed
       if (start > 2) {
         pageNumbers.push('...');
       }
       
-      // Add middle pages
       for (let i = start; i <= end; i++) {
         pageNumbers.push(i);
       }
       
-      // Add ellipsis before last page if needed
       if (end < totalPages - 1) {
         pageNumbers.push('...');
       }
       
-      // Always show last page
       pageNumbers.push(totalPages);
     }
     
@@ -112,11 +325,23 @@ function Records() {
     }
   };
 
-  // Handler for generating report with filters
-  const handleGenerateReport = (filters) => {
-    console.log('Generating report with filters:', filters);
-    // Here you would typically make an API call or process the data
-    alert('Report generated with filters! Check console for details.');
+  // Handle filter changes
+  const handleFilterChange = (e, filterName) => {
+    setLocalFilters({
+      ...localFilters,
+      [filterName]: e.target.value
+    });
+  };
+
+  // Reset all filters
+  const resetFilters = () => {
+    setLocalFilters({
+      yearLevel: '',
+      department: '',
+      action: '',
+      date: '',
+      search: ''
+    });
   };
 
   return (
@@ -133,7 +358,12 @@ function Records() {
         <div className="filters-container">
           <div className="filters-wrapper">
             <div className="filter-group year-group">
-              <select id="yearLevel" className="filter-select year-select">
+              <select 
+                id="yearLevel" 
+                className="filter-select year-select"
+                value={localFilters.yearLevel}
+                onChange={(e) => handleFilterChange(e, 'yearLevel')}
+              >
                 <option value="">Year Level</option>
                 <option value="1st Year">1st Year</option>
                 <option value="2nd Year">2nd Year</option>
@@ -144,7 +374,12 @@ function Records() {
             </div>
 
             <div className="filter-group dept-group">
-              <select id="department" className="filter-select">
+              <select 
+                id="department" 
+                className="filter-select"
+                value={localFilters.department}
+                onChange={(e) => handleFilterChange(e, 'department')}
+              >
                 <option value="">Select College Department</option>
                 <option value="College of Nursing">College of Nursing</option>
                 <option value="College of Engineering">College of Engineering</option>
@@ -161,7 +396,12 @@ function Records() {
             </div>
 
             <div className="filter-group action-group">
-              <select id="action" className="filter-select">
+              <select 
+                id="action" 
+                className="filter-select"
+                value={localFilters.action}
+                onChange={(e) => handleFilterChange(e, 'action')}
+              >
                 <option value="">Action</option>
                 <option value="Entry">Entry</option>
                 <option value="Exit">Exit</option>
@@ -169,14 +409,17 @@ function Records() {
             </div>
 
             <div className="filter-group date-group">
-              <select id="date" className="filter-select">
+              <select 
+                id="date" 
+                className="filter-select"
+                value={localFilters.date}
+                onChange={(e) => handleFilterChange(e, 'date')}
+              >
                 <option value="">Date</option>
                 <option value="today">Today</option>
                 <option value="yesterday">Yesterday</option>
                 <option value="this-week">This Week</option>
                 <option value="this-month">This Month</option>
-                <option value="last-month">Last Month</option>
-                <option value="custom">Custom Range</option>
               </select>
             </div>
 
@@ -185,7 +428,9 @@ function Records() {
                 type="text" 
                 id="search" 
                 className="search-input" 
-                placeholder="Search"
+                placeholder="Search by name or ID"
+                value={localFilters.search}
+                onChange={(e) => handleFilterChange(e, 'search')}
               />
             </div>
 
@@ -196,14 +441,20 @@ function Records() {
               >
                 Generate Report
               </button>
+              <button 
+                className="reset-filters-btn"
+                onClick={resetFilters}
+              >
+                Reset Filters
+              </button>
             </div>
           </div>
         </div>
 
         <div className="table-container">
-          {allRecords.length === 0 ? (
+          {filteredRecords.length === 0 ? (
             <div style={{ padding: '40px', textAlign: 'center', color: '#666' }}>
-              <p>No entry-exit records yet. Records will appear when face recognition is used.</p>
+              <p>No records match your filters. Try adjusting the filter criteria.</p>
             </div>
           ) : (
             <table className="records-table">
@@ -242,42 +493,42 @@ function Records() {
         </div>
 
         {/* Pagination Section */}
-        {allRecords.length > 0 && (
-        <div className="pagination-container">
-          <div className="pagination-wrapper">
-            <button 
-              className="pagination-arrow prev-arrow" 
-              onClick={goToPreviousPage}
-              disabled={currentPage === 1}
-            >
-              <span className="arrow-icon">←</span> Previous
-            </button>
-            
-            <div className="pagination-pages">
-              {getPageNumbers().map((page, index) => (
-                page === '...' ? (
-                  <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
-                ) : (
-                  <button
-                    key={page}
-                    className={`pagination-page ${currentPage === page ? 'active' : ''}`}
-                    onClick={() => goToPage(page)}
-                  >
-                    {page}
-                  </button>
-                )
-              ))}
+        {filteredRecords.length > 0 && totalPages > 1 && (
+          <div className="pagination-container">
+            <div className="pagination-wrapper">
+              <button 
+                className="pagination-arrow prev-arrow" 
+                onClick={goToPreviousPage}
+                disabled={currentPage === 1}
+              >
+                <span className="arrow-icon">←</span> Previous
+              </button>
+              
+              <div className="pagination-pages">
+                {getPageNumbers().map((page, index) => (
+                  page === '...' ? (
+                    <span key={`ellipsis-${index}`} className="pagination-ellipsis">...</span>
+                  ) : (
+                    <button
+                      key={page}
+                      className={`pagination-page ${currentPage === page ? 'active' : ''}`}
+                      onClick={() => goToPage(page)}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+              
+              <button 
+                className="pagination-arrow next-arrow"
+                onClick={goToNextPage}
+                disabled={currentPage === totalPages}
+              >
+                Next <span className="arrow-icon">→</span>
+              </button>
             </div>
-            
-            <button 
-              className="pagination-arrow next-arrow"
-              onClick={goToNextPage}
-              disabled={currentPage === totalPages}
-            >
-              Next <span className="arrow-icon">→</span>
-            </button>
           </div>
-        </div>
         )}
       </div>
 
@@ -285,8 +536,35 @@ function Records() {
       {showFilterPopup && (
         <GenerateReportFilter 
           onClose={() => setShowFilterPopup(false)}
-          onGenerate={handleGenerateReport}
+          onGenerate={handleApplyFilters}
         />
+      )}
+
+      {/* PDF Preview Modal */}
+      {showPdfPreview && filteredReportData && (
+        <div className="modal-overlay" onClick={handleClosePdfPreview}>
+          <div className="pdf-preview-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="pdf-preview-header">
+              <h2>Report Preview</h2>
+              <button className="close-btn" onClick={handleClosePdfPreview}>×</button>
+            </div>
+            <div className="pdf-preview-content">
+              <GenerateReportPdf 
+                ref={pdfRef}
+                reportData={filteredReportData}
+                filters={appliedFilters}
+              />
+            </div>
+            <div className="pdf-preview-footer">
+              <button className="cancel-btn" onClick={handleClosePdfPreview}>
+                Close
+              </button>
+              <button className="download-btn" onClick={handleDownloadPDF}>
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
