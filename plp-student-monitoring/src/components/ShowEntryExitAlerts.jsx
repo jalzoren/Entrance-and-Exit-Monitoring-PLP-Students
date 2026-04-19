@@ -9,6 +9,8 @@ const ENTRY_GREETINGS = [
   "Kumusta? Attendance check",
   "Hi! Ready for class",
   "Maligayang pagdating!",
+  "Welcome back! Let's have a great day",
+  "Pasok na, Anoh Tarah?"
 ];
 
 const EXIT_GREETINGS = [
