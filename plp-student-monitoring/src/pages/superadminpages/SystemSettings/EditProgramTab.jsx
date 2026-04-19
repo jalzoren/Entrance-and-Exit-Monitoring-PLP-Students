@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import EditProgramModal from './EditProgramModal';
 import AddProgramModal from './AddProgramModal';
 import Swal from 'sweetalert2';
+import { MdSchool } from 'react-icons/md';
 
 const ROWS_PER_PAGE = 10;
 
@@ -16,6 +17,18 @@ function EditProgramTab() {
   const [loading, setLoading] = useState(true);
   const [editingProgram, setEditingProgram] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [totalPrograms, setTotalPrograms] = useState(0);
+
+  // Fetch total programs count
+  const fetchTotalPrograms = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/programs/total/count');
+      const data = await response.json();
+      setTotalPrograms(data.total);
+    } catch (error) {
+      console.error('Error fetching total programs:', error);
+    }
+  };
 
   // Fetch departments from backend
   const fetchDepartments = async () => {
@@ -57,10 +70,12 @@ function EditProgramTab() {
 
   useEffect(() => {
     fetchDepartments();
+    fetchTotalPrograms();
   }, []);
 
   useEffect(() => {
     fetchPrograms();
+    fetchTotalPrograms();
   }, [search, college, programType]);
 
   const filtered = programs;
@@ -88,6 +103,7 @@ function EditProgramTab() {
       if (!response.ok) throw new Error('Failed to update');
       
       await fetchPrograms();
+      await fetchTotalPrograms();
       setEditingProgram(null);
       
       Swal.fire({
@@ -110,6 +126,7 @@ function EditProgramTab() {
 
   const handleAddProgram = async (newProg) => {
     await fetchPrograms();
+    await fetchTotalPrograms();
   };
 
   const handleDepartmentAdded = async (updatedDepartments) => {
@@ -117,27 +134,45 @@ function EditProgramTab() {
   };
 
   const handleArchive = async (program) => {
-    const result = await Swal.fire({
-      title: 'Archive Program?',
-      text: `Are you sure you want to archive "${program.programName}"?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, archive it!'
-    });
+    try {
+      const impactResponse = await fetch(`http://localhost:5000/api/programs/${program.id}/archive-impact`);
+      const impact = await impactResponse.json();
 
-    if (result.isConfirmed) {
-      Swal.fire({
-        title: 'Archiving...',
-        text: 'Please wait',
-        allowOutsideClick: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
+      const result = await Swal.fire({
+        title: '⚠️ Archive Program?',
+        html: `
+          <div style="text-align: left;">
+            <p><strong>Program:</strong> ${program.programName}</p>
+            <p><strong>Code:</strong> ${program.programCode}</p>
+            <p><strong>Department:</strong> ${program.department}</p>
+            <p style="color: #e74c3c; margin-top: 15px;">
+              <strong>Warning: This action will affect:</strong>
+            </p>
+            <ul style="margin-left: 20px;">
+              <li><strong>${impact.studentsCount}</strong> student(s) enrolled in this program</li>
+            </ul>
+            <p style="margin-top: 15px; color: #e67e22;">
+              Archiving will make this program inactive.
+            </p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, archive it!'
       });
 
-      try {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Archiving...',
+          text: 'Please wait',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
         const response = await fetch(`http://localhost:5000/api/programs/${program.id}/archive`, {
           method: 'PATCH'
         });
@@ -145,22 +180,64 @@ function EditProgramTab() {
         if (!response.ok) throw new Error('Failed to archive');
         
         setPrograms((prev) => prev.filter((p) => p.id !== program.id));
+        await fetchTotalPrograms();
         
         Swal.fire({
           icon: 'success',
           title: 'Archived!',
-          text: `"${program.programName}" has been archived.`,
-          timer: 1500,
+          html: `"${program.programName}" has been archived.<br>Affected: ${impact.studentsCount} student(s)`,
+          timer: 2000,
           showConfirmButton: false
         });
-      } catch (error) {
-        console.error('Error archiving program:', error);
+      }
+    } catch (error) {
+      console.error('Error fetching impact or archiving:', error);
+      const result = await Swal.fire({
+        title: 'Archive Program?',
+        text: `Are you sure you want to archive "${program.programName}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, archive it!'
+      });
+
+      if (result.isConfirmed) {
         Swal.fire({
-          icon: 'error',
-          title: 'Failed!',
-          text: 'Failed to archive program',
-          confirmButtonColor: '#3085d6'
+          title: 'Archiving...',
+          text: 'Please wait',
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
         });
+
+        try {
+          const response = await fetch(`http://localhost:5000/api/programs/${program.id}/archive`, {
+            method: 'PATCH'
+          });
+          
+          if (!response.ok) throw new Error('Failed to archive');
+          
+          setPrograms((prev) => prev.filter((p) => p.id !== program.id));
+          await fetchTotalPrograms();
+          
+          Swal.fire({
+            icon: 'success',
+            title: 'Archived!',
+            text: `"${program.programName}" has been archived.`,
+            timer: 1500,
+            showConfirmButton: false
+          });
+        } catch (err) {
+          console.error('Error archiving program:', err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed!',
+            text: 'Failed to archive program',
+            confirmButtonColor: '#3085d6'
+          });
+        }
       }
     }
   };
@@ -171,6 +248,19 @@ function EditProgramTab() {
 
   return (
     <div className="edit-program-tab">
+      {/* Full width total count card */}
+      <div className="stats-container" style={{ marginBottom: '20px' }}>
+        <div className="stat-card program-count" style={{ borderLeft: '5px solid #e91e63' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#fce4ec', color: '#e91e63' }}>
+            <MdSchool />
+          </div>
+          <div className="stat-details">
+            <h3>Total Programs</h3>
+            <p className="stat-number" style={{ color: '#e91e63' }}>{totalPrograms}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="ep-topbar">
         <input 
           type="text" 
@@ -229,7 +319,7 @@ function EditProgramTab() {
                   <td><span className={`type-badge ${prog.programType === 'Graduate' ? 'graduate' : 'undergrad'}`}>{prog.programType}</span></td>
                   <td>{prog.duration} {prog.duration === 1 ? 'year' : 'years'}</td>
                   <td><span className={`status-badge ${prog.programStatus === 'Active' ? 'active' : 'inactive'}`}>{prog.programStatus}</span></td>
-                  <td>{prog.dateCreated}</td>
+                  <td>{prog.dateCreated ? new Date(prog.dateCreated).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' }) : 'N/A'}</td>
                   <td>
                     <button className="ep-edit-btn" onClick={() => setEditingProgram(prog)}>Edit</button>
                     <button className="ep-archive-btn" onClick={() => handleArchive(prog)}>Archive</button>

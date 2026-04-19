@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import AddDepartmentModal from './AddDepartmentModal';
 import Swal from 'sweetalert2';
+import { MdBusinessCenter } from 'react-icons/md';
 
 const ROWS_PER_PAGE = 10;
 
@@ -18,6 +19,18 @@ function DepartmentsTab() {
     status: 'Active'
   });
   const [showAddModal, setShowAddModal] = useState(false);
+  const [totalDepartments, setTotalDepartments] = useState(0);
+
+  // Fetch total departments count
+  const fetchTotalDepartments = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/departments/total/count');
+      const data = await response.json();
+      setTotalDepartments(data.total);
+    } catch (error) {
+      console.error('Error fetching total departments:', error);
+    }
+  };
 
   // Fetch departments
   const fetchDepartments = async () => {
@@ -38,7 +51,6 @@ function DepartmentsTab() {
 
       let departmentsArray = Array.isArray(data) ? data : (data.data || data.departments || []);
 
-      // Convert string array to object array (temporary solution until backend is updated)
       if (departmentsArray.length > 0 && typeof departmentsArray[0] === 'string') {
         departmentsArray = departmentsArray.map((name, index) => ({
           id: `temp-${index}`,
@@ -67,6 +79,7 @@ function DepartmentsTab() {
 
   useEffect(() => {
     fetchDepartments();
+    fetchTotalDepartments();
   }, [search]);
 
   // Pagination
@@ -79,6 +92,7 @@ function DepartmentsTab() {
 
   const handleAddDepartment = async () => {
     await fetchDepartments();
+    await fetchTotalDepartments();
   };
 
   const handleEditClick = (dept) => {
@@ -114,7 +128,7 @@ function DepartmentsTab() {
     });
 
     try {
-      const deptId = editingDepartment.id || editingDepartment; // fallback
+      const deptId = editingDepartment.id || editingDepartment;
 
       const response = await fetch(`http://localhost:5000/api/departments/${deptId}`, {
         method: 'PUT',
@@ -128,6 +142,7 @@ function DepartmentsTab() {
       }
 
       await fetchDepartments();
+      await fetchTotalDepartments();
       setEditingDepartment(null);
 
       Swal.fire({
@@ -152,131 +167,113 @@ function DepartmentsTab() {
     const deptName = typeof dept === 'string' ? dept : (dept.dept_name || 'this department');
     const deptId = typeof dept === 'string' ? dept : dept.id;
 
-    // First check if department has active programs
     try {
-        const programsResponse = await fetch(`http://localhost:5000/api/programs?department=${encodeURIComponent(deptName)}&programStatus=Active`);
-        const activePrograms = await programsResponse.json();
-        
-        let message = `Are you sure you want to archive "${deptName}"?`;
-        if (activePrograms.length > 0) {
-            message = `"${deptName}" has ${activePrograms.length} active program(s):\n\n`;
-            activePrograms.forEach(p => {
-                message += `• ${p.programName} (${p.programCode})\n`;
-            });
-            message += `\nThese programs will also be archived. Continue?`;
-        }
+      const impactResponse = await fetch(`http://localhost:5000/api/departments/${deptId}/archive-impact`);
+      const impact = await impactResponse.json();
 
-        const result = await Swal.fire({
-            title: 'Archive Department?',
-            text: message,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, archive it!'
+      const result = await Swal.fire({
+        title: '⚠️ Archive Department?',
+        html: `
+          <div style="text-align: left;">
+            <p><strong>Department:</strong> ${deptName}</p>
+            <p><strong>Code:</strong> ${dept.dept_code || 'N/A'}</p>
+            <p style="color: #e74c3c; margin-top: 15px;">
+              <strong>Warning: This action will affect:</strong>
+            </p>
+            <ul style="margin-left: 20px;">
+              <li><strong>${impact.programsCount}</strong> program(s) under this department</li>
+              <li><strong>${impact.studentsCount}</strong> student(s) enrolled in this department</li>
+            </ul>
+            <p style="margin-top: 15px; color: #e67e22;">
+              Archiving will make this department inactive.
+            </p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, archive it!'
+      });
+
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Archiving...',
+          text: 'Please wait',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
         });
 
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Archiving...',
-                text: 'Please wait',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+        const response = await fetch(`http://localhost:5000/api/departments/${deptId}/archive`, {
+          method: 'PATCH'
+        });
 
-            try {
-                // Archive the department
-                const response = await fetch(`http://localhost:5000/api/departments/${deptId}/archive`, {
-                    method: 'PATCH'
-                });
+        if (!response.ok) throw new Error('Failed to archive department');
 
-                if (!response.ok) throw new Error('Failed to archive department');
+        setDepartments((prev) => prev.filter((d) => d.id !== deptId));
+        await fetchTotalDepartments();
 
-                // Archive all active programs in this department
-                if (activePrograms.length > 0) {
-                    for (const program of activePrograms) {
-                        await fetch(`http://localhost:5000/api/programs/${program.id}/archive`, {
-                            method: 'PATCH'
-                        });
-                    }
-                }
+        Swal.fire({
+          icon: 'success',
+          title: 'Archived!',
+          html: `"${deptName}" has been archived.<br>Affected: ${impact.programsCount} program(s) and ${impact.studentsCount} student(s)`,
+          timer: 2000,
+          showConfirmButton: false
+        });
 
-                // Remove department from local state immediately
-                setDepartments((prev) => prev.filter((d) => d.id !== deptId));
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Archived!',
-                    html: `"${deptName}"${activePrograms.length > 0 ? ` and ${activePrograms.length} program(s)` : ''} has been archived.`,
-                    timer: 2000,
-                    showConfirmButton: false
-                });
-                
-                // Refresh the page data to reflect changes
-                fetchDepartments();
-                
-            } catch (error) {
-                console.error('Error archiving department:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Failed!',
-                    text: 'Failed to archive department',
-                    confirmButtonColor: '#3085d6'
-                });
-            }
-        }
+        fetchDepartments();
+      }
     } catch (error) {
-        console.error('Error checking active programs:', error);
-        // If can't check programs, still allow archive
-        const result = await Swal.fire({
-            title: 'Archive Department?',
-            text: `Are you sure you want to archive "${deptName}"?`,
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#d33',
-            cancelButtonColor: '#3085d6',
-            confirmButtonText: 'Yes, archive it!'
+      console.error('Error fetching impact or archiving:', error);
+      const result = await Swal.fire({
+        title: 'Archive Department?',
+        text: `Are you sure you want to archive "${deptName}"?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, archive it!'
+      });
+
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: 'Archiving...',
+          text: 'Please wait',
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading()
         });
 
-        if (result.isConfirmed) {
-            Swal.fire({
-                title: 'Archiving...',
-                text: 'Please wait',
-                allowOutsideClick: false,
-                didOpen: () => Swal.showLoading()
-            });
+        try {
+          const response = await fetch(`http://localhost:5000/api/departments/${deptId}/archive`, {
+            method: 'PATCH'
+          });
 
-            try {
-                const response = await fetch(`http://localhost:5000/api/departments/${deptId}/archive`, {
-                    method: 'PATCH'
-                });
+          if (!response.ok) throw new Error('Failed to archive department');
 
-                if (!response.ok) throw new Error('Failed to archive department');
+          setDepartments((prev) => prev.filter((d) => d.id !== deptId));
+          await fetchTotalDepartments();
 
-                setDepartments((prev) => prev.filter((d) => d.id !== deptId));
+          Swal.fire({
+            icon: 'success',
+            title: 'Archived!',
+            text: `"${deptName}" has been archived.`,
+            timer: 1500,
+            showConfirmButton: false
+          });
 
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Archived!',
-                    text: `"${deptName}" has been archived.`,
-                    timer: 1500,
-                    showConfirmButton: false
-                });
-                
-                fetchDepartments();
-                
-            } catch (error) {
-                console.error('Error archiving department:', error);
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Failed!',
-                    text: 'Failed to archive department',
-                    confirmButtonColor: '#3085d6'
-                });
-            }
+          fetchDepartments();
+        } catch (err) {
+          console.error('Error archiving department:', err);
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed!',
+            text: 'Failed to archive department',
+            confirmButtonColor: '#3085d6'
+          });
         }
+      }
     }
-};
+  };
 
   if (loading) {
     return <div className="edit-program-tab" style={{ padding: '20px', textAlign: 'center' }}>Loading departments...</div>;
@@ -284,6 +281,19 @@ function DepartmentsTab() {
 
   return (
     <div className="edit-program-tab">
+      {/* Full width total count card */}
+      <div className="stats-container" style={{ marginBottom: '20px' }}>
+        <div className="stat-card department-count" style={{ borderLeft: '5px solid #5c6bc0' }}>
+          <div className="stat-icon" style={{ backgroundColor: '#e8eaf6', color: '#5c6bc0' }}>
+            <MdBusinessCenter />
+          </div>
+          <div className="stat-details">
+            <h3>Total Departments</h3>
+            <p className="stat-number" style={{ color: '#5c6bc0' }}>{totalDepartments}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="ep-topbar">
         <input 
           type="text" 
@@ -357,7 +367,6 @@ function DepartmentsTab() {
         </table>
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="ep-pagination">
           <button 
@@ -386,7 +395,6 @@ function DepartmentsTab() {
         </div>
       )}
 
-      {/* Edit Department Modal */}
       {editingDepartment && (
         <div className="modal-overlay" onClick={() => setEditingDepartment(null)}>
           <div className="modal-container" onClick={e => e.stopPropagation()}>
@@ -446,7 +454,6 @@ function DepartmentsTab() {
         </div>
       )}
 
-      {/* Add Department Modal */}
       {showAddModal && (
         <AddDepartmentModal
           onClose={() => setShowAddModal(false)}

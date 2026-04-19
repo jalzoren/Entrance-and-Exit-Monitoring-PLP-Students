@@ -151,6 +151,100 @@ router.patch('/departments/:id/archive', async (req, res) => {
         res.status(500).json({ error: 'Database error' });
     }
 });
+
+// Add these routes to your program.js file
+
+// Get affected counts before archiving department
+router.get('/departments/:id/archive-impact', async (req, res) => {
+    try {
+        const [dept] = await pool.query(
+            'SELECT dept_name FROM departments WHERE id = ?',
+            [req.params.id]
+        );
+        
+        if (dept.length === 0) {
+            return res.status(404).json({ error: 'Department not found' });
+        }
+        
+        const deptName = dept[0].dept_name;
+        
+        const [programsCount] = await pool.query(
+            'SELECT COUNT(*) as count FROM programs WHERE department COLLATE utf8mb4_general_ci = ? AND programStatus = "Active"',
+            [deptName]
+        );
+        
+        const [studentsCount] = await pool.query(
+            'SELECT COUNT(*) as count FROM students WHERE college_department COLLATE utf8mb4_general_ci = ? AND status != "Inactive"',
+            [deptName]
+        );
+        
+        res.json({
+            programsCount: programsCount[0].count || 0,
+            studentsCount: studentsCount[0].count || 0
+        });
+    } catch (error) {
+        console.error('Error fetching archive impact:', error);
+        res.json({
+            programsCount: 0,
+            studentsCount: 0
+        });
+    }
+});
+
+// Get affected counts before archiving program
+router.get('/programs/:id/archive-impact', async (req, res) => {
+    try {
+        // First get the program name
+        const [program] = await pool.query(
+            'SELECT programName FROM programs WHERE id = ?',
+            [req.params.id]
+        );
+        
+        if (program.length === 0) {
+            return res.status(404).json({ error: 'Program not found' });
+        }
+        
+        const programName = program[0].programName;
+        
+        // Use 'program_name' column (not 'program')
+        const [studentsCount] = await pool.query(
+            'SELECT COUNT(*) as count FROM students WHERE program_name = ? AND status != "Inactive"',
+            [programName]
+        );
+        
+        res.json({
+            studentsCount: studentsCount[0].count || 0
+        });
+    } catch (error) {
+        console.error('Error fetching archive impact:', error);
+        res.json({
+            studentsCount: 0
+        });
+    }
+});
+
+// Get total departments count (active + inactive)
+router.get('/departments/total/count', async (req, res) => {
+    try {
+        const [result] = await pool.query('SELECT COUNT(*) as total FROM departments');
+        res.json({ total: result[0].total || 0 });
+    } catch (error) {
+        console.error('Error fetching departments count:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Get total programs count (active + inactive)
+router.get('/programs/total/count', async (req, res) => {
+    try {
+        const [result] = await pool.query('SELECT COUNT(*) as total FROM programs');
+        res.json({ total: result[0].total || 0 });
+    } catch (error) {
+        console.error('Error fetching programs count:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Restore department
 router.patch('/departments/:id/restore', async (req, res) => {
     try {
