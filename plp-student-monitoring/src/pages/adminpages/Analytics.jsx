@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -6,86 +6,20 @@ import {
 import '../../css/Analytics.css';
 import GenerateReportFilter from '../../components/GenerateReportFilter';
 import GenerateReportPdf from '../../components/GenerateReportPdf';
-
-const INITIAL_METRICS = {
-  totalStudents: 10000,
-  currentStudentsInside: 5500,
-};
-
-const INITIAL_TRAFFIC_DATA = [
-  { date: 'Mon', entrance: 1240, exit: 1221 },
-  { date: 'Tue', entrance: 1421, exit: 1229 },
-  { date: 'Wed', entrance: 1100, exit: 1200 },
-  { date: 'Thu', entrance: 1478, exit: 1200 },
-  { date: 'Fri', entrance: 1189, exit: 1218 },
-  { date: 'Sat', entrance: 1200, exit: 1250 },
-  { date: 'Sun', entrance: 1100, exit: 1150 },
-];
-
-const INITIAL_COLLEGE_DATA = [
-  {
-    id: 1,
-    collegeName: 'College of Computer Studies',
-    presenceNow: 2400,
-    totalStudents: 3000,
-    percentage: 80,
-  },
-  {
-    id: 2,
-    collegeName: 'College of Nursing',
-    presenceNow: 1250,
-    totalStudents: 2500,
-    percentage: 50,
-  },
-  {
-    id: 3,
-    collegeName: 'College of Engineering',
-    presenceNow: 200,
-    totalStudents: 1000,
-    percentage: 20,
-  },
-  {
-    id: 4,
-    collegeName: 'College of Arts and Sciences',
-    presenceNow: 800,
-    totalStudents: 2000,
-    percentage: 40,
-  },
-  {
-    id: 5,
-    collegeName: 'College of Business and Accountancy',
-    presenceNow: 1500,
-    totalStudents: 2500,
-    percentage: 60,
-  },
-  {
-    id: 6,
-    collegeName: 'College of Education',
-    presenceNow: 900,
-    totalStudents: 1800,
-    percentage: 50,
-  },
-  {
-    id: 7,
-    collegeName: 'College of International Hospitality Management',
-    presenceNow: 600,
-    totalStudents: 1200,
-    percentage: 50,
-  },
-];
-
-const INITIAL_AUTH_DATA = [
-  { id: 1, method: 'Facial Recognition', attempts: 300, success: 270, successRate: '90%' },
-  { id: 2, method: 'Manual Input', attempts: 100, success: 100, successRate: '100%' },
-];
+import { useLogContext } from '../../context/LogContext';
 
 const AUTH_COLORS = ['#01311d', '#d99201'];
 
 function Analytics() {
-  const [metrics, setMetrics] = useState(INITIAL_METRICS);
-  const [trafficData, setTrafficData] = useState(INITIAL_TRAFFIC_DATA);
-  const [collegeData, setCollegeData] = useState(INITIAL_COLLEGE_DATA);
-  const [authData, setAuthData] = useState(INITIAL_AUTH_DATA);
+  const { logs, studentsInside } = useLogContext();
+  
+  const [metrics, setMetrics] = useState({
+    totalStudents: 0,
+    currentStudentsInside: 0,
+  });
+  const [trafficData, setTrafficData] = useState([]);
+  const [collegeData, setCollegeData] = useState([]);
+  const [authData, setAuthData] = useState([]);
   
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -106,120 +40,291 @@ function Analytics() {
   const currentCollegeData = collegeData.slice(indexOfFirstRecord, indexOfLastRecord);
   const totalPages = Math.ceil(collegeData.length / recordsPerPage);
 
-  useEffect(() => {
-    const fetchAnalyticsData = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        await new Promise(resolve => setTimeout(resolve, 800));
+  // Helper function to get date range based on time range selection
+  const getDateRange = (range) => {
+    const now = new Date();
+    const startDate = new Date();
+    
+    if (range === '7days') {
+      startDate.setDate(now.getDate() - 7);
+    } else if (range === '30days') {
+      startDate.setDate(now.getDate() - 30);
+    } else if (range === '1year') {
+      startDate.setFullYear(now.getFullYear() - 1);
+    }
+    
+    return { startDate, endDate: now };
+  };
 
-        if (timeRange === '30days') {
-          const extendedData = [];
-          for (let i = 1; i <= 30; i++) {
-            extendedData.push({
-              date: `Day ${i}`,
-              entrance: Math.floor(Math.random() * 1000) + 800,
-              exit: Math.floor(Math.random() * 1000) + 750,
-            });
-          }
-          setTrafficData(extendedData);
-        } else if (timeRange === '1year') {
-          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-          const yearlyData = months.map(month => ({
-            date: month,
-            entrance: Math.floor(Math.random() * 5000) + 3000,
-            exit: Math.floor(Math.random() * 4800) + 2800,
-          }));
-          setTrafficData(yearlyData);
-        } else {
-          setTrafficData(INITIAL_TRAFFIC_DATA);
-        }
-
-        setIsLoading(false);
-      } catch (err) {
-        console.error('Error fetching analytics:', err);
-        setError('Failed to load analytics data');
-        setIsLoading(false);
+  // Helper function to generate traffic data from logs
+  const generateTrafficData = React.useCallback((range) => {
+    const { startDate, endDate } = getDateRange(range);
+    const trafficMap = new Map();
+    
+    // Initialize dates
+    if (range === '7days') {
+      const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(endDate);
+        date.setDate(date.getDate() - i);
+        const dayName = daysOfWeek[date.getDay()];
+        trafficMap.set(dayName, { entrance: 0, exit: 0 });
       }
-    };
+    } else if (range === '30days') {
+      for (let i = 29; i >= 0; i--) {
+        const date = new Date(endDate);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        trafficMap.set(dateStr, { entrance: 0, exit: 0 });
+      }
+    } else if (range === '1year') {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      months.forEach(month => {
+        trafficMap.set(month, { entrance: 0, exit: 0 });
+      });
+    }
+    
+    // Count entries and exits
+    logs.forEach(log => {
+      if (!log.failed && log.timestamp) {
+        const logDate = new Date(log.timestamp);
+        if (logDate >= startDate && logDate <= endDate) {
+          let dateKey;
+          
+          if (range === '7days') {
+            const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            dateKey = daysOfWeek[logDate.getDay()];
+          } else if (range === '30days') {
+            dateKey = logDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          } else if (range === '1year') {
+            dateKey = logDate.toLocaleDateString('en-US', { month: 'short' });
+          }
+          
+          if (trafficMap.has(dateKey)) {
+            const data = trafficMap.get(dateKey);
+            if (log.action === 'ENTRY') {
+              data.entrance++;
+            } else if (log.action === 'EXIT') {
+              data.exit++;
+            }
+          }
+        }
+      }
+    });
+    
+    return Array.from(trafficMap, ([date, data]) => ({ date, ...data }));
+  }, [logs]);
 
-    fetchAnalyticsData();
-  }, [timeRange]);
+  // Helper function to generate college distribution from logs
+  const generateCollegeData = React.useCallback(() => {
+    const collegeMap = new Map();
+    
+    logs.forEach(log => {
+      if (!log.failed) {
+        const college = log.collegeDept || 'General';
+        if (collegeMap.has(college)) {
+          collegeMap.set(college, collegeMap.get(college) + 1);
+        } else {
+          collegeMap.set(college, 1);
+        }
+      }
+    });
+    
+    const totalRecords = logs.filter(log => !log.failed).length;
+    
+    return Array.from(collegeMap, ([collegeName, presenceNow], id) => ({
+      id: id + 1,
+      collegeName,
+      presenceNow,
+      totalStudents: presenceNow * 2, // Estimated total based on current presence
+      percentage: totalRecords > 0 ? Math.round((presenceNow / totalRecords) * 100) : 0,
+    })).sort((a, b) => b.presenceNow - a.presenceNow);
+  }, [logs]);
+
+  // Helper function to generate authentication data from logs
+  const generateAuthData = React.useCallback(() => {
+    let faceCount = 0;
+    let manualCount = 0;
+    let totalCount = 0;
+
+    logs.forEach(log => {
+      if (!log.failed) {
+        totalCount++;
+        if (log.method === 'FACE') {
+          faceCount++;
+        } else if (log.method === 'MANUAL') {
+          manualCount++;
+        }
+      }
+    });
+
+    const faceRate = totalCount > 0 ? Math.round((faceCount / totalCount) * 100) : 0;
+    const manualRate = totalCount > 0 ? Math.round((manualCount / totalCount) * 100) : 0;
+
+    return [
+      { 
+        id: 1, 
+        method: 'Facial Recognition', 
+        attempts: faceCount, 
+        success: faceCount, 
+        successRate: `${faceRate}%` 
+      },
+      { 
+        id: 2, 
+        method: 'Manual Input', 
+        attempts: manualCount, 
+        success: manualCount, 
+        successRate: `${manualRate}%` 
+      },
+    ].filter(auth => auth.attempts > 0);
+  }, [logs]);
+
+  // Calculate total unique students
+  const totalUniqueStudents = useMemo(() => {
+    const studentSet = new Set();
+    logs.forEach(log => {
+      if (!log.failed && log.studentId && log.studentId !== 'N/A') {
+        studentSet.add(log.studentId);
+      }
+    });
+    return studentSet.size;
+  }, [logs]);
+
+  // Update analytics data when logs or time range changes
+  useEffect(() => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // Simulate a small delay for better UX
+      setTimeout(() => {
+        setMetrics({
+          totalStudents: totalUniqueStudents || logs.length,
+          currentStudentsInside: studentsInside,
+        });
+        
+        setTrafficData(generateTrafficData(timeRange));
+        setCollegeData(generateCollegeData());
+        setAuthData(generateAuthData());
+        setIsLoading(false);
+      }, 300);
+    } catch (err) {
+      console.error('Error calculating analytics:', err);
+      setError('Failed to calculate analytics data');
+      setIsLoading(false);
+    }
+  }, [logs, timeRange, studentsInside, totalUniqueStudents, generateTrafficData, generateCollegeData, generateAuthData]);
 
   // Handle apply filters from the filter popup
   const handleApplyFilters = (filters) => {
     console.log('Filters applied:', filters);
     setAppliedFilters(filters);
     
-    // Map college abbreviations
-    const collegeAbbrMap = {
-      'College of Computer Studies': 'CCS',
-      'College of Nursing': 'CON',
-      'College of Engineering': 'COE',
-      'College of Arts and Sciences': 'CAS',
-      'College of Business and Accountancy': 'CBA',
-      'College of Education': 'CCED',
-      'College of International Hospitality Management': 'CHIM'
-    };
+    // Filter logs based on applied filters
+    let filteredLogs = logs.filter(log => !log.failed);
     
-    // Transform data into the format expected by GenerateReportPdf
-    const collegeDataForPdf = collegeData.map(college => ({
-      name: collegeAbbrMap[college.collegeName] || college.collegeName.substring(0, 10).toUpperCase(),
-      count: college.presenceNow,
-      percentage: college.percentage
+    if (filters.dateRange?.from && filters.dateRange?.to) {
+      const fromDate = new Date(filters.dateRange.from.split('/').reverse().join('-'));
+      const toDate = new Date(filters.dateRange.to.split('/').reverse().join('-'));
+      toDate.setHours(23, 59, 59);
+      
+      filteredLogs = filteredLogs.filter(log => {
+        if (!log.timestamp) return false;
+        const logDate = new Date(log.timestamp);
+        return logDate >= fromDate && logDate <= toDate;
+      });
+    }
+    
+    if (filters.collegeDepartment) {
+      filteredLogs = filteredLogs.filter(log => log.collegeDept === filters.collegeDepartment);
+    }
+    
+    // Calculate college distribution from filtered logs
+    const collegeMap = new Map();
+    filteredLogs.forEach(log => {
+      const college = log.collegeDept || 'General';
+      collegeMap.set(college, (collegeMap.get(college) || 0) + 1);
+    });
+    
+    const collegeDataForPdf = Array.from(collegeMap, ([name, count]) => ({
+      name: name.substring(0, 15).toUpperCase(),
+      count,
+      percentage: filteredLogs.length > 0 ? Math.round((count / filteredLogs.length) * 100) : 0
     }));
     
-    const totalEntrances = trafficData.reduce((sum, day) => sum + day.entrance, 0);
-    const totalExits = trafficData.reduce((sum, day) => sum + day.exit, 0);
+    // Calculate method distribution
+    const methodMap = new Map();
+    filteredLogs.forEach(log => {
+      const method = log.method === 'FACE' ? 'Face Recognition' : 'Manual Input';
+      methodMap.set(method, (methodMap.get(method) || 0) + 1);
+    });
     
-    const methodDataForPdf = [
-      { 
-        name: 'Face Recognition', 
-        percentage: 35, 
-        count: Math.floor(totalEntrances * 0.35),
-        total: totalEntrances
-      },
-      { 
-        name: 'Manual Input', 
-        percentage: 65, 
-        count: Math.floor(totalEntrances * 0.65),
-        total: totalEntrances
-      }
-    ];
+    const methodDataForPdf = Array.from(methodMap, ([name, count]) => ({
+      name,
+      percentage: filteredLogs.length > 0 ? Math.round((count / filteredLogs.length) * 100) : 0,
+      count,
+      total: filteredLogs.length
+    }));
+    
+    // Calculate traffic summary
+    const trafficChartData = trafficData.length > 0 ? trafficData : [];
+    const trafficDataForPdf = {
+      highest: trafficChartData.length > 0 
+        ? `${trafficChartData.reduce((max, day) => day.entrance > max.entrance ? day : max).date} (${trafficChartData.reduce((max, day) => day.entrance > max.entrance ? day : max).entrance.toLocaleString()} entries)`
+        : 'N/A',
+      lowest: trafficChartData.length > 0 
+        ? `${trafficChartData.reduce((min, day) => day.entrance < min.entrance ? day : min).date} (${trafficChartData.reduce((min, day) => day.entrance < min.entrance ? day : min).entrance.toLocaleString()} entries)`
+        : 'N/A',
+      peakHour: 'Calculated from logs'
+    };
     
     const successDataForPdf = authData.map(auth => ({
       method: auth.method,
       attempts: auth.attempts,
       successRate: parseInt(auth.successRate),
-      successCount: Math.floor((parseInt(auth.successRate) / 100) * auth.attempts)
+      successCount: auth.success
     }));
     
-    const highestTraffic = trafficData.reduce((max, day) => 
-      day.entrance > max.entrance ? day : max
-    );
-    const lowestTraffic = trafficData.reduce((min, day) => 
-      day.entrance < min.entrance ? day : min
-    );
+    // Calculate unique students
+    const uniqueStudents = new Set();
+    filteredLogs.forEach(log => {
+      if (log.studentId && log.studentId !== 'N/A') {
+        uniqueStudents.add(log.studentId);
+      }
+    });
     
-    const trafficDataForPdf = {
-      highest: `${highestTraffic.date} (${highestTraffic.entrance.toLocaleString()} entries)`,
-      lowest: `${lowestTraffic.date} (${lowestTraffic.entrance.toLocaleString()} entries)`,
-      peakHour: '8:15 AM (350 entries)'
-    };
+    // Student logs for table
+    const studentLogs = filteredLogs.map((log, index) => ({
+      no: index + 1,
+      dateTime: new Date(log.timestamp).toLocaleString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      }),
+      studentId: log.studentId,
+      name: log.name,
+      department: log.collegeDept || 'General',
+      action: log.action === 'ENTRY' ? 'Entrance' : 'Exit',
+      method: log.method === 'FACE' ? 'Face Recognition' : 'Manual Input'
+    }));
     
     // Prepare filtered data for report
     const filteredData = {
-      totalStudents: metrics.currentStudentsInside,
+      totalStudents: uniqueStudents.size,
       totalCapacity: metrics.totalStudents,
-      dateRange: filters.dateRange.from && filters.dateRange.to 
+      dateRange: filters.dateRange?.from && filters.dateRange?.to 
         ? `${filters.dateRange.from} - ${filters.dateRange.to}`
-        : 'Jan 26, 2026 - Jan 31, 2026',
+        : 'All Time',
       collegeData: collegeDataForPdf,
       methodData: methodDataForPdf,
       successData: successDataForPdf,
       trafficData: trafficDataForPdf,
-      trafficChartData: trafficData,
-      studentLogs: [],
+      trafficChartData: trafficChartData,
+      studentLogs: studentLogs,
       filters
     };
     
