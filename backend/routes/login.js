@@ -1,14 +1,15 @@
+// backend/routes/login.js
 const express = require('express');
-const bcrypt = require('bcrypt');
-const pool = require("../src/db"); 
-const router = express.Router();
+const bcrypt  = require('bcrypt');
+const pool    = require("../src/db");
+const router  = express.Router();
 
 // ============================
-// 🔐 Secure Login Endpoint with Session
+// 🔐 Login with Role Validation
 // ============================
 router.post('/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, role } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -17,7 +18,25 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 1️⃣ Get user by email only
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select an administrative role.'
+      });
+    }
+
+    // 1️⃣ Valid roles whitelist — reject unknown roles immediately
+   const VALID_ROLES = ['Super Admin', 'EEMS Admin', 'EAMS Admin']; 
+
+    if (!VALID_ROLES.includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid role selected.'
+      });
+    }
+
+    // 2️⃣ Fetch user by email only (we validate role separately to avoid
+    //    leaking which combination of email+role is registered)
     const [rows] = await pool.query(
       'SELECT * FROM admins WHERE email = ?',
       [email]
@@ -26,50 +45,54 @@ router.post('/login', async (req, res) => {
     if (rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password.'
       });
     }
 
     const user = rows[0];
 
-    // 2️⃣ Compare hashed password
+    // 3️⃣ Compare hashed password
     const isMatch = await bcrypt.compare(password, user.password);
-
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password.'
       });
     }
 
-    // 3️⃣ Remove password before sending response
+    // 4️⃣ Validate that the selected role matches the user's actual role
+    if (user.role !== role) {
+      return res.status(403).json({
+        success: false,
+        message: `Access denied. Your account is not registered as "${role}".`
+      });
+    }
+
+    // 5️⃣ Strip password before storing in session
     const { password: _, ...userWithoutPassword } = user;
 
-    // 4️⃣ Store user in session
-    req.session.user = userWithoutPassword;
+    req.session.user      = userWithoutPassword;
     req.session.userEmail = user.email;
-    req.session.role = user.role;
+    req.session.role      = user.role;
 
-    // Save session explicitly
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
         return res.status(500).json({
           success: false,
-          message: 'Failed to create session'
+          message: 'Failed to create session.'
         });
       }
 
-      // Determine redirect based on role
+      // 6️⃣ Redirect based on role
       let redirect = '/dashboard';
-      if (user.role === 'Super Admin') {
-        redirect = '/superdashboard';
-      }
+      if (user.role === 'Super Admin') redirect = '/superdashboard';
+      if (user.role === 'EAMS Admin')  redirect = '/eamsdashboard'; 
 
       res.json({
-        success: true,
-        message: 'Login successful',
-        user: userWithoutPassword,
+        success:  true,
+        message:  'Login successful',
+        user:     userWithoutPassword,
         redirect: redirect
       });
     });
@@ -84,7 +107,7 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================
-// 🔍 Check Session Endpoint
+// 🔍 Check Session
 // ============================
 router.get('/check-session', (req, res) => {
   if (req.session.user) {
@@ -99,7 +122,7 @@ router.get('/check-session', (req, res) => {
 });
 
 // ============================
-// 🚪 Logout Endpoint
+// 🚪 Logout
 // ============================
 router.post('/logout', (req, res) => {
   req.session.destroy((err) => {
@@ -110,12 +133,8 @@ router.post('/logout', (req, res) => {
         message: 'Failed to logout'
       });
     }
-    
-    res.clearCookie('connect.sid'); // Clear the session cookie
-    res.json({
-      success: true,
-      message: 'Logged out successfully'
-    });
+    res.clearCookie('connect.sid');
+    res.json({ success: true, message: 'Logged out successfully' });
   });
 });
 

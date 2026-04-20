@@ -2,35 +2,40 @@
 
 import React, { useState } from 'react';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 import {
-  IoClose,
   IoCloudUploadOutline,
   IoAlertCircleOutline,
   IoCheckmarkCircleOutline,
   IoDocumentTextOutline,
 } from 'react-icons/io5';
 import '../componentscss/ImportStudents.css';
-//import '../css/GlobalModal.css';
 
 const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
-  const [file, setFile] = useState(null);
-  const [dragActive, setDragActive] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState(null); // 'success' | 'error' | 'uploading' | null
-  const [errorMessage, setErrorMessage] = useState('');
-  const [errorList, setErrorList]  = useState([]); 
-  const [successSummary, setSuccessSummary] = useState(null); 
+  const [file, setFile]                     = useState(null);
+  const [dragActive, setDragActive]         = useState(false);
+  const [uploadStatus, setUploadStatus]     = useState(null);
+  const [errorMessage, setErrorMessage]     = useState('');
+  const [errorList, setErrorList]           = useState([]);
 
+  // ── Column definitions (mirrors backend) ──────────────────────────────────
   const requiredColumns = [
     'Student ID',
     'Email',
     'First Name',
-    'Middle Name',  
+    'Middle Name',
     'Last Name',
     'College Department',
+    'Program Name',
     'Year Level',
     'Enrollment Status',
   ];
 
+  const optionalColumns = [
+    'Extension Name',   // Jr., Sr., I–IV when provided
+  ];
+
+  // ── File handling ─────────────────────────────────────────────────────────
   const handleDrag = (e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -45,93 +50,94 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
     validateAndSetFile(e.dataTransfer.files[0]);
   };
 
-  const handleFileSelect = (e) => {
-    validateAndSetFile(e.target.files[0]);
-  };
+  const handleFileSelect = (e) => validateAndSetFile(e.target.files[0]);
 
-  // Client-side file validation 
   const validateAndSetFile = (selectedFile) => {
     setUploadStatus(null);
     setErrorMessage('');
     setErrorList([]);
-    setSuccessSummary(null);
 
     if (!selectedFile) return;
 
     const fileExt = selectedFile.name.split('.').pop().toLowerCase();
     if (fileExt !== 'csv' && fileExt !== 'xlsx') {
       setUploadStatus('error');
-      setErrorMessage('Please upload only .csv or .xlsx files');
+      setErrorMessage('Please upload only .csv or .xlsx files.');
       return;
     }
 
     if (selectedFile.size > 6 * 1024 * 1024) {
       setUploadStatus('error');
-      setErrorMessage('File size should not exceed 6MB');
+      setErrorMessage('File size should not exceed 6MB.');
       return;
     }
 
     setFile(selectedFile);
-    setUploadStatus('success');
+    setUploadStatus('ready');
   };
 
-  // Main upload handler 
+  // ── Upload ────────────────────────────────────────────────────────────────
   const handleUpload = async () => {
     if (!file) return;
 
     setUploadStatus('uploading');
     setErrorMessage('');
     setErrorList([]);
-    setSuccessSummary(null);
 
     const formData = new FormData();
-    formData.append('file', file); 
+    formData.append('file', file);
 
     try {
       const response = await axios.post(
         'http://localhost:5000/api/import-students',
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       );
 
       const data = response.data;
-
       setUploadStatus('done');
-      setSuccessSummary({
-        inserted: data.inserted,
-        failed: data.failed,
-        message: data.message,
+
+      // ── SweetAlert success popup ──────────────────────────────────────
+      await Swal.fire({
+        icon: 'success',
+        title: 'Upload Successful!',
+        html: `
+          <p style="font-family:'Montserrat',sans-serif; font-size:0.95rem; color:#333; margin:0;">
+            <strong>${data.inserted}</strong> student${data.inserted !== 1 ? 's' : ''} imported successfully.
+            ${data.failed > 0
+              ? `<br/><span style="color:#b45309;">⚠️ ${data.failed} row(s) failed to insert.</span>`
+              : ''
+            }
+          </p>
+        `,
+        confirmButtonColor: '#2b5a2b',
+        confirmButtonText: 'Done',
+        timer: data.failed === 0 ? 2500 : undefined,
+        timerProgressBar: data.failed === 0,
       });
 
-      // Students.jsx to refresh the table AND the notification count
       if (onSuccess) onSuccess();
+      handleClose();
 
     } catch (error) {
       setUploadStatus('error');
-
       const data = error.response?.data;
 
       if (data?.errors && data.errors.length > 0) {
-        // Server returned row-level validation errors
         setErrorMessage(data.message);
         setErrorList(data.errors);
       } else {
-        // Server returned a single error message
         setErrorMessage(data?.message || 'Upload failed. Please try again.');
       }
     }
   };
 
+  // ── Reset / close ─────────────────────────────────────────────────────────
   const handleRemoveFile = () => {
     setFile(null);
     setUploadStatus(null);
     setErrorMessage('');
     setErrorList([]);
-    setSuccessSummary(null);
   };
 
   const handleClose = () => {
@@ -157,13 +163,22 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
           <div className="import-directions">
             <h3>Directions:</h3>
             <ol className="directions-list">
-              <li>Upload only .csv and .xlsx file</li>
-              <li>These are the required columns:
+              <li>Upload only <strong>.csv</strong> or <strong>.xlsx</strong> files (max 6MB).</li>
+              <li>
+                Required columns <em>(all must be present and filled)</em>:
                 <ul className="required-columns">
                   {requiredColumns.map((col, i) => <li key={i}>{col}</li>)}
                 </ul>
               </li>
-              <li>Student ID format: <strong>YY-NNNNN</strong> (e.g. 24-00001)</li>
+              <li>
+                Optional column <em>(include when applicable)</em>:
+                <ul className="required-columns optional-columns">
+                  <li>Extension Name — Jr., Sr., I, II, III, or IV</li>
+                </ul>
+              </li>
+              <li>Student ID format: <strong>YY-NNNNN</strong> (e.g. 24-00001).</li>
+              <li>Email must be a valid <strong>@plpasig.edu.ph</strong> address.</li>
+              <li>Year Level accepts: <strong>1, 2, 3, 4</strong> or <strong>1st–4th</strong>.</li>
             </ol>
           </div>
 
@@ -191,7 +206,7 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
                   <span className="upload-main">Click to upload</span>
                   <span className="upload-sub">or drag and drop</span>
                 </div>
-                <div className="file-types">.csv or .xlsx (max 5MB)</div>
+                <div className="file-types">.csv or .xlsx (max 6MB)</div>
               </label>
             ) : (
               <div className="file-preview">
@@ -201,8 +216,8 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
                     <span className="file-name">{file.name}</span>
                     <span className="file-size">{(file.size / 1024).toFixed(2)} KB</span>
                   </div>
-                  {uploadStatus === 'success' && <IoCheckmarkCircleOutline size={22} className="success-icon" />}
-                  {uploadStatus === 'error'   && <IoAlertCircleOutline    size={22} className="error-icon" />}
+                  {uploadStatus === 'ready' && <IoCheckmarkCircleOutline size={22} className="success-icon" />}
+                  {uploadStatus === 'error' && <IoAlertCircleOutline    size={22} className="error-icon" />}
                 </div>
                 <button className="remove-file-btn" onClick={handleRemoveFile}>
                   Remove
@@ -219,7 +234,7 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Row-level error list from backend validation */}
+          {/* Row-level error list */}
           {errorList.length > 0 && (
             <div className="error-list-container">
               <p className="error-list-title">Please fix the following errors in your file:</p>
@@ -234,46 +249,37 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
             </div>
           )}
 
-          {/* Success summary after upload */}
-          {successSummary && (
-            <div className="success-summary">
-              <IoCheckmarkCircleOutline size={20} className="success-icon" />
-              <div>
-                <p className="success-main">{successSummary.message}</p>
-                {successSummary.failed > 0 && (
-                  <p className="success-sub">
-                    ⚠️ {successSummary.failed} row(s) failed to insert due to database errors.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Required Columns Preview */}
+          {/* Required Format Preview */}
           <div className="columns-preview">
-            <h4>Required Format:</h4>
+            <h4>Required Format (optional column shown in grey):</h4>
             <div className="preview-table">
+
               <div className="preview-header">
                 {requiredColumns.map((col, i) => (
                   <span key={i} className="preview-cell">{col}</span>
                 ))}
+                <span className="preview-cell preview-cell-optional">Extension Name</span>
               </div>
+
               <div className="preview-row">
                 <span className="preview-cell">24-00001</span>
                 <span className="preview-cell">delacruz_juan@plpasig.edu.ph</span>
                 <span className="preview-cell">Juan</span>
-                <span className="preview-cell">Dela</span>
-                <span className="preview-cell">Cruz</span>
+                <span className="preview-cell">Santos</span>
+                <span className="preview-cell">Dela Cruz</span>
                 <span className="preview-cell">College of Computer Studies</span>
-                <span className="preview-cell">3rd Year</span>
+                <span className="preview-cell">BS Computer Science</span>
+                <span className="preview-cell">3</span>
                 <span className="preview-cell">Regular</span>
+                <span className="preview-cell preview-cell-optional">Jr.</span>
               </div>
+
             </div>
           </div>
 
         </div>
 
-        {/* Actions - Footer */}
+        {/* Footer */}
         <div className="modal-footer">
           <button className="modal-btn modal-btn-cancel" onClick={handleClose}>
             Cancel
@@ -281,7 +287,12 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
           <button
             className="modal-btn modal-btn-save"
             onClick={handleUpload}
-            disabled={!file || uploadStatus === 'error' || uploadStatus === 'uploading' || uploadStatus === 'done'}
+            disabled={
+              !file                        ||
+              uploadStatus === 'error'     ||
+              uploadStatus === 'uploading' ||
+              uploadStatus === 'done'
+            }
           >
             {uploadStatus === 'uploading' ? 'Uploading...' : 'Upload'}
           </button>

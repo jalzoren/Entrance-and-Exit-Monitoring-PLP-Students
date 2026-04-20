@@ -1,49 +1,80 @@
-import { useState, useRef, useEffect } from "react";
+// Login.jsx
+import { useState } from "react";
 import "../css/Login.css";
 import logo from "../assets/logo2.png";
 import { LuScanFace } from "react-icons/lu";
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { MdAdminPanelSettings, MdSecurity, MdSchool } from "react-icons/md";
 import Swal from 'sweetalert2';
 import { useAuth } from "../context/AuthContext";
-import { useLogContext } from "../context/LogContext";
+
+const ROLES = [
+  {
+    key: 'Super Admin',
+    label: 'Super Admin',
+    icon: <MdSecurity />,
+    desc: 'Full system access.',
+  },
+  {
+    key: 'EEMS Admin',       
+    label: 'EEMS Admin',
+    icon: <MdAdminPanelSettings />,
+    desc: 'Entrance & exit management.',
+  },
+  {
+    key: 'EAMS Admin',        
+    label: 'EAMS Admin',
+    icon: <MdSchool />,
+    desc: 'Attendance & scheduling.',
+  },
+];
 
 export default function Login() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading]           = useState(false);
+  const [selectedRole, setSelectedRole] = useState(null);
 
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const toggleShowPassword = () => setShowPassword((prev) => !prev);
-
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    if (!selectedRole) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Select a Role',
+        text: 'Please select your administrative role before logging in.',
+        confirmButtonColor: '#2b5a2b',
+      });
+      return;
+    }
+
     setLoading(true);
 
-    const result = await login(email, password);
+    const result = await login(email, password, selectedRole);
 
     if (result.success) {
       await Swal.fire({
         icon: 'success',
         title: 'Login Successful!',
-        text: `Welcome back!`,
+        text: `Welcome back, ${selectedRole}!`,
         timer: 1500,
-        showConfirmButton: false
+        showConfirmButton: false,
       });
-      
-      // Redirect based on role
       navigate(result.redirect);
     } else {
       Swal.fire({
         icon: 'error',
         title: 'Login Failed',
-        text: result.message || 'Invalid email or password',
+        text: result.message || 'Invalid credentials or role mismatch.',
+        confirmButtonColor: '#2b5a2b',
       });
     }
-    
+
     setLoading(false);
   };
 
@@ -58,9 +89,36 @@ export default function Login() {
       <div className="login-wrapper">
         <div className="login-header-container">
           <img src={logo} alt="System Logo" className="login-icon" />
-          <h1 className="logintext">LOG IN</h1>
+          <h1 className="logintext">EEMS ADMIN</h1>
         </div>
 
+        {/* ── Role Selector ── */}
+        <div className="login-role-section">
+          <p className="login-role-prompt">
+            Please select your administrative role to sign in.
+          </p>
+          <div className="login-role-grid">
+            {ROLES.map(({ key, label, icon, desc }) => (
+              <div
+                key={key}
+                className={`login-role-card ${selectedRole === key ? 'login-role-card--active' : ''}`}
+                onClick={() => setSelectedRole(key)}
+              >
+                <div className="login-role-icon">{icon}</div>
+                <div className="login-role-body">
+                  <span className="login-role-label">{label}</span>
+                  <div className="login-role-divider" />
+                  <span className="login-role-desc">{desc}</span>
+                </div>
+                {selectedRole === key && (
+                  <span className="login-role-check">✓</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Form ── */}
         <div className="login-card">
           <form className="login-form" onSubmit={handleLogin}>
             <div className="input-group">
@@ -91,7 +149,7 @@ export default function Login() {
                 <button
                   type="button"
                   className="show-password-btn"
-                  onClick={toggleShowPassword}
+                  onClick={() => setShowPassword(p => !p)}
                   tabIndex="-1"
                 >
                   {showPassword ? <FaEyeSlash /> : <FaEye />}
@@ -99,10 +157,10 @@ export default function Login() {
               </div>
             </div>
 
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="login-button"
-              disabled={loading}
+              disabled={loading || !selectedRole}
             >
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
@@ -117,9 +175,7 @@ export default function Login() {
                 Use Face Recognition
               </Link>
             </div>
-            <p className="footer-text">
-              ENTRANCE AND EXIT MONITORING SYSTEM
-            </p>
+            <p className="footer-text">ENTRANCE AND EXIT MONITORING SYSTEM</p>
           </div>
         </div>
       </div>

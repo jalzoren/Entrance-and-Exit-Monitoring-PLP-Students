@@ -3,7 +3,6 @@ const express = require("express");
 const session = require("express-session");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const { router: timeRoute } = require("./time");
 
 const app = express();
 
@@ -30,7 +29,5 @@ app.use(session({
     sameSite: 'lax'
   }
 }));
-
-app.use("/api/time", timeRoute);
 
 module.exports = app;

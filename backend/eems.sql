@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 13, 2026 at 08:19 AM
+-- Generation Time: Apr 20, 2026 at 07:27 AM
 -- Server version: 10.4.32-MariaDB
--- PHP Version: 8.0.30
+-- PHP Version: 8.2.12
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -55,7 +55,7 @@ INSERT INTO `admins` (`admin_id`, `email`, `fullname`, `role`, `password`, `rese
 CREATE TABLE `authentication` (
   `auth_id` bigint(20) NOT NULL,
   `student_id` varchar(20) NOT NULL,
-  `method` enum('FACIAL','MANUAL') NOT NULL,
+  `method` enum('FACIAL','MANUAL','QR') NOT NULL,
   `auth_status` enum('SUCCESS','FAILED') DEFAULT NULL,
   `accuracy` decimal(5,2) DEFAULT NULL,
   `duration` int(11) DEFAULT NULL,
@@ -67,20 +67,19 @@ CREATE TABLE `authentication` (
 --
 
 INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, `accuracy`, `duration`, `timestamp`) VALUES
-(48, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-05 03:35:00'),
-(49, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-05 03:35:44'),
-(50, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-05 04:00:39'),
-(51, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-05 04:03:03'),
-(52, '23-00174', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:32:16'),
-(53, '23-00174', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:32:26'),
-(54, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:33:10'),
-(55, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:34:08'),
-(56, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:34:14'),
-(57, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:36:43'),
-(58, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:40:21'),
-(59, '23-00298', '', 'SUCCESS', NULL, NULL, '2026-04-06 16:40:57'),
-(60, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:41:37'),
-(61, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-06 16:41:57');
+(62, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-13 16:01:28'),
+(63, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-13 16:03:48'),
+(64, '23-00298', 'FACIAL', 'SUCCESS', 77.71, 0, '2026-04-14 00:14:24'),
+(65, '23-00298', 'FACIAL', 'SUCCESS', 76.14, 0, '2026-04-14 00:14:59'),
+(66, '23-00298', 'FACIAL', 'SUCCESS', 75.65, 0, '2026-04-14 00:15:25'),
+(67, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-14 00:16:03'),
+(68, '23-00298', 'FACIAL', 'SUCCESS', 76.98, 0, '2026-04-14 00:18:05'),
+(69, '23-00174', 'QR', 'SUCCESS', NULL, NULL, '2026-04-20 11:51:35'),
+(70, '23-00174', 'QR', 'SUCCESS', NULL, NULL, '2026-04-20 11:51:53'),
+(71, '23-00298', 'QR', 'SUCCESS', NULL, NULL, '2026-04-20 13:12:27'),
+(72, '23-00174', 'QR', 'SUCCESS', NULL, NULL, '2026-04-20 13:12:40'),
+(73, '23-00298', 'QR', 'SUCCESS', NULL, NULL, '2026-04-20 13:25:59'),
+(74, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-20 13:26:20');
 
 -- --------------------------------------------------------
 
@@ -103,7 +102,8 @@ CREATE TABLE `departments` (
 
 INSERT INTO `departments` (`id`, `dept_code`, `dept_name`, `status`, `created_at`, `updated_at`) VALUES
 (8, 'COE', 'College of Engineering', 'Active', '2026-04-13 04:42:32', '2026-04-13 05:07:54'),
-(9, 'CCS', 'College of Computer Studies', 'Active', '2026-04-13 04:44:09', '2026-04-13 06:02:46');
+(9, 'CCS', 'College of Computer Studies', 'Active', '2026-04-13 04:44:09', '2026-04-13 08:14:24'),
+(10, 'CON', 'College of Nursing', 'Active', '2026-04-13 08:07:20', '2026-04-13 08:07:47');
 
 -- --------------------------------------------------------
 
@@ -124,20 +124,19 @@ CREATE TABLE `entry_exit_logs` (
 --
 
 INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `log_time`) VALUES
-(48, '23-00298', 48, 'ENTRY', '2026-04-05 03:35:00'),
-(49, '23-00298', 49, 'EXIT', '2026-04-05 03:35:44'),
-(50, '23-00298', 50, 'ENTRY', '2026-04-05 04:00:39'),
-(51, '23-00298', 51, 'EXIT', '2026-04-05 04:03:03'),
-(52, '23-00174', 52, 'ENTRY', '2026-04-06 16:32:16'),
-(53, '23-00174', 53, 'ENTRY', '2026-04-06 16:32:26'),
-(54, '23-00174', 54, 'ENTRY', '2026-04-06 16:33:10'),
-(55, '23-00298', 55, 'ENTRY', '2026-04-06 16:34:08'),
-(56, '23-00298', 56, 'ENTRY', '2026-04-06 16:34:14'),
-(57, '23-00298', 57, 'ENTRY', '2026-04-06 16:36:43'),
-(58, '23-00298', 58, 'ENTRY', '2026-04-06 16:40:21'),
-(59, '23-00298', 59, 'ENTRY', '2026-04-06 16:40:57'),
-(60, '23-00298', 60, 'ENTRY', '2026-04-06 16:41:37'),
-(61, '23-00298', 61, 'ENTRY', '2026-04-06 16:41:57');
+(62, '23-00298', 62, 'ENTRY', '2026-04-13 16:01:28'),
+(63, '23-00298', 63, 'EXIT', '2026-04-13 16:03:48'),
+(64, '23-00298', 64, 'ENTRY', '2026-04-14 00:14:24'),
+(65, '23-00298', 65, 'EXIT', '2026-04-14 00:14:59'),
+(66, '23-00298', 66, 'ENTRY', '2026-04-14 00:15:25'),
+(67, '23-00298', 67, 'EXIT', '2026-04-14 00:16:03'),
+(68, '23-00298', 68, 'ENTRY', '2026-04-14 00:18:05'),
+(69, '23-00174', 69, 'ENTRY', '2026-04-20 11:51:35'),
+(70, '23-00174', 70, 'EXIT', '2026-04-20 11:51:53'),
+(71, '23-00298', 71, 'ENTRY', '2026-04-20 13:12:27'),
+(72, '23-00174', 72, 'ENTRY', '2026-04-20 13:12:40'),
+(73, '23-00298', 73, 'EXIT', '2026-04-20 13:25:59'),
+(74, '23-00298', 74, 'ENTRY', '2026-04-20 13:26:20');
 
 -- --------------------------------------------------------
 
@@ -164,7 +163,8 @@ INSERT INTO `programs` (`id`, `programCode`, `programName`, `department`, `progr
 (16, 'BSE', 'Bachelor of Science in Electrical Engineering', 'College of Engineering', 'Undergraduate', 'Active', 4, '2026-04-13'),
 (17, 'BSIE', 'Bachelor of Science in Industrial Engineering', 'College of Engineering', 'Undergraduate', 'Active', 4, '2026-04-13'),
 (18, 'BSIT', 'Bachelor of Science in Information Technology', 'College of Computer Studies', 'Undergraduate', 'Active', 4, '2026-04-13'),
-(19, 'BSCS', 'Bachelor of Science in Computer Science', 'College of Computer Studies', 'Undergraduate', 'Active', 4, '2026-04-13');
+(19, 'BSCS', 'Bachelor of Science in Computer Science', 'College of Computer Studies', 'Undergraduate', 'Active', 4, '2026-04-13'),
+(20, 'CN', 'Nursing', 'College of Nursing', 'Undergraduate', 'Active', 4, '2026-04-13');
 
 -- --------------------------------------------------------
 
@@ -252,7 +252,8 @@ INSERT INTO `visitor_logs` (`visitor_id`, `full_name`, `email`, `reason`, `other
 (6, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:46:35', '143439a8-4141-4f15-8894-be9b11f1897d'),
 (7, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:58:59', 'a5405905-787f-4f14-b09f-83b02cfa5061'),
 (8, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 07:20:24', 'b06fc5d1-27ed-4252-98d4-9e2d1f0a16f3'),
-(9, 'Lynn Czyla ALpuerto', 'bitancor1234amora@gmail.com', 'Event / Activity', NULL, 'ENTRY', '2026-04-06 16:43:58', '95cc9628-2458-4539-bd43-9cda18de7a9e');
+(9, 'Lynn Czyla ALpuerto', 'bitancor1234amora@gmail.com', 'Event / Activity', NULL, 'ENTRY', '2026-04-06 16:43:58', '95cc9628-2458-4539-bd43-9cda18de7a9e'),
+(10, 'Bitancor, jerimiah A', 'bitancor1234amora@gmail.com', 'Enrollment / Registration', NULL, 'EXIT', '2026-04-13 22:40:02', '45095469-9652-42b6-8292-8340fe8bb6dd');
 
 --
 -- Indexes for dumped tables
@@ -331,25 +332,25 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=62;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=75;
 
 --
 -- AUTO_INCREMENT for table `programs`
 --
 ALTER TABLE `programs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
 
 --
 -- AUTO_INCREMENT for table `student_face_embeddings`
@@ -361,7 +362,7 @@ ALTER TABLE `student_face_embeddings`
 -- AUTO_INCREMENT for table `visitor_logs`
 --
 ALTER TABLE `visitor_logs`
-  MODIFY `visitor_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `visitor_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- Constraints for dumped tables

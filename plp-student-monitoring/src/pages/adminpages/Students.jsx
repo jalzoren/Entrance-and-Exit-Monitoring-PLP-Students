@@ -6,39 +6,26 @@ import ImportStudent from "../../components/ImportStudents";
 import EditStudent from "../../components/EditStudent";
 import axios from "axios";
 
-// React Icons
-import { 
-  FiDownload, 
-  FiPlus, 
-  FiFilter, 
-  FiUsers, 
-  FiUserCheck, 
-  FiAlertTriangle 
-  
-} from "react-icons/fi";
-
-import { BsPersonFillExclamation } from "react-icons/bs";
-import { BsPersonFillCheck } from "react-icons/bs";
-import { BsFillPeopleFill } from "react-icons/bs";
-
+import { FiDownload, FiPlus, FiFilter } from "react-icons/fi";
+import { BsPersonFillExclamation, BsPersonFillCheck, BsFillPeopleFill } from "react-icons/bs";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 
 function Students() {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [department, setDepartment] = useState("");
-  const [yearLevel, setYearLevel] = useState("");
+  const [currentPage, setCurrentPage]         = useState(1);
+  const [department, setDepartment]           = useState("");
+  const [yearLevel, setYearLevel]             = useState("");
   const [registrationDate, setRegistrationDate] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery]         = useState("");
 
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingStudent, setEditingStudent] = useState(null);
+  const [showImportModal, setShowImportModal]     = useState(false);
+  const [showEditModal, setShowEditModal]         = useState(false);
+  const [editingStudent, setEditingStudent]       = useState(null);
 
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [students, setStudents]           = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState(null);
   const [pendingFaceCount, setPendingFaceCount] = useState(0);
   const [faceStatusMap, setFaceStatusMap] = useState({});
 
@@ -88,44 +75,15 @@ function Students() {
     fetchFaceStatus();
   };
 
-  useEffect(() => {
-    refreshAll();
-  }, []);
+  useEffect(() => { refreshAll(); }, []);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, department, yearLevel, registrationDate]);
+  useEffect(() => { setCurrentPage(1); }, [searchQuery, department, yearLevel, registrationDate]);
 
-  // ── Statistics Calculation based on STATUS ─────────────────────────────────
-  const activeStudents = students.filter(s => s.status !== 'Inactive' && s.status !== null);
-  const allStudentsCount = activeStudents.length;
-
-  // Count Regular students (status = 'Regular' or 'regular')
-  const regularStudentsCount = activeStudents.filter(student => {
-    const status = student.status?.toLowerCase();
-    return status === 'regular';
-  }).length;
-
-  // Count Irregular students (status = 'Irregular' or 'irregular')
-  const irregularStudentsCount = activeStudents.filter(student => {
-    const status = student.status?.toLowerCase();
-    return status === 'irregular';
-  }).length;
-
-  // Debug: Log status values to see what's in your data
-  useEffect(() => {
-    if (students.length > 0) {
-      const statuses = students.map(s => ({
-        id: s.student_id,
-        name: `${s.first_name} ${s.last_name}`,
-        status: s.status
-      }));
-      console.log('Student statuses:', statuses);
-      console.log('Regular count:', regularStudentsCount);
-      console.log('Irregular count:', irregularStudentsCount);
-      console.log('Total active:', allStudentsCount);
-    }
-  }, [students, regularStudentsCount, irregularStudentsCount, allStudentsCount]);
+  // ── Statistics ────────────────────────────────────────────────────────────
+  const activeStudents        = students.filter(s => s.status !== 'Inactive' && s.status !== null);
+  const allStudentsCount      = activeStudents.length;
+  const regularStudentsCount  = activeStudents.filter(s => s.status?.toLowerCase() === 'regular').length;
+  const irregularStudentsCount = activeStudents.filter(s => s.status?.toLowerCase() === 'irregular').length;
 
   // ── Filtering & Pagination ────────────────────────────────────────────────
   const filteredStudents = students.filter((student) => {
@@ -138,118 +96,79 @@ function Students() {
       student.student_id?.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesDepartment = department === "" || student.college_department === department;
-    const matchesYearLevel = yearLevel === "" || student.year_level === yearLevel;
+    const matchesYearLevel  = yearLevel  === "" || student.year_level === yearLevel;
 
     let matchesDate = true;
     if (registrationDate && student.created_at) {
-      const studentDate = new Date(student.created_at);
-      matchesDate = studentDate.getFullYear().toString() === registrationDate;
+      matchesDate = new Date(student.created_at).getFullYear().toString() === registrationDate;
     }
 
     return matchesSearch && matchesDepartment && matchesYearLevel && matchesDate;
   });
 
-  const totalPages = Math.ceil(filteredStudents.length / recordsPerPage);
+  const totalPages        = Math.ceil(filteredStudents.length / recordsPerPage);
   const indexOfLastRecord = currentPage * recordsPerPage;
   const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentStudents = filteredStudents.slice(indexOfFirstRecord, indexOfLastRecord);
+  const currentStudents   = filteredStudents.slice(indexOfFirstRecord, indexOfLastRecord);
 
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   // ── Modal controls ────────────────────────────────────────────────────────
-  const handleAddClick = () => {
-    setShowRegisterModal(true);
-    document.body.style.overflow = "hidden";
-  };
-
-  const handleImportClick = () => {
-    setShowImportModal(true);
-    document.body.style.overflow = "hidden";
-  };
+  const handleAddClick = () => { setShowRegisterModal(true); document.body.style.overflow = "hidden"; };
+  const handleImportClick = () => { setShowImportModal(true); document.body.style.overflow = "hidden"; };
 
   const handleCloseRegisterModal = () => {
-    setShowRegisterModal(false);
-    document.body.style.overflow = "unset";
-    fetchStudents();
+    setShowRegisterModal(false); document.body.style.overflow = "unset"; fetchStudents();
   };
-
   const handleCloseImportModal = () => {
-    setShowImportModal(false);
-    document.body.style.overflow = "unset";
+    setShowImportModal(false); document.body.style.overflow = "unset";
   };
-
-  const handleImportSuccess = () => {
-    refreshAll();
-    handleCloseImportModal();
-  };
+  const handleImportSuccess = () => { refreshAll(); handleCloseImportModal(); };
 
   const handleEdit = (student) => {
-    setEditingStudent({
-      ...student,
-      hasFace: faceStatusMap[student.student_id] === true,
-    });
+    setEditingStudent({ ...student, hasFace: faceStatusMap[student.student_id] === true });
     setShowEditModal(true);
     document.body.style.overflow = "hidden";
   };
-
   const handleCloseEditModal = () => {
-    setShowEditModal(false);
-    setEditingStudent(null);
-    document.body.style.overflow = "unset";
-    refreshAll();
+    setShowEditModal(false); setEditingStudent(null); document.body.style.overflow = "unset"; refreshAll();
   };
 
   const handleArchiveRegular = async () => {
-    const count = students.filter(s => s.status && s.status.toLowerCase() === 'regular').length;
-    if (count === 0) {
-      alert('No Regular students to archive.');
-      return;
-    }
+    const count = students.filter(s => s.status?.toLowerCase() === 'regular').length;
+    if (count === 0) { alert('No Regular students to archive.'); return; }
     if (!window.confirm(`Are you sure you want to Archive all Regular Students?`)) return;
-
     try {
       setLoading(true);
       const resp = await axios.put("http://localhost:5000/api/students/archive-by-status", { status: "Regular" });
       alert(resp.data.message || `Archived ${count} Regular students`);
       refreshAll();
     } catch (err) {
-      console.error("Bulk archive failed:", err);
       alert(`Archive failed: ${err.response?.data?.message || err.message}`);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleArchiveIrregular = async () => {
-    const count = students.filter(s => s.status && s.status.toLowerCase() === 'irregular').length;
-    if (count === 0) {
-      alert('No Irregular students to archive.');
-      return;
-    }
+    const count = students.filter(s => s.status?.toLowerCase() === 'irregular').length;
+    if (count === 0) { alert('No Irregular students to archive.'); return; }
     if (!window.confirm(`Are you sure you want to Archive all Irregular Students?`)) return;
-
     try {
       setLoading(true);
       const resp = await axios.put("http://localhost:5000/api/students/archive-by-status", { status: "Irregular" });
       alert(resp.data.message || `Archived ${count} Irregular students`);
       refreshAll();
     } catch (err) {
-      console.error("Bulk archive failed:", err);
       alert(`Archive failed: ${err.response?.data?.message || err.message}`);
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   const formatFullName = (student) => {
     if (!student) return "";
-    const firstName = student.first_name || "";
-    const lastName = student.last_name || "";
     const middleInitial = student.middle_name ? ` ${student.middle_name.charAt(0)}.` : "";
-    return `${lastName}, ${firstName}${middleInitial}`.trim();
+    return `${student.last_name || ""}, ${student.first_name || ""}${middleInitial}`.trim();
   };
 
   const formatDate = (dateString) => {
@@ -258,61 +177,39 @@ function Students() {
       return new Date(dateString)
         .toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
         .replace(/\//g, "-");
-    } catch {
-      return "Invalid Date";
-    }
+    } catch { return "Invalid Date"; }
   };
 
   const getStatusBadgeClass = (status) => {
     if (!status) return "unknown";
-    const statusLower = status.toLowerCase();
-    if (statusLower === 'regular') return 'regular';
-    if (statusLower === 'irregular') return 'irregular';
-    if (statusLower === 'inactive') return 'inactive';
+    const s = status.toLowerCase();
+    if (s === 'regular')   return 'regular';
+    if (s === 'irregular') return 'irregular';
+    if (s === 'inactive')  return 'inactive';
     return 'unknown';
   };
 
   const renderPageNumbers = () => {
     if (totalPages <= 1) return null;
     const pages = [];
-    const maxVisible = 5;
-
-    if (totalPages <= maxVisible) {
+    if (totalPages <= 5) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(
-          <button
-            key={i}
-            className={`page-number ${currentPage === i ? "active" : ""}`}
-            onClick={() => handlePageChange(i)}
-          >
-            {i}
-          </button>
+          <button key={i} className={`page-number ${currentPage === i ? "active" : ""}`} onClick={() => handlePageChange(i)}>{i}</button>
         );
       }
     } else {
-      pages.push(
-        <button key={1} className={`page-number ${currentPage === 1 ? "active" : ""}`} onClick={() => handlePageChange(1)}>
-          1
-        </button>
-      );
+      pages.push(<button key={1} className={`page-number ${currentPage === 1 ? "active" : ""}`} onClick={() => handlePageChange(1)}>1</button>);
       let start = Math.max(2, currentPage - 1);
-      let end = Math.min(totalPages - 1, currentPage + 1);
-      if (currentPage <= 2) end = Math.min(totalPages - 1, 4);
+      let end   = Math.min(totalPages - 1, currentPage + 1);
+      if (currentPage <= 2)           end   = Math.min(totalPages - 1, 4);
       if (currentPage >= totalPages - 1) start = Math.max(2, totalPages - 3);
       if (start > 2) pages.push(<span key="e1" className="ellipsis">...</span>);
       for (let i = start; i <= end; i++) {
-        pages.push(
-          <button key={i} className={`page-number ${currentPage === i ? "active" : ""}`} onClick={() => handlePageChange(i)}>
-            {i}
-          </button>
-        );
+        pages.push(<button key={i} className={`page-number ${currentPage === i ? "active" : ""}`} onClick={() => handlePageChange(i)}>{i}</button>);
       }
       if (end < totalPages - 1) pages.push(<span key="e2" className="ellipsis">...</span>);
-      pages.push(
-        <button key={totalPages} className={`page-number ${currentPage === totalPages ? "active" : ""}`} onClick={() => handlePageChange(totalPages)}>
-          {totalPages}
-        </button>
-      );
+      pages.push(<button key={totalPages} className={`page-number ${currentPage === totalPages ? "active" : ""}`} onClick={() => handlePageChange(totalPages)}>{totalPages}</button>);
     }
     return pages;
   };
@@ -340,7 +237,7 @@ function Students() {
         </section>
       )}
 
-      {/* Dashboard Stat Cards - Now based on STATUS */}
+      {/* Stat Cards */}
       <div className="stats-container">
         <div className="stat-card all-students">
           <div className="stat-icon"><BsFillPeopleFill /></div>
@@ -349,7 +246,6 @@ function Students() {
             <p className="stat-number">{allStudentsCount}</p>
           </div>
         </div>
-
         <div className="stat-card regular-students">
           <div className="stat-icon"><BsPersonFillCheck /></div>
           <div className="stat-details">
@@ -357,7 +253,6 @@ function Students() {
             <p className="stat-number">{regularStudentsCount}</p>
           </div>
         </div>
-
         <div className="stat-card irregular-students">
           <div className="stat-icon"><BsPersonFillExclamation /></div>
           <div className="stat-details">
@@ -412,22 +307,30 @@ function Students() {
           />
 
           <button type="button" className="action-button import-button" onClick={handleImportClick}>
-            <FiDownload className="button-icon" />
-            Import
+            <FiDownload className="button-icon" /> Import
           </button>
-
           <button type="button" className="action-button add-button" onClick={handleAddClick}>
-            <FiPlus className="button-icon" />
-            Add
+            <FiPlus className="button-icon" /> Add
           </button>
-
           <button type="button" className="action-button archive-button" onClick={handleArchiveRegular}>
             Archive All Regular
           </button>
-
           <button type="button" className="action-button archive-button" onClick={handleArchiveIrregular}>
             Archive All Irregular
           </button>
+        </div>
+
+        {/* ── Face Registration Legend ────────────────────────────────────── */}
+        <div className="face-legend">
+          <span className="face-legend-title">Face Registration Status:</span>
+          <span className="face-legend-item">
+            <span className="face-dot face-dot-registered" />
+            Registered
+          </span>
+          <span className="face-legend-item">
+            <span className="face-dot face-dot-missing" />
+            Not yet registered
+          </span>
         </div>
 
         {/* Table */}
@@ -476,10 +379,7 @@ function Students() {
                         </td>
                         <td>{formatDate(student.created_at)}</td>
                         <td className="action-cell">
-                          <button
-                            className="action-text-btn edit-text-btn"
-                            onClick={() => handleEdit(student)}
-                          >
+                          <button className="action-text-btn edit-text-btn" onClick={() => handleEdit(student)}>
                             Edit
                           </button>
                         </td>
@@ -500,26 +400,16 @@ function Students() {
         {!loading && !error && filteredStudents.length > 0 && (
           <>
             <div className="pagination">
-              <button 
-                className="pagination-button" 
-                onClick={() => handlePageChange(currentPage - 1)} 
-                disabled={currentPage === 1}
-              >
+              <button className="pagination-button" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
                 ← Previous
               </button>
               <div className="page-numbers">{renderPageNumbers()}</div>
-              <button 
-                className="pagination-button" 
-                onClick={() => handlePageChange(currentPage + 1)} 
-                disabled={currentPage === totalPages}
-              >
+              <button className="pagination-button" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
                 Next →
               </button>
             </div>
             <div className="results-count">
-              Showing {indexOfFirstRecord + 1} to{" "}
-              {Math.min(indexOfLastRecord, filteredStudents.length)} of{" "}
-              {filteredStudents.length} students
+              Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredStudents.length)} of {filteredStudents.length} students
             </div>
           </>
         )}
@@ -533,15 +423,9 @@ function Students() {
           </div>
         </div>
       )}
-
       {showImportModal && (
-        <ImportStudent
-          isOpen={showImportModal}
-          onClose={handleCloseImportModal}
-          onSuccess={handleImportSuccess}
-        />
+        <ImportStudent isOpen={showImportModal} onClose={handleCloseImportModal} onSuccess={handleImportSuccess} />
       )}
-
       {showEditModal && editingStudent && (
         <EditStudent student={editingStudent} onClose={handleCloseEditModal} />
       )}

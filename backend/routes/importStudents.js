@@ -27,21 +27,26 @@ const upload = multer({
   },
 });
 
-// Required columns — Extension Name is NOT here (it is optional)
+// ── Column definitions ────────────────────────────────────────────────────────
+// Required — import is rejected if ANY of these are missing from the file header
 const REQUIRED_COLUMNS = [
   "Student ID",
-  "Email",          
+  "Email",              // now required
   "First Name",
   "Last Name",
   "Middle Name",
   "College Department",
+  "Program Name",       // now required
   "Year Level",
   "Enrollment Status",
 ];
 
-// Optional columns — present in validation but never cause rejection if empty or absent
-const OPTIONAL_COLUMNS = ["Extension Name"];
+// Optional — validated when present, silently null when absent or empty
+const OPTIONAL_COLUMNS = [
+  "Extension Name",     // e.g. Jr., Sr., II
+];
 
+// ── Allowed values ────────────────────────────────────────────────────────────
 const VALID_DEPARTMENTS = [
   "College of Nursing",
   "College of Engineering",
@@ -59,38 +64,39 @@ const VALID_YEAR_LEVELS = {
   "4": 4, "4th": 4,
 };
 
-const VALID_STATUSES = ["Inactive", "Regular", "Irregular"];
-// Extension Name — allowed values when provided (empty string = no extension)
+const VALID_STATUSES   = ["Inactive", "Regular", "Irregular"];
 const VALID_EXTENSIONS = ["", "Jr.", "Sr.", "I", "II", "III", "IV"];
-const STUDENT_ID_REGEX = /^\d{2}-\d{5}$/;
+
+const STUDENT_ID_REGEX    = /^\d{2}-\d{5}$/;
 const PLPASIG_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
 
+// ── Row validator ─────────────────────────────────────────────────────────────
 const validateRow = (row, rowNumber) => {
   const errors = [];
 
-  const studentId      = (row["Student ID"]        || "").toString().trim();
-  const email = (row["Email"] || "").toString().trim();
-  const firstName      = (row["First Name"]         || "").toString().trim();
-  const lastName       = (row["Last Name"]          || "").toString().trim();
-  const middleName     = (row["Middle Name"]        || "").toString().trim();
-  const collegeDept    = (row["College Department"] || "").toString().trim();
-  const yearLevel      = (row["Year Level"]         || "").toString().trim();
-  const enrollmentStatus = (row["Enrollment Status"] || "").toString().trim();
+  const studentId    = (row["Student ID"]         || "").toString().trim();
+  const email        = (row["Email"]              || "").toString().trim();
+  const firstName    = (row["First Name"]         || "").toString().trim();
+  const lastName     = (row["Last Name"]          || "").toString().trim();
+  const middleName   = (row["Middle Name"]        || "").toString().trim();
+  const collegeDept  = (row["College Department"] || "").toString().trim();
+  const programName  = (row["Program Name"]       || "").toString().trim();
+  const yearLevel    = (row["Year Level"]         || "").toString().trim();
+  const enrollStatus = (row["Enrollment Status"]  || "").toString().trim();
+  const extensionName = (row["Extension Name"]    || "").toString().trim();
 
-  // Extension Name: optional — validate value only when the column exists AND has a value
-  const extensionName  = (row["Extension Name"]     || "").toString().trim();
+  // ── Required field presence ───────────────────────────────────────────────
+  if (!studentId)    errors.push(`Row ${rowNumber}: Student ID is empty.`);
+  if (!email)        errors.push(`Row ${rowNumber}: Email is empty.`);
+  if (!firstName)    errors.push(`Row ${rowNumber}: First Name is empty.`);
+  if (!middleName)   errors.push(`Row ${rowNumber}: Middle Name is empty.`);
+  if (!lastName)     errors.push(`Row ${rowNumber}: Last Name is empty.`);
+  if (!collegeDept)  errors.push(`Row ${rowNumber}: College Department is empty.`);
+  if (!programName)  errors.push(`Row ${rowNumber}: Program Name is empty.`);
+  if (!yearLevel)    errors.push(`Row ${rowNumber}: Year Level is empty.`);
+  if (!enrollStatus) errors.push(`Row ${rowNumber}: Enrollment Status is empty.`);
 
-  // ── Required field presence ────────────────────────────────────────────────
-  if (!studentId)        errors.push(`Row ${rowNumber}: Student ID is empty.`);
-  if (!email) errors.push(`Row ${rowNumber}: Email is empty.`);
-  if (!firstName)        errors.push(`Row ${rowNumber}: First Name is empty.`);
-  if (!middleName)       errors.push(`Row ${rowNumber}: Middle Name is empty.`);
-  if (!lastName)         errors.push(`Row ${rowNumber}: Last Name is empty.`);
-  if (!collegeDept)      errors.push(`Row ${rowNumber}: College Department is empty.`);
-  if (!yearLevel)        errors.push(`Row ${rowNumber}: Year Level is empty.`);
-  if (!enrollmentStatus) errors.push(`Row ${rowNumber}: Enrollment Status is empty.`);
-
-  // ── Required field format validation ──────────────────────────────────────
+  // ── Format validation ─────────────────────────────────────────────────────
   if (studentId && !STUDENT_ID_REGEX.test(studentId)) {
     errors.push(
       `Row ${rowNumber}: Student ID "${studentId}" must follow format YY-NNNNN (e.g. 24-00001).`
@@ -99,7 +105,8 @@ const validateRow = (row, rowNumber) => {
 
   if (email && !PLPASIG_EMAIL_REGEX.test(email)) {
     errors.push(
-      `Row ${rowNumber}: Email "${email}" must be a valid @plpasig.edu.ph address (e.g. delacruz_juan@plpasig.edu.ph).`
+      `Row ${rowNumber}: Email "${email}" must be a valid @plpasig.edu.ph address ` +
+      `(e.g. delacruz_juan@plpasig.edu.ph).`
     );
   }
 
@@ -110,20 +117,23 @@ const validateRow = (row, rowNumber) => {
     );
   }
 
+  if (programName && programName.length > 200) {
+    errors.push(`Row ${rowNumber}: Program Name exceeds the 200-character limit.`);
+  }
+
   if (yearLevel && !(yearLevel.toLowerCase() in VALID_YEAR_LEVELS)) {
     errors.push(
       `Row ${rowNumber}: Year Level "${yearLevel}" is invalid. Valid options: 1, 2, 3, 4.`
     );
   }
 
-  if (enrollmentStatus && !VALID_STATUSES.includes(enrollmentStatus)) {
+  if (enrollStatus && !VALID_STATUSES.includes(enrollStatus)) {
     errors.push(
-      `Row ${rowNumber}: Enrollment Status "${enrollmentStatus}" is invalid. ` +
+      `Row ${rowNumber}: Enrollment Status "${enrollStatus}" is invalid. ` +
       `Valid options: ${VALID_STATUSES.join(", ")}.`
     );
   }
 
-  // ── Optional field validation — only when a value is present ──────────────
   if (extensionName && !VALID_EXTENSIONS.includes(extensionName)) {
     errors.push(
       `Row ${rowNumber}: Extension Name "${extensionName}" is invalid. ` +
@@ -146,27 +156,23 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
     const workbook  = XLSX.read(req.file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-
-    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+    const rows      = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
 
     if (rows.length === 0) {
       return res.status(400).json({ message: "The uploaded file is empty." });
     }
 
-    const fileColumns = Object.keys(rows[0]);
-
-    // Only the REQUIRED columns are checked for presence.
-    // Extension Name is optional — it may or may not be in the file.
+    // ── Column presence check ─────────────────────────────────────────────
+    const fileColumns    = Object.keys(rows[0]);
     const missingColumns = REQUIRED_COLUMNS.filter((col) => !fileColumns.includes(col));
 
     if (missingColumns.length > 0) {
       return res.status(400).json({
-        message:
-          `Missing required columns: ${missingColumns.join(", ")}. ` +
-          `Please check your file format.`,
+        message: `Missing required columns: ${missingColumns.join(", ")}. Please check your file format.`,
       });
     }
 
+    // ── Row-level validation ──────────────────────────────────────────────
     const validationErrors = [];
     rows.forEach((row, index) => {
       validationErrors.push(...validateRow(row, index + 2));
@@ -179,22 +185,18 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       });
     }
 
-    // Duplicate checks — Student ID and Email must be unique within the file AND against the database
-    const fileStudentIds   = rows.map((row) => row["Student ID"].toString().trim());
-    const duplicatesInFile = fileStudentIds.filter(
-      (id, index) => fileStudentIds.indexOf(id) !== index
-    );
+    // ── Duplicate checks within the file ─────────────────────────────────
+    const fileStudentIds  = rows.map((r) => r["Student ID"].toString().trim());
+    const duplicateIds    = fileStudentIds.filter((id, i) => fileStudentIds.indexOf(id) !== i);
 
-    if (duplicatesInFile.length > 0) {
+    if (duplicateIds.length > 0) {
       return res.status(400).json({
-        message: `Duplicate Student IDs found within the file: ${[...new Set(duplicatesInFile)].join(", ")}.`,
+        message: `Duplicate Student IDs found within the file: ${[...new Set(duplicateIds)].join(", ")}.`,
       });
     }
 
-    const fileEmails = rows.map((row) => row["Email"].toString().trim().toLowerCase());
-    const duplicateEmails = fileEmails.filter(
-      (email, index) => fileEmails.indexOf(email) !== index
-    );
+    const fileEmails      = rows.map((r) => r["Email"].toString().trim().toLowerCase());
+    const duplicateEmails = fileEmails.filter((e, i) => fileEmails.indexOf(e) !== i);
 
     if (duplicateEmails.length > 0) {
       return res.status(400).json({
@@ -202,62 +204,65 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       });
     }
 
-    const placeholders   = fileStudentIds.map(() => "?").join(", ");
-    const [existingRows] = await db.query(
-      `SELECT student_id FROM students WHERE student_id IN (${placeholders})`,
+    // ── Database duplicate checks ─────────────────────────────────────────
+    const idPlaceholders = fileStudentIds.map(() => "?").join(", ");
+    const [existingIds]  = await db.query(
+      `SELECT student_id FROM students WHERE student_id IN (${idPlaceholders})`,
       fileStudentIds
     );
 
-    if (existingRows.length > 0) {
-      const existingIds = existingRows.map((r) => r.student_id);
+    if (existingIds.length > 0) {
       return res.status(400).json({
-        message: `These Student IDs already exist in the database: ${existingIds.join(", ")}.`,
+        message: `These Student IDs already exist in the database: ${existingIds.map((r) => r.student_id).join(", ")}.`,
       });
     }
 
     const emailPlaceholders = fileEmails.map(() => "?").join(", ");
-    const [existingEmails] = await db.query(
+    const [existingEmails]  = await db.query(
       `SELECT email FROM students WHERE email IN (${emailPlaceholders})`,
       fileEmails
     );
 
     if (existingEmails.length > 0) {
-      const taken = existingEmails.map((r) => r.email);
       return res.status(400).json({
-        message: `These Emails already exist in the database: ${taken.join(", ")}.`,
+        message: `These Emails already exist in the database: ${existingEmails.map((r) => r.email).join(", ")}.`,
       });
     }
 
+    // ── Insert rows ───────────────────────────────────────────────────────
     const insertedStudents = [];
     const failedRows       = [];
 
     for (const row of rows) {
-      const studentId         = row["Student ID"].toString().trim();
-      const firstName         = row["First Name"].toString().trim();
-      const middleName        = row["Middle Name"].toString().trim();
-      const lastName          = row["Last Name"].toString().trim();
-      const collegeDepartment = row["College Department"].trim();
-      const yearLevel         = VALID_YEAR_LEVELS[row["Year Level"].toString().trim().toLowerCase()];
-      const status            = row["Enrollment Status"].trim();
-      // Extension Name: read if column exists, default to empty string if absent
-      const extensionName     = (row["Extension Name"] || "").toString().trim();
+      const studentId   = row["Student ID"].toString().trim();
+      const email       = row["Email"].toString().trim().toLowerCase();
+      const firstName   = row["First Name"].toString().trim();
+      const middleName  = row["Middle Name"].toString().trim();
+      const lastName    = row["Last Name"].toString().trim();
+      const collegeDept = row["College Department"].toString().trim();
+      const programName = row["Program Name"].toString().trim();
+      const yearLevel   = VALID_YEAR_LEVELS[row["Year Level"].toString().trim().toLowerCase()];
+      const status      = row["Enrollment Status"].toString().trim();
+      const extName     = (row["Extension Name"] || "").toString().trim() || null;
 
       try {
         await db.query(
           `INSERT INTO students
-            (student_id, email, first_name, last_name, middle_name, extension_name,
-            college_department, year_level, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+             (student_id, email, first_name, last_name, middle_name,
+              extension_name, program_name, college_department,
+              year_level, status, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
           [
             studentId,
-            email.toLowerCase(),
+            email,
             firstName.toUpperCase(),
             lastName.toUpperCase(),
             middleName.toUpperCase() || null,
-            extensionName || null,          // already read from row["Extension Name"]
-            collegeDepartment,
+            extName,
+            programName,
+            collegeDept,
             yearLevel,
-            status
+            status,
           ]
         );
         insertedStudents.push(studentId);
@@ -276,9 +281,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
 
   } catch (error) {
     console.error("Import error:", error);
-    return res.status(500).json({
-      message: error.message || "Server error during import.",
-    });
+    return res.status(500).json({ message: error.message || "Server error during import." });
   }
 });
 
@@ -330,9 +333,6 @@ router.get("/students-face-status", async (req, res) => {
 
 
 // ─── POST /api/register-face ──────────────────────────────────────────────────
-// Called by EditStudent.jsx when registering a face for an already-saved student.
-// Mirrors the face-embedding logic in registration.js but skips re-inserting
-// student info (student already exists in the DB).
 
 router.post("/register-face", async (req, res) => {
   let connection;
@@ -343,7 +343,6 @@ router.post("/register-face", async (req, res) => {
       return res.status(400).json({ message: "student_id and exactly 5 images are required." });
     }
 
-    // Call Python to generate embeddings
     const axios    = require("axios");
     const response = await axios.post(
       "http://127.0.0.1:8000/generate-embedding",
@@ -363,7 +362,6 @@ router.post("/register-face", async (req, res) => {
     connection = await db.getConnection();
     await connection.beginTransaction();
 
-    // Remove any stale embeddings for this student before inserting fresh ones
     await connection.query(
       "DELETE FROM student_face_embeddings WHERE student_id = ?",
       [student_id]
@@ -371,9 +369,7 @@ router.post("/register-face", async (req, res) => {
 
     for (let i = 0; i < embeddings.length; i++) {
       const emb = embeddings[i];
-      if (!emb || emb.length !== 512) {
-        throw new Error("Invalid embedding size");
-      }
+      if (!emb || emb.length !== 512) throw new Error("Invalid embedding size");
       await connection.query(
         `INSERT INTO student_face_embeddings (student_id, face_position, face_embedding)
          VALUES (?, ?, ?)`,
@@ -382,7 +378,6 @@ router.post("/register-face", async (req, res) => {
     }
 
     await connection.commit();
-
     return res.json({ message: "Face registered successfully." });
 
   } catch (err) {

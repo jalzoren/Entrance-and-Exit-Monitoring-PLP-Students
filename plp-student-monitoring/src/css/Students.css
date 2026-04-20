@@ -748,3 +748,37 @@
     gap: 14px;
   }
 }
+
+/* ── Add these rules to Students.css ──────────────────────────────────────── */
+
+/* Face registration legend — sits between controls and table */
+.face-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 4px;
+  margin-bottom: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.face-legend-title {
+  font-weight: 600;
+  color: #333;
+}
+
+.face-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ── Add these rules to ImportStudents.css ─────────────────────────────────── */
+
+/* Optional column cells in the format preview — visually dimmed */
+.preview-cell-optional {
+  color: #999 !important;
+  font-style: italic;
+  background-color: #fafafa !important;
+}

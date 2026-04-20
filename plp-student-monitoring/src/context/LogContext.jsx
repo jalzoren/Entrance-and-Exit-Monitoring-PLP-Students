@@ -1,3 +1,4 @@
+// LogContext.jsx
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
 const LogContext = createContext();

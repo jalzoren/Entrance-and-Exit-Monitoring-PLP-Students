@@ -1,3 +1,4 @@
+// AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
@@ -12,11 +13,10 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser]                   = useState(null);
+  const [loading, setLoading]             = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
 
-  // Check session on initial load
   useEffect(() => {
     checkSession();
   }, []);
@@ -26,9 +26,8 @@ export const AuthProvider = ({ children }) => {
       const response = await fetch('http://localhost:5000/api/check-session', {
         credentials: 'include'
       });
-      
       const data = await response.json();
-      
+
       if (data.authenticated) {
         setUser(data.user);
         setAuthenticated(true);
@@ -45,15 +44,14 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
+  // ── role is now accepted and forwarded to the backend ──────────────────────
+  const login = async (email, password, role) => {
     try {
       const response = await fetch('http://localhost:5000/api/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role }),
       });
 
       const data = await response.json();
@@ -67,7 +65,7 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, message: 'Connection error' };
+      return { success: false, message: 'Connection error. Please try again.' };
     }
   };
 
@@ -77,10 +75,10 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         credentials: 'include'
       });
-      
+
       setUser(null);
       setAuthenticated(false);
-      
+
       Swal.fire({
         icon: 'success',
         title: 'Logged Out',
@@ -93,14 +91,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const value = {
-    user,
-    loading,
-    authenticated,
-    login,
-    logout,
-    checkSession
-  };
+  const value = { user, loading, authenticated, login, logout, checkSession };
 
   return (
     <AuthContext.Provider value={value}>
