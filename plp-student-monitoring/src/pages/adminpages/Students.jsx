@@ -1,49 +1,112 @@
-// frontend/src/adminpages/Students.jsx
-import React, { useState, useEffect } from "react";
+// pages/adminpages/Students.jsx
+import React, { useState, useEffect, useMemo } from "react";
 import "../../css/Students.css";
 import RegisterStudent from "../../components/RegisterStudent";
-import ImportStudent from "../../components/ImportStudents";
-import EditStudent from "../../components/EditStudent";
+import ImportStudent   from "../../components/ImportStudents";
+import EditStudent     from "../../components/EditStudent";
 import axios from "axios";
 
 import { FiDownload, FiPlus, FiFilter } from "react-icons/fi";
-import { BsPersonFillExclamation, BsPersonFillCheck, BsFillPeopleFill } from "react-icons/bs";
+import {
+  BsPersonFillExclamation,
+  BsPersonFillCheck,
+  BsFillPeopleFill,
+  BsPersonDash,
+} from "react-icons/bs";
 import { IoMdArrowDropdown } from "react-icons/io";
 import { IoNotificationsCircleOutline } from "react-icons/io5";
 
+// ─── Status helpers ───────────────────────────────────────────────────────────
+const STATUS_OPTIONS = [
+  { value: "Regular",     label: "Regular"     },
+  { value: "Irregular",   label: "Irregular"   },
+  { value: "LOA",         label: "LOA (Leave of Absence)" },
+  { value: "Dropout",     label: "Dropout"     },
+  { value: "Kickout",     label: "Kickout"     },
+  { value: "Graduated",   label: "Graduated"   },
+  { value: "Transferred", label: "Transferred" },
+];
+
+const ALL_STATUSES = [
+  "Regular", "Irregular", "LOA", "Dropout", "Kickout", "Graduated", "Transferred", "Inactive",
+];
+
+// Which statuses count as "active / on-campus eligible"
+const ACTIVE_STATUSES = ["Regular", "Irregular", "LOA"];
+
+function statusBadgeClass(status) {
+  if (!status) return "unknown";
+  switch (status) {
+    case "Regular":    return "regular";
+    case "Irregular":  return "irregular";
+    case "LOA":        return "loa";
+    case "Dropout":    return "dropout";
+    case "Kickout":    return "kickout";
+    case "Graduated":  return "graduated";
+    case "Transferred":return "transferred";
+    case "Inactive":   return "inactive";
+    default:           return "unknown";
+  }
+}
+
+// ─── Batch-year helper ────────────────────────────────────────────────────────
+// "23-00298"  →  "2023"
+function batchYearFromId(studentId) {
+  const prefix = studentId?.split("-")[0];
+  if (!prefix || prefix.length !== 2) return null;
+  return `20${prefix}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+
 function Students() {
-  const [currentPage, setCurrentPage]         = useState(1);
-  const [department, setDepartment]           = useState("");
-  const [yearLevel, setYearLevel]             = useState("");
-  const [registrationDate, setRegistrationDate] = useState("");
-  const [searchQuery, setSearchQuery]         = useState("");
+  // ── Data ──────────────────────────────────────────────────────────────────
+  const [students,        setStudents]        = useState([]);
+  const [faceStatusMap,   setFaceStatusMap]   = useState({});
+  const [pendingFaceCount,setPendingFaceCount] = useState(0);
+  const [loading,         setLoading]         = useState(true);
+  const [error,           setError]           = useState(null);
 
+  // ── Filter option lists (fetched from DB) ─────────────────────────────────
+  const [deptOptions,    setDeptOptions]    = useState([]);   // [{id, dept_name}, ...]
+  const [programOptions, setProgramOptions] = useState([]);   // [{id, programName, department}, ...]
+
+  // ── Active filter values ──────────────────────────────────────────────────
+  const [filterDept,       setFilterDept]       = useState("");
+  const [filterProgram,    setFilterProgram]     = useState("");
+  const [filterYearLevel,  setFilterYearLevel]   = useState("");
+  const [filterBatchYear,  setFilterBatchYear]   = useState("");
+  const [filterStatus,     setFilterStatus]      = useState("");
+  const [filterFaceStatus, setFilterFaceStatus]  = useState(""); // "" | "registered" | "missing"
+  const [searchQuery,      setSearchQuery]       = useState("");
+
+  // ── Modal state ───────────────────────────────────────────────────────────
   const [showRegisterModal, setShowRegisterModal] = useState(false);
-  const [showImportModal, setShowImportModal]     = useState(false);
-  const [showEditModal, setShowEditModal]         = useState(false);
-  const [editingStudent, setEditingStudent]       = useState(null);
+  const [showImportModal,   setShowImportModal]   = useState(false);
+  const [showEditModal,     setShowEditModal]     = useState(false);
+  const [editingStudent,    setEditingStudent]    = useState(null);
 
-  const [students, setStudents]           = useState([]);
-  const [loading, setLoading]             = useState(true);
-  const [error, setError]                 = useState(null);
-  const [pendingFaceCount, setPendingFaceCount] = useState(0);
-  const [faceStatusMap, setFaceStatusMap] = useState({});
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const [currentPage,   setCurrentPage]   = useState(1);
+  const recordsPerPage = 10;
 
-  const recordsPerPage = 5;
+  // ─────────────────────────────────────────────────────────────────────────
+  // DATA FETCHING
+  // ─────────────────────────────────────────────────────────────────────────
 
-  // ── Data fetching ─────────────────────────────────────────────────────────
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/students");
-      setStudents(Array.isArray(response.data) ? response.data : []);
+      const res = await axios.get("/api/students");
+      setStudents(Array.isArray(res.data) ? res.data : []);
       setError(null);
     } catch (err) {
-      console.error("Error fetching students:", err);
       setError(
         err.code === "ERR_NETWORK"
-          ? "Cannot connect to server. Make sure backend is running on port 5000."
-          : "Failed to load students. Please try again."
+          ? "Cannot connect to server."
+          : "Failed to load students."
       );
       setStudents([]);
     } finally {
@@ -51,238 +114,324 @@ function Students() {
     }
   };
 
-  const fetchPendingFaceReg = async () => {
-    try {
-      const response = await axios.get("http://localhost:5000/api/pending-face-registration");
-      setPendingFaceCount(response.data.count || 0);
-    } catch (err) {
-      console.error("Error fetching pending face registration count:", err);
-    }
-  };
-
   const fetchFaceStatus = async () => {
     try {
-      const response = await axios.get("http://localhost:5000/api/students-face-status");
-      setFaceStatusMap(response.data || {});
+      const res = await axios.get("/api/students-face-status");
+      setFaceStatusMap(res.data || {});
+    } catch { /* silent */ }
+  };
+
+  const fetchPendingFace = async () => {
+    try {
+      const res = await axios.get("/api/pending-face-registration");
+      setPendingFaceCount(res.data.count || 0);
+    } catch { /* silent */ }
+  };
+
+  const fetchFilterOptions = async () => {
+    try {
+      const [deptRes, progRes] = await Promise.all([
+        fetch("/api/departments?status=Active"),
+        fetch("/api/programs?programStatus=Active"),
+      ]);
+      const depts = await deptRes.json();
+      const progs = await progRes.json();
+      setDeptOptions(Array.isArray(depts) ? depts : []);
+      setProgramOptions(Array.isArray(progs) ? progs : []);
     } catch (err) {
-      console.error("Error fetching face status map:", err);
+      console.error("[Students] filter options fetch error:", err);
     }
   };
 
   const refreshAll = () => {
     fetchStudents();
-    fetchPendingFaceReg();
     fetchFaceStatus();
+    fetchPendingFace();
   };
 
-  useEffect(() => { refreshAll(); }, []);
+  useEffect(() => {
+    refreshAll();
+    fetchFilterOptions();
+  }, []);
 
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, department, yearLevel, registrationDate]);
+  // Reset to page 1 whenever any filter changes
+  useEffect(() => { setCurrentPage(1); }, [
+    searchQuery, filterDept, filterProgram,
+    filterYearLevel, filterBatchYear, filterStatus, filterFaceStatus,
+  ]);
 
-  // ── Statistics ────────────────────────────────────────────────────────────
-  const activeStudents        = students.filter(s => s.status !== 'Inactive' && s.status !== null);
-  const allStudentsCount      = activeStudents.length;
-  const regularStudentsCount  = activeStudents.filter(s => s.status?.toLowerCase() === 'regular').length;
-  const irregularStudentsCount = activeStudents.filter(s => s.status?.toLowerCase() === 'irregular').length;
+  // When department filter changes, clear the program filter
+  useEffect(() => {
+    setFilterProgram("");
+  }, [filterDept]);
 
-  // ── Filtering & Pagination ────────────────────────────────────────────────
-  const filteredStudents = students.filter((student) => {
-    if (student.status === 'Inactive') return false;
+  // ─────────────────────────────────────────────────────────────────────────
+  // DERIVED DATA
+  // ─────────────────────────────────────────────────────────────────────────
 
-    const matchesSearch =
-      searchQuery === "" ||
-      student.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      student.student_id?.toLowerCase().includes(searchQuery.toLowerCase());
+  // Programs available under the currently selected department (for the filter)
+  const programsForFilter = useMemo(() => {
+    if (!filterDept) return programOptions;
+    return programOptions.filter(p => p.department === filterDept);
+  }, [filterDept, programOptions]);
 
-    const matchesDepartment = department === "" || student.college_department === department;
-    const matchesYearLevel  = yearLevel  === "" || student.year_level === yearLevel;
+  // Unique batch years extracted from loaded student IDs — sorted descending
+  const batchYearOptions = useMemo(() => {
+    const set = new Set(
+      students.map(s => batchYearFromId(s.student_id)).filter(Boolean)
+    );
+    return [...set].sort((a, b) => b - a);
+  }, [students]);
 
-    let matchesDate = true;
-    if (registrationDate && student.created_at) {
-      matchesDate = new Date(student.created_at).getFullYear().toString() === registrationDate;
-    }
+  // ── Stats ─────────────────────────────────────────────────────────────────
+  const stats = useMemo(() => ({
+    total:       students.length,
+    regular:     students.filter(s => s.status === "Regular").length,
+    irregular:   students.filter(s => s.status === "Irregular").length,
+    loa:         students.filter(s => s.status === "LOA").length,
+    graduated:   students.filter(s => s.status === "Graduated").length,
+    transferred: students.filter(s => s.status === "Transferred").length,
+    withdrawn:   students.filter(s => s.status === "Dropout" || s.status === "Kickout").length,
+    inactive:    students.filter(s => s.status === "Inactive").length,
+  }), [students]);
 
-    return matchesSearch && matchesDepartment && matchesYearLevel && matchesDate;
-  });
+  // ── Filtered list ─────────────────────────────────────────────────────────
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      // Search
+      const q = searchQuery.toLowerCase();
+      const matchSearch = !q ||
+        s.first_name?.toLowerCase().includes(q)  ||
+        s.last_name?.toLowerCase().includes(q)   ||
+        s.student_id?.toLowerCase().includes(q);
 
-  const totalPages        = Math.ceil(filteredStudents.length / recordsPerPage);
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentStudents   = filteredStudents.slice(indexOfFirstRecord, indexOfLastRecord);
+      // Department
+      const matchDept = !filterDept || s.college_department === filterDept;
 
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-  };
+      // Program
+      const matchProg = !filterProgram || s.program_name === filterProgram;
 
-  // ── Modal controls ────────────────────────────────────────────────────────
-  const handleAddClick = () => { setShowRegisterModal(true); document.body.style.overflow = "hidden"; };
-  const handleImportClick = () => { setShowImportModal(true); document.body.style.overflow = "hidden"; };
+      // Year level — stored as int, filter value is a string
+      const matchYear = !filterYearLevel || String(s.year_level) === filterYearLevel;
 
-  const handleCloseRegisterModal = () => {
-    setShowRegisterModal(false); document.body.style.overflow = "unset"; fetchStudents();
-  };
-  const handleCloseImportModal = () => {
-    setShowImportModal(false); document.body.style.overflow = "unset";
-  };
-  const handleImportSuccess = () => { refreshAll(); handleCloseImportModal(); };
+      // Batch year — first two chars of student_id
+      const matchBatch = !filterBatchYear || batchYearFromId(s.student_id) === filterBatchYear;
 
-  const handleEdit = (student) => {
+      // Status
+      const matchStatus = !filterStatus || s.status === filterStatus;
+
+      // Face registration
+      const hasFace = faceStatusMap[s.student_id] === true;
+      const matchFace =
+        !filterFaceStatus ||
+        (filterFaceStatus === "registered" &&  hasFace) ||
+        (filterFaceStatus === "missing"    && !hasFace);
+
+      return matchSearch && matchDept && matchProg && matchYear &&
+             matchBatch && matchStatus && matchFace;
+    });
+  }, [
+    students, searchQuery, filterDept, filterProgram,
+    filterYearLevel, filterBatchYear, filterStatus, filterFaceStatus, faceStatusMap,
+  ]);
+
+  // ── Paginated slice ───────────────────────────────────────────────────────
+  const totalPages        = Math.max(1, Math.ceil(filteredStudents.length / recordsPerPage));
+  const indexOfFirst      = (currentPage - 1) * recordsPerPage;
+  const currentStudents   = filteredStudents.slice(indexOfFirst, indexOfFirst + recordsPerPage);
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MODAL HANDLERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const openModal  = () => { document.body.style.overflow = "hidden"; };
+  const closeModal = () => { document.body.style.overflow = "unset"; };
+
+  const handleAdd   = () => { openModal(); setShowRegisterModal(true); };
+  const handleImport= () => { openModal(); setShowImportModal(true); };
+  const handleEdit  = (student) => {
     setEditingStudent({ ...student, hasFace: faceStatusMap[student.student_id] === true });
+    openModal();
     setShowEditModal(true);
-    document.body.style.overflow = "hidden";
-  };
-  const handleCloseEditModal = () => {
-    setShowEditModal(false); setEditingStudent(null); document.body.style.overflow = "unset"; refreshAll();
   };
 
-  const handleArchiveRegular = async () => {
-    const count = students.filter(s => s.status?.toLowerCase() === 'regular').length;
-    if (count === 0) { alert('No Regular students to archive.'); return; }
-    if (!window.confirm(`Are you sure you want to Archive all Regular Students?`)) return;
+  const handleCloseRegister = () => { closeModal(); setShowRegisterModal(false); refreshAll(); };
+  const handleCloseImport   = () => { closeModal(); setShowImportModal(false); };
+  const handleImportSuccess = () => { refreshAll(); handleCloseImport(); };
+  const handleCloseEdit     = () => {
+    closeModal(); setShowEditModal(false); setEditingStudent(null); refreshAll();
+  };
+
+  // ── Bulk archive ──────────────────────────────────────────────────────────
+  const handleArchiveByStatus = async (status) => {
+    const count = students.filter(s => s.status === status).length;
+    if (count === 0) { alert(`No ${status} students to archive.`); return; }
+    if (!window.confirm(`Archive all ${status} students? This sets their status to Inactive.`)) return;
     try {
       setLoading(true);
-      const resp = await axios.put("http://localhost:5000/api/students/archive-by-status", { status: "Regular" });
-      alert(resp.data.message || `Archived ${count} Regular students`);
+      const res = await axios.put("/api/students/archive-by-status", { status });
+      alert(res.data.message || `Archived ${count} students`);
       refreshAll();
     } catch (err) {
       alert(`Archive failed: ${err.response?.data?.message || err.message}`);
     } finally { setLoading(false); }
   };
 
-  const handleArchiveIrregular = async () => {
-    const count = students.filter(s => s.status?.toLowerCase() === 'irregular').length;
-    if (count === 0) { alert('No Irregular students to archive.'); return; }
-    if (!window.confirm(`Are you sure you want to Archive all Irregular Students?`)) return;
-    try {
-      setLoading(true);
-      const resp = await axios.put("http://localhost:5000/api/students/archive-by-status", { status: "Irregular" });
-      alert(resp.data.message || `Archived ${count} Irregular students`);
-      refreshAll();
-    } catch (err) {
-      alert(`Archive failed: ${err.response?.data?.message || err.message}`);
-    } finally { setLoading(false); }
+  // ─────────────────────────────────────────────────────────────────────────
+  // HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
+
+  const formatFullName = (s) => {
+    if (!s) return "";
+    const mid = s.middle_name ? ` ${s.middle_name.charAt(0)}.` : "";
+    const ext = s.extension_name ? ` ${s.extension_name}` : "";
+    return `${s.last_name || ""}, ${s.first_name || ""}${mid}${ext}`.trim();
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const formatFullName = (student) => {
-    if (!student) return "";
-    const middleInitial = student.middle_name ? ` ${student.middle_name.charAt(0)}.` : "";
-    return `${student.last_name || ""}, ${student.first_name || ""}${middleInitial}`.trim();
+  const formatDate = (d) => {
+    if (!d) return "N/A";
+    return new Date(d)
+      .toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
+      .replace(/\//g, "-");
   };
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      return new Date(dateString)
-        .toLocaleDateString("en-US", { year: "numeric", month: "2-digit", day: "2-digit" })
-        .replace(/\//g, "-");
-    } catch { return "Invalid Date"; }
-  };
-
-  const getStatusBadgeClass = (status) => {
-    if (!status) return "unknown";
-    const s = status.toLowerCase();
-    if (s === 'regular')   return 'regular';
-    if (s === 'irregular') return 'irregular';
-    if (s === 'inactive')  return 'inactive';
-    return 'unknown';
-  };
-
+  // ── Pagination renderer ───────────────────────────────────────────────────
   const renderPageNumbers = () => {
     if (totalPages <= 1) return null;
     const pages = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(
-          <button key={i} className={`page-number ${currentPage === i ? "active" : ""}`} onClick={() => handlePageChange(i)}>{i}</button>
-        );
-      }
+    const addBtn = (i) => pages.push(
+      <button key={i} className={`page-number ${currentPage === i ? "active" : ""}`}
+        onClick={() => setCurrentPage(i)}>{i}</button>
+    );
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) addBtn(i);
     } else {
-      pages.push(<button key={1} className={`page-number ${currentPage === 1 ? "active" : ""}`} onClick={() => handlePageChange(1)}>1</button>);
+      addBtn(1);
       let start = Math.max(2, currentPage - 1);
       let end   = Math.min(totalPages - 1, currentPage + 1);
-      if (currentPage <= 2)           end   = Math.min(totalPages - 1, 4);
-      if (currentPage >= totalPages - 1) start = Math.max(2, totalPages - 3);
-      if (start > 2) pages.push(<span key="e1" className="ellipsis">...</span>);
-      for (let i = start; i <= end; i++) {
-        pages.push(<button key={i} className={`page-number ${currentPage === i ? "active" : ""}`} onClick={() => handlePageChange(i)}>{i}</button>);
-      }
-      if (end < totalPages - 1) pages.push(<span key="e2" className="ellipsis">...</span>);
-      pages.push(<button key={totalPages} className={`page-number ${currentPage === totalPages ? "active" : ""}`} onClick={() => handlePageChange(totalPages)}>{totalPages}</button>);
+      if (currentPage <= 3)             end   = 4;
+      if (currentPage >= totalPages - 2) start = totalPages - 3;
+      if (start > 2) pages.push(<span key="e1" className="ellipsis">…</span>);
+      for (let i = start; i <= end; i++) addBtn(i);
+      if (end < totalPages - 1) pages.push(<span key="e2" className="ellipsis">…</span>);
+      addBtn(totalPages);
     }
     return pages;
   };
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <div>
+      {/* ── Page header ── */}
       <header className="header-card">
         <h1>STUDENT MANAGEMENT</h1>
         <p className="subtitle">Dashboard / Student Management</p>
       </header>
       <hr className="header-divider" />
 
+      {/* ── Face registration notification ── */}
       {pendingFaceCount > 0 && (
         <section className="notification_box">
           <div className="notification_wrapper">
             <h3><IoNotificationsCircleOutline /></h3>
             <div className="notification-content">
               <p>
-                <strong>Action Required:</strong> There {pendingFaceCount === 1 ? "is" : "are"}{" "}
-                <strong>{pendingFaceCount}</strong> student{pendingFaceCount === 1 ? "" : "s"} that{" "}
-                {pendingFaceCount === 1 ? "needs" : "need"} face registration.
+                <strong>Action Required:</strong>{" "}
+                <strong>{pendingFaceCount}</strong> student{pendingFaceCount !== 1 && "s"} need
+                {pendingFaceCount === 1 ? "s" : ""} face registration.
               </p>
             </div>
           </div>
         </section>
       )}
 
-      {/* Stat Cards */}
+      {/* ── Stat cards ── */}
       <div className="stats-container">
         <div className="stat-card all-students">
           <div className="stat-icon"><BsFillPeopleFill /></div>
           <div className="stat-details">
             <h3>All Students</h3>
-            <p className="stat-number">{allStudentsCount}</p>
+            <p className="stat-number">{stats.total}</p>
           </div>
         </div>
         <div className="stat-card regular-students">
           <div className="stat-icon"><BsPersonFillCheck /></div>
           <div className="stat-details">
-            <h3>Regular Students</h3>
-            <p className="stat-number">{regularStudentsCount}</p>
+            <h3>Regular</h3>
+            <p className="stat-number">{stats.regular}</p>
           </div>
         </div>
         <div className="stat-card irregular-students">
           <div className="stat-icon"><BsPersonFillExclamation /></div>
           <div className="stat-details">
-            <h3>Irregular Students</h3>
-            <p className="stat-number">{irregularStudentsCount}</p>
+            <h3>Irregular</h3>
+            <p className="stat-number">{stats.irregular}</p>
+          </div>
+        </div>
+        <div className="stat-card loa-students">
+          <div className="stat-icon">🏖</div>
+          <div className="stat-details">
+            <h3>On Leave (LOA)</h3>
+            <p className="stat-number">{stats.loa}</p>
+          </div>
+        </div>
+        <div className="stat-card graduated-students">
+          <div className="stat-icon">🎓</div>
+          <div className="stat-details">
+            <h3>Graduated</h3>
+            <p className="stat-number">{stats.graduated}</p>
+          </div>
+        </div>
+        <div className="stat-card withdrawn-students">
+          <div className="stat-icon"><BsPersonDash /></div>
+          <div className="stat-details">
+            <h3>Withdrawn</h3>
+            <p className="stat-number">{stats.withdrawn}</p>
+            <p className="stat-sub">Dropout + Kickout</p>
           </div>
         </div>
       </div>
 
       <div className="student-management">
-        {/* Controls */}
-        <div className="controls">
-          <button type="button" className="sort-button">
-            <FiFilter className="sort-icon" />
-            Sort
-            <IoMdArrowDropdown className="dropdown-icon" />
-          </button>
 
-          <select className="filter-select" value={department} onChange={(e) => setDepartment(e.target.value)}>
+        {/* ── Controls row ── */}
+        <div className="controls">
+          {/* Department — dynamic from DB */}
+          <select
+            className="filter-select"
+            value={filterDept}
+            onChange={e => setFilterDept(e.target.value)}
+          >
             <option value="">All Departments</option>
-            <option value="College of Nursing">College of Nursing</option>
-            <option value="College of Engineering">College of Engineering</option>
-            <option value="College of Education">College of Education</option>
-            <option value="College of Computer Studies">College of Computer Studies</option>
-            <option value="College of Business Administration">College of Business Administration</option>
-            <option value="College of Arts and Sciences">College of Arts and Sciences</option>
-            <option value="College of Hospitality Management">College of Hospitality Management</option>
+            {deptOptions.map(d => (
+              <option key={d.id} value={d.dept_name}>{d.dept_name}</option>
+            ))}
           </select>
 
-          <select className="filter-select" value={yearLevel} onChange={(e) => setYearLevel(e.target.value)}>
+          {/* Program — dynamic, filtered by selected dept */}
+          <select
+            className="filter-select"
+            value={filterProgram}
+            onChange={e => setFilterProgram(e.target.value)}
+            disabled={programsForFilter.length === 0}
+          >
+            <option value="">All Programs</option>
+            {programsForFilter.map(p => (
+              <option key={p.id} value={p.programName}>
+                {p.programName} ({p.programCode})
+              </option>
+            ))}
+          </select>
+
+          {/* Year Level */}
+          <select
+            className="filter-select"
+            value={filterYearLevel}
+            onChange={e => setFilterYearLevel(e.target.value)}
+          >
             <option value="">All Year Levels</option>
             <option value="1">1st Year</option>
             <option value="2">2nd Year</option>
@@ -290,53 +439,74 @@ function Students() {
             <option value="4">4th Year</option>
           </select>
 
-          <select className="filter-select" value={registrationDate} onChange={(e) => setRegistrationDate(e.target.value)}>
-            <option value="">All Years</option>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-            <option value="2023">2023</option>
+          {/* Batch Year — dynamic from student IDs in DB */}
+          <select
+            className="filter-select"
+            value={filterBatchYear}
+            onChange={e => setFilterBatchYear(e.target.value)}
+          >
+            <option value="">All Batches</option>
+            {batchYearOptions.map(y => (
+              <option key={y} value={y}>Batch {y}</option>
+            ))}
           </select>
 
+          {/* Status */}
+          <select
+            className="filter-select"
+            value={filterStatus}
+            onChange={e => setFilterStatus(e.target.value)}
+          >
+            <option value="">All Statuses</option>
+            {ALL_STATUSES.map(s => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          {/* Face Registration Status */}
+          <select
+            className="filter-select"
+            value={filterFaceStatus}
+            onChange={e => setFilterFaceStatus(e.target.value)}
+          >
+            <option value="">All Face Status</option>
+            <option value="registered">Face Registered</option>
+            <option value="missing">Face Not Registered</option>
+          </select>
+
+          {/* Search */}
           <input
             type="text"
             className="search-input"
-            placeholder="Search by name or ID"
+            placeholder="Search by name or ID…"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={e => setSearchQuery(e.target.value)}
           />
 
-          <button type="button" className="action-button import-button" onClick={handleImportClick}>
+          {/* Action buttons */}
+          <button className="action-button import-button" onClick={handleImport}>
             <FiDownload className="button-icon" /> Import
           </button>
-          <button type="button" className="action-button add-button" onClick={handleAddClick}>
+          <button className="action-button add-button" onClick={handleAdd}>
             <FiPlus className="button-icon" /> Add
           </button>
-          <button type="button" className="action-button archive-button" onClick={handleArchiveRegular}>
-            Archive All Regular
-          </button>
-          <button type="button" className="action-button archive-button" onClick={handleArchiveIrregular}>
-            Archive All Irregular
-          </button>
         </div>
 
-        {/* ── Face Registration Legend ────────────────────────────────────── */}
+        {/* ── Face legend ── */}
         <div className="face-legend">
-          <span className="face-legend-title">Face Registration Status:</span>
+          <span className="face-legend-title">Face Registration:</span>
           <span className="face-legend-item">
-            <span className="face-dot face-dot-registered" />
-            Registered
+            <span className="face-dot face-dot-registered" /> Registered
           </span>
           <span className="face-legend-item">
-            <span className="face-dot face-dot-missing" />
-            Not yet registered
+            <span className="face-dot face-dot-missing" /> Not registered
           </span>
         </div>
 
-        {/* Table */}
+        {/* ── Table ── */}
         <div className="table-container">
           {loading ? (
-            <div className="loading-state">Loading students...</div>
+            <div className="loading-state">Loading students…</div>
           ) : error ? (
             <div className="error-state">{error}</div>
           ) : (
@@ -346,49 +516,54 @@ function Students() {
                   <th>No.</th>
                   <th>Student ID</th>
                   <th>Full Name</th>
-                  <th>College/Department</th>
+                  <th>Department</th>
+                  <th>Program</th>
                   <th>Year Level</th>
                   <th>Status</th>
                   <th>Date Registered</th>
-                  <th>Actions</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {currentStudents.length > 0 ? (
-                  currentStudents.map((student, index) => {
-                    const hasFace = faceStatusMap[student.student_id] === true;
-                    return (
-                      <tr key={student.student_id}>
-                        <td>{indexOfFirstRecord + index + 1}</td>
-                        <td>
-                          <div className="student-id-cell">
-                            <span>{student.student_id || "N/A"}</span>
-                            <span
-                              className={`face-dot ${hasFace ? "face-dot-registered" : "face-dot-missing"}`}
-                              title={hasFace ? "Face registered" : "Face not registered"}
-                            />
-                          </div>
-                        </td>
-                        <td>{formatFullName(student)}</td>
-                        <td>{student.college_department || "N/A"}</td>
-                        <td>{student.year_level || "N/A"}</td>
-                        <td>
-                          <span className={`status-badge ${getStatusBadgeClass(student.status)}`}>
-                            {student.status || "Unknown"}
-                          </span>
-                        </td>
-                        <td>{formatDate(student.created_at)}</td>
-                        <td className="action-cell">
-                          <button className="action-text-btn edit-text-btn" onClick={() => handleEdit(student)}>
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })
-                ) : (
+                {currentStudents.length > 0 ? currentStudents.map((s, idx) => {
+                  const hasFace = faceStatusMap[s.student_id] === true;
+                  return (
+                    <tr key={s.student_id}>
+                      <td>{indexOfFirst + idx + 1}</td>
+                      <td>
+                        <div className="student-id-cell">
+                          <span>{s.student_id}</span>
+                          <span
+                            className={`face-dot ${hasFace ? "face-dot-registered" : "face-dot-missing"}`}
+                            title={hasFace ? "Face registered" : "Face not registered"}
+                          />
+                        </div>
+                      </td>
+                      <td>{formatFullName(s)}</td>
+                      <td>{s.college_department || "—"}</td>
+                      <td className="program-cell" title={s.program_name || ""}>
+                        {s.program_name || "—"}
+                      </td>
+                      <td>{s.year_level ? `${s.year_level}` : "—"}</td>
+                      <td>
+                        <span className={`status-badge ${statusBadgeClass(s.status)}`}>
+                          {s.status || "Unknown"}
+                        </span>
+                      </td>
+                      <td>{formatDate(s.created_at)}</td>
+                      <td className="action-cell">
+                        <button
+                          className="action-text-btn edit-text-btn"
+                          onClick={() => handleEdit(s)}
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                }) : (
                   <tr>
-                    <td colSpan="8" className="no-data">No students found</td>
+                    <td colSpan={9} className="no-data">No students found</td>
                   </tr>
                 )}
               </tbody>
@@ -396,38 +571,46 @@ function Students() {
           )}
         </div>
 
-        {/* Pagination */}
+        {/* ── Pagination ── */}
         {!loading && !error && filteredStudents.length > 0 && (
           <>
             <div className="pagination">
-              <button className="pagination-button" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-                ← Previous
-              </button>
+              <button
+                className="pagination-button"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >← Previous</button>
               <div className="page-numbers">{renderPageNumbers()}</div>
-              <button className="pagination-button" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>
-                Next →
-              </button>
+              <button
+                className="pagination-button"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >Next →</button>
             </div>
             <div className="results-count">
-              Showing {indexOfFirstRecord + 1} to {Math.min(indexOfLastRecord, filteredStudents.length)} of {filteredStudents.length} students
+              Showing {indexOfFirst + 1}–{Math.min(indexOfFirst + recordsPerPage, filteredStudents.length)} of {filteredStudents.length} students
             </div>
           </>
         )}
       </div>
 
-      {/* Modals */}
+      {/* ── Modals ── */}
       {showRegisterModal && (
         <div className="modal-overlay">
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <RegisterStudent onClose={handleCloseRegisterModal} onSuccess={fetchStudents} />
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <RegisterStudent onClose={handleCloseRegister} onSuccess={fetchStudents} />
           </div>
         </div>
       )}
       {showImportModal && (
-        <ImportStudent isOpen={showImportModal} onClose={handleCloseImportModal} onSuccess={handleImportSuccess} />
+        <ImportStudent
+          isOpen={showImportModal}
+          onClose={handleCloseImport}
+          onSuccess={handleImportSuccess}
+        />
       )}
       {showEditModal && editingStudent && (
-        <EditStudent student={editingStudent} onClose={handleCloseEditModal} />
+        <EditStudent student={editingStudent} onClose={handleCloseEdit} />
       )}
     </div>
   );

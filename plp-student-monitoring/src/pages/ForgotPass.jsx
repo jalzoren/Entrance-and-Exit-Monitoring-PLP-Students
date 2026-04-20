@@ -116,7 +116,7 @@ export default function ForgotPassword() {
         <div className="login-card">
           <form className="login-form" onSubmit={codeSent ? handleVerifyCode : handleSendCode}>
             <div className="input-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email" style={{ color: 'white' }}>Email</label>
               <div className="input-group-row">
                 <input
                   id="email"

@@ -76,6 +76,16 @@ function EditStudent({ student, onClose }) {
   const [formErrors,  setFormErrors]  = useState({});
   const [savingInfo,  setSavingInfo]  = useState(false);
 
+  const STATUS_OPTIONS = [
+    { value: "Regular",     label: "Regular"     },
+    { value: "Irregular",   label: "Irregular"   },
+    { value: "LOA",         label: "LOA (Leave of Absence)" },
+    { value: "Dropout",     label: "Dropout"     },
+    { value: "Kickout",     label: "Kickout"     },
+    { value: "Graduated",   label: "Graduated"   },
+    { value: "Transferred", label: "Transferred" },
+];
+
   // Departments and programs
   const [activeDepartments, setActiveDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -455,9 +465,9 @@ function EditStudent({ student, onClose }) {
                   className={formErrors.status ? "input-error" : ""}
                 >
                   <option value="">Select Status</option>
-                  <option value="Regular">Regular</option>
-                  <option value="Irregular">Irregular</option>
-                  <option value="Inactive">Inactive</option>
+                    {STATUS_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
                 </select>
                 {formErrors.status && <span className="field-error">{formErrors.status}</span>}
               </div>

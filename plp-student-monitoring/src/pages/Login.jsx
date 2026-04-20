@@ -1,8 +1,6 @@
 // Login.jsx
 import { useState } from "react";
 import "../css/Login.css";
-import logo from "../assets/logo2.png";
-import { LuScanFace } from "react-icons/lu";
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { MdAdminPanelSettings, MdSecurity, MdSchool } from "react-icons/md";
@@ -13,19 +11,16 @@ const ROLES = [
   {
     key: 'Super Admin',
     label: 'Super Admin',
-    icon: <MdSecurity />,
     desc: 'Full system access.',
   },
   {
     key: 'EEMS Admin',       
     label: 'EEMS Admin',
-    icon: <MdAdminPanelSettings />,
     desc: 'Entrance & exit management.',
   },
   {
     key: 'EAMS Admin',        
     label: 'EAMS Admin',
-    icon: <MdSchool />,
     desc: 'Attendance & scheduling.',
   },
 ];
@@ -80,31 +75,25 @@ export default function Login() {
 
   return (
     <div className="login-container">
-      <LuScanFace
-        title="Go To Entry-Exit Students"
-        className="top-left-icon"
-        onClick={() => navigate("/facerecog")}
-      />
 
       <div className="login-wrapper">
         <div className="login-header-container">
-          <img src={logo} alt="System Logo" className="login-icon" />
-          <h1 className="logintext">EEMS ADMIN</h1>
+          <img className="login-icon" src="../logoplp.gif" alt="PLP Seal" />
+          <h1 className="logintext">LOGIN</h1>
         </div>
 
         {/* ── Role Selector ── */}
         <div className="login-role-section">
           <p className="login-role-prompt">
-            Please select your administrative role to sign in.
+            Please select your administrative role to login.
           </p>
           <div className="login-role-grid">
-            {ROLES.map(({ key, label, icon, desc }) => (
+            {ROLES.map(({ key, label, desc }) => (
               <div
                 key={key}
                 className={`login-role-card ${selectedRole === key ? 'login-role-card--active' : ''}`}
                 onClick={() => setSelectedRole(key)}
               >
-                <div className="login-role-icon">{icon}</div>
                 <div className="login-role-body">
                   <span className="login-role-label">{label}</span>
                   <div className="login-role-divider" />
@@ -122,7 +111,7 @@ export default function Login() {
         <div className="login-card">
           <form className="login-form" onSubmit={handleLogin}>
             <div className="input-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email" style={{ color: 'white' }}>Email</label>
               <input
                 id="email"
                 type="email"
@@ -135,7 +124,7 @@ export default function Login() {
             </div>
 
             <div className="input-group">
-              <label htmlFor="password">Password</label>
+              <label htmlFor="password" style={{ color: 'white' }}>Password</label>
               <div className="password-input-wrapper">
                 <input
                   id="password"
@@ -170,9 +159,6 @@ export default function Login() {
             <div className="footer-links">
               <Link to="/forgotpass" className="forgot-password-link">
                 Forgot Password?
-              </Link>
-              <Link to="/facerecog" className="face-recognition-link">
-                Use Face Recognition
               </Link>
             </div>
             <p className="footer-text">ENTRANCE AND EXIT MONITORING SYSTEM</p>

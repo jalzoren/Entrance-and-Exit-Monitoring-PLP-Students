@@ -372,9 +372,12 @@ function FaceRecognition({ mode = 'EXIT' }) {
                 <div className="fr-alt-body">
                   <span className="fr-alt-label">{label}</span>
                   <div className="fr-alt-card-divider" />
-                  <span className="fr-alt-desc">{desc}</span>
+                  <div className="fr-alt-desc-container">
+                    <span className="fr-alt-desc">{desc}</span>
+                    <p className="fr-shortcut">{key.toUpperCase()}</p>
+                  </div>
                 </div>
-                <span className="fr-shortcut">{key.toUpperCase()}</span>
+                
               </div>
             ))
           }

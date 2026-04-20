@@ -1,3 +1,4 @@
+// RegisterStudent.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import axios from "axios";
 import Swal from 'sweetalert2';
@@ -74,6 +75,7 @@ function RegisterStudent({ onClose, onSuccess }) {
     { text: "Face in Up", instruction: "Tilt your face upward", icon: "up" },
     { text: "Face in Down", instruction: "Tilt your face downward", icon: "down" }
   ];
+
 
   // Fetch departments and programs from backend
   useEffect(() => {
@@ -179,6 +181,16 @@ function RegisterStudent({ onClose, onSuccess }) {
     setStudentId(formatted);
     setFormErrors(prev => ({ ...prev, studentId: "" }));
   };
+
+  const STATUS_OPTIONS = [
+    { value: "Regular",     label: "Regular"     },
+    { value: "Irregular",   label: "Irregular"   },
+    { value: "LOA",         label: "LOA (Leave of Absence)" },
+    { value: "Dropout",     label: "Dropout"     },
+    { value: "Kickout",     label: "Kickout"     },
+    { value: "Graduated",   label: "Graduated"   },
+    { value: "Transferred", label: "Transferred" },
+  ];
 
   // Step 1 validation
   const validateStep1 = () => {
@@ -699,8 +711,9 @@ function RegisterStudent({ onClose, onSuccess }) {
                 required
               >
                 <option value="">Select Status</option>
-                <option value="Regular">Regular</option>
-                <option value="Irregular">Irregular</option>
+                  {STATUS_OPTIONS.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
               {formErrors.status && <span className="field-error">{formErrors.status}</span>}
             </div>

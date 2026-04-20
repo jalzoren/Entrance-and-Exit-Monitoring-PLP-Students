@@ -749,7 +749,6 @@
   }
 }
 
-/* ── Add these rules to Students.css ──────────────────────────────────────── */
 
 /* Face registration legend — sits between controls and table */
 .face-legend {
@@ -774,11 +773,192 @@
   gap: 6px;
 }
 
-/* ── Add these rules to ImportStudents.css ─────────────────────────────────── */
-
-/* Optional column cells in the format preview — visually dimmed */
-.preview-cell-optional {
-  color: #999 !important;
-  font-style: italic;
-  background-color: #fafafa !important;
+/* ── New status badge colours ─────────────────────────────────────────────── */
+.status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  text-align: center;
+  white-space: nowrap;
 }
+ 
+.status-badge.regular    { background: #d4edda; color: #155724; }
+.status-badge.irregular  { background: #fff3cd; color: #856404; }
+.status-badge.loa        { background: #cce5ff; color: #004085; }
+.status-badge.dropout    { background: #f8d7da; color: #721c24; }
+.status-badge.kickout    { background: #f5c6cb; color: #491217; }
+.status-badge.graduated  { background: #d6eaf8; color: #1a5276; }
+.status-badge.transferred{ background: #e8daef; color: #512e5f; }
+.status-badge.inactive   { background: #e2e3e5; color: #383d41; }
+.status-badge.unknown    { background: #f0f0f0; color: #666;    }
+ 
+/* ── Program column — truncate long names ─────────────────────────────────── */
+.program-cell {
+  max-width: 200px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+ 
+/* ── Stats container — allow up to 6 cards ───────────────────────────────── */
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin: 20px 0 24px 0;
+  padding: 0 2rem;
+}
+ 
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px 16px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.06);
+  border: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: all 0.28s ease;
+}
+ 
+.stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 22px rgba(0,0,0,0.1);
+}
+ 
+.stat-icon {
+  font-size: 36px;
+  width: 58px; height: 58px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+ 
+.stat-number { font-size: 28px; font-weight: 700; margin: 0; line-height: 1; }
+.stat-sub    { font-size: 11px; color: #888; margin: 2px 0 0; }
+.stat-details h3 { font-size: 13px; font-weight: 600; color: #555;
+                   text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 4px; }
+ 
+/* Individual card accents */
+.stat-card.all-students       { border-left: 5px solid #1976d2; }
+.stat-card.all-students       .stat-icon { background:#e3f2fd; color:#1976d2; }
+.stat-card.all-students       .stat-number { color:#1976d2; }
+ 
+.stat-card.regular-students   { border-left: 5px solid #388e3c; }
+.stat-card.regular-students   .stat-icon { background:#e8f5e9; color:#388e3c; }
+.stat-card.regular-students   .stat-number { color:#388e3c; }
+ 
+.stat-card.irregular-students { border-left: 5px solid #f57c00; }
+.stat-card.irregular-students .stat-icon { background:#fff3e0; color:#f57c00; }
+.stat-card.irregular-students .stat-number { color:#f57c00; }
+ 
+.stat-card.loa-students       { border-left: 5px solid #0277bd; }
+.stat-card.loa-students       .stat-icon { background:#e1f5fe; color:#0277bd; }
+.stat-card.loa-students       .stat-number { color:#0277bd; }
+ 
+.stat-card.graduated-students { border-left: 5px solid #1565c0; }
+.stat-card.graduated-students .stat-icon { background:#e8eaf6; color:#1565c0; font-size:28px; }
+.stat-card.graduated-students .stat-number { color:#1565c0; }
+ 
+.stat-card.withdrawn-students { border-left: 5px solid #c62828; }
+.stat-card.withdrawn-students .stat-icon { background:#ffebee; color:#c62828; }
+.stat-card.withdrawn-students .stat-number { color:#c62828; }
+ 
+/* ── Filters row — allow wrapping cleanly ─────────────────────────────────── */
+.controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  padding: 14px 16px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  margin-bottom: 12px;
+}
+ 
+.filter-select {
+  padding: 7px 28px 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12.5px;
+  appearance: none;
+  background-color: white;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 9px;
+  cursor: pointer;
+  color: #333;
+  min-width: 130px;
+  transition: border-color 0.2s;
+}
+ 
+.filter-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f8f8f8;
+}
+ 
+.filter-select:hover:not(:disabled),
+.filter-select:focus:not(:disabled) {
+  border-color: #548772;
+  outline: none;
+}
+ 
+.search-input {
+  flex: 1;
+  min-width: 160px;
+  padding: 7px 10px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12.5px;
+  transition: border-color 0.2s;
+}
+ 
+.search-input:focus {
+  outline: none;
+  border-color: #548772;
+}
+ 
+/* ── Results count line ────────────────────────────────────────────────────── */
+.results-count {
+  text-align: center;
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+}
+ 
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .stats-container {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+ 
+@media (max-width: 768px) {
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+    padding: 0 1rem;
+  }
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .filter-select, .search-input {
+    width: 100%;
+  }
+  .program-cell {
+    max-width: 120px;
+  }
+}
+ 
+@media (max-width: 480px) {
+  .stats-container {
+    grid-template-columns: 1fr;
+  }
+}
+

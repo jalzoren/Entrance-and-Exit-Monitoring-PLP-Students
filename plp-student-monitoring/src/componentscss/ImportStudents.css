@@ -677,6 +677,13 @@
   line-height: 1.5;
 }
 
+/* Optional column cells in the format preview — visually dimmed */
+.preview-cell-optional {
+  color: #999 !important;
+  font-style: italic;
+  background-color: #fafafa !important;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .import-container {

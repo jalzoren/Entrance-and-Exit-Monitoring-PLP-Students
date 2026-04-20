@@ -5,6 +5,10 @@ const db = require("../src/db");
 
 const router = express.Router();
 
+const VALID_STATUSES = new Set([
+  "Regular", "Irregular", "LOA", "Dropout", "Kickout", "Graduated", "Transferred", "Inactive"
+]);
+
 /* --------------------------------------------------
 FACE VALIDATION
 -------------------------------------------------- */
@@ -335,60 +339,46 @@ router.put("/students/:student_id", async (req, res) => {
   try {
     const { student_id } = req.params;
     const {
-      first_name,
-      last_name,
-      middle_name,
-      extension_name,
-      college_department,
-      program_name,
-      year_level,
-      status
+      first_name, last_name, middle_name, extension_name,
+      college_department, program_name, year_level, status,
     } = req.body;
-
-    if (!status || (status !== 'Regular' && status !== 'Irregular' && status !== 'Inactive')) {
+ 
+    // ── Validate status ──────────────────────────────────────────────────────
+    if (!status || !VALID_STATUSES.has(status)) {
       return res.status(400).json({
-        message: "Invalid status. Must be 'Regular', 'Irregular', or 'Inactive'"
+        message: `Invalid status. Allowed values: ${[...VALID_STATUSES].join(", ")}`,
       });
     }
-
-    
+ 
     const [result] = await db.query(
-      `UPDATE students 
-      SET first_name = ?, last_name = ?, middle_name = ?,
-          extension_name = ?, college_department = ?, program_name = ?,
-          year_level = ?, status = ?,
-          updated_at = CURRENT_TIMESTAMP 
-      WHERE student_id = ?`,
+      `UPDATE students
+       SET first_name = ?, last_name = ?, middle_name = ?,
+           extension_name = ?, college_department = ?, program_name = ?,
+           year_level = ?, status = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE student_id = ?`,
       [
-        first_name?.trim().toUpperCase(),
-        last_name?.trim().toUpperCase(),
-        middle_name?.trim().toUpperCase() || null,
-        extension_name?.trim() || null,
+        first_name?.trim().toUpperCase()    || null,
+        last_name?.trim().toUpperCase()     || null,
+        middle_name?.trim().toUpperCase()   || null,
+        extension_name?.trim()             || null,
         college_department,
         program_name || null,
         year_level,
         status,
-        student_id
+        student_id,
       ]
     );
-
+ 
     if (result.affectedRows === 0) {
-      return res.status(404).json({
-        message: "Student not found"
-      });
+      return res.status(404).json({ message: "Student not found" });
     }
-
-    res.json({
-      message: "Student status updated successfully",
-      student_id,
-      status
-    });
-
-  } catch (error) {
-    console.error("UPDATE ERROR:", error);
-    res.status(500).json({
-      message: "Failed to update student status"
-    });
+ 
+    res.json({ message: "Student updated successfully", student_id, status });
+ 
+  } catch (err) {
+    console.error("[PUT /students/:id]", err);
+    res.status(500).json({ message: "Failed to update student" });
   }
 });
 

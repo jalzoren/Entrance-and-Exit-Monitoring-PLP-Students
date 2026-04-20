@@ -135,7 +135,7 @@ export default function ForgotPasswordStep2() {
         <div className="login-card">
           <form className="login-form" onSubmit={handleResetPassword}>
             <div className="input-group">
-              <label htmlFor="email">Email</label>
+              <label htmlFor="email" style={{ color: 'white' }}>Email</label>
               <input
                 id="email"
                 type="email"
@@ -146,7 +146,7 @@ export default function ForgotPasswordStep2() {
             </div>
 
             <div className="input-group">
-              <label htmlFor="newPassword">New Password</label>
+              <label htmlFor="newPassword" style={{ color: 'white' }}>New Password</label>
               <div className="password-input-wrapper">
                 <input
                   id="newPassword"
