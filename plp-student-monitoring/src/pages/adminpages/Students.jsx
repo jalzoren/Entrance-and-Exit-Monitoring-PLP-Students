@@ -5,6 +5,9 @@ import RegisterStudent from "../../components/RegisterStudent";
 import ImportStudent   from "../../components/ImportStudents";
 import EditStudent     from "../../components/EditStudent";
 import axios from "axios";
+import { FaUserGraduate } from "react-icons/fa";
+import { BsPersonFillDash } from "react-icons/bs";
+import { BsPersonFillSlash } from "react-icons/bs";
 
 import { FiDownload, FiPlus, FiFilter, FiArchive } from "react-icons/fi";
 import {
@@ -91,6 +94,13 @@ function Students() {
   // ── Pagination ────────────────────────────────────────────────────────────
   const [currentPage,   setCurrentPage]   = useState(1);
   const recordsPerPage = 10;
+
+  // ── Sorting ────────────────────────────────────────────────────────────────
+  const [sortColumn, setSortColumn] = useState("last_name"); // Default sort by last name
+  const [sortDirection, setSortDirection] = useState("asc");
+
+  // ── Selection ──────────────────────────────────────────────────────────────
+  const [selectedStudents, setSelectedStudents] = useState(new Set());
 
   // ─────────────────────────────────────────────────────────────────────────
   // DATA FETCHING
@@ -235,10 +245,51 @@ function Students() {
     filterYearLevel, filterBatchYear, filterStatus, filterFaceStatus, faceStatusMap,
   ]);
 
+  // ── Sorted and paginated list ──────────────────────────────────────────────
+  const sortedStudents = useMemo(() => {
+    const sorted = [...filteredStudents].sort((a, b) => {
+      let aVal, bVal;
+      
+      switch(sortColumn) {
+        case "last_name":
+          aVal = `${a.last_name || ""} ${a.first_name || ""}`.toLowerCase();
+          bVal = `${b.last_name || ""} ${b.first_name || ""}`.toLowerCase();
+          break;
+        case "first_name":
+          aVal = a.first_name?.toLowerCase() || "";
+          bVal = b.first_name?.toLowerCase() || "";
+          break;
+        case "student_id":
+          aVal = a.student_id?.toLowerCase() || "";
+          bVal = b.student_id?.toLowerCase() || "";
+          break;
+        case "college_department":
+          aVal = a.college_department?.toLowerCase() || "";
+          bVal = b.college_department?.toLowerCase() || "";
+          break;
+        case "program_name":
+          aVal = a.program_name?.toLowerCase() || "";
+          bVal = b.program_name?.toLowerCase() || "";
+          break;
+        case "status":
+          aVal = a.status?.toLowerCase() || "";
+          bVal = b.status?.toLowerCase() || "";
+          break;
+        default:
+          return 0;
+      }
+
+      if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
+      if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  }, [filteredStudents, sortColumn, sortDirection]);
+
   // ── Paginated slice ───────────────────────────────────────────────────────
-  const totalPages        = Math.max(1, Math.ceil(filteredStudents.length / recordsPerPage));
+  const totalPages        = Math.max(1, Math.ceil(sortedStudents.length / recordsPerPage));
   const indexOfFirst      = (currentPage - 1) * recordsPerPage;
-  const currentStudents   = filteredStudents.slice(indexOfFirst, indexOfFirst + recordsPerPage);
+  const currentStudents   = sortedStudents.slice(indexOfFirst, indexOfFirst + recordsPerPage);
 
   // ─────────────────────────────────────────────────────────────────────────
   // MODAL HANDLERS
@@ -246,6 +297,43 @@ function Students() {
 
   const openModal  = () => { document.body.style.overflow = "hidden"; };
   const closeModal = () => { document.body.style.overflow = "unset"; };
+
+  // ── Sort handler ───────────────────────────────────────────────────────────
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1); // Reset to first page when sorting changes
+  };
+
+  // ── Sort indicator ─────────────────────────────────────────────────────────
+  const getSortIndicator = (column) => {
+    if (sortColumn !== column) return " ⇅";
+    return sortDirection === "asc" ? " ↑" : " ↓";
+  };
+
+  // ── Checkbox handlers ──────────────────────────────────────────────────────
+  const handleSelectStudent = (studentId) => {
+    const newSelected = new Set(selectedStudents);
+    if (newSelected.has(studentId)) {
+      newSelected.delete(studentId);
+    } else {
+      newSelected.add(studentId);
+    }
+    setSelectedStudents(newSelected);
+  };
+
+  const handleSelectAll = () => {
+    if (selectedStudents.size === currentStudents.length) {
+      setSelectedStudents(new Set());
+    } else {
+      const newSelected = new Set(currentStudents.map(s => s.student_id));
+      setSelectedStudents(newSelected);
+    }
+  };
 
   const handleAdd   = () => { openModal(); setShowRegisterModal(true); };
   const handleImport= () => { openModal(); setShowImportModal(true); };
@@ -398,21 +486,22 @@ function Students() {
           </div>
         </div>
         <div className="stat-card loa-students">
-          <div className="stat-icon">🏖</div>
+          <div className="stat-icon"><BsPersonFillSlash />
+</div>
           <div className="stat-details">
             <h3>On Leave (LOA)</h3>
             <p className="stat-number">{stats.loa}</p>
           </div>
         </div>
         <div className="stat-card graduated-students">
-          <div className="stat-icon">🎓</div>
+          <div className="stat-icon"><FaUserGraduate /></div>
           <div className="stat-details">
             <h3>Graduated</h3>
             <p className="stat-number">{stats.graduated}</p>
           </div>
         </div>
         <div className="stat-card withdrawn-students">
-          <div className="stat-icon"><BsPersonDash /></div>
+          <div className="stat-icon"><BsPersonFillDash /></div>
           <div className="stat-details">
             <h3>Withdrawn</h3>
             <p className="stat-number">{stats.withdrawn}</p>
@@ -561,13 +650,31 @@ function Students() {
             <table className="student-table">
               <thead>
                 <tr>
+                  <th style={{ width: "40px", textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedStudents.size === currentStudents.length && currentStudents.length > 0}
+                      onChange={handleSelectAll}
+                      title="Select all on this page"
+                    />
+                  </th>
                   <th>No.</th>
-                  <th>Student ID</th>
-                  <th>Full Name</th>
-                  <th>Department</th>
-                  <th>Program</th>
+                  <th style={{ cursor: "pointer" }} onClick={() => handleSort("student_id")}>
+                    Student ID{getSortIndicator("student_id")}
+                  </th>
+                  <th style={{ cursor: "pointer" }} onClick={() => handleSort("last_name")}>
+                    Full Name{getSortIndicator("last_name")}
+                  </th>
+                  <th style={{ cursor: "pointer" }} onClick={() => handleSort("college_department")}>
+                    Department{getSortIndicator("college_department")}
+                  </th>
+                  <th style={{ cursor: "pointer" }} onClick={() => handleSort("program_name")}>
+                    Program{getSortIndicator("program_name")}
+                  </th>
                   <th>Year Level</th>
-                  <th>Status</th>
+                  <th style={{ cursor: "pointer" }} onClick={() => handleSort("status")}>
+                    Status{getSortIndicator("status")}
+                  </th>
                   <th>Date Registered</th>
                   <th>Action</th>
                 </tr>
@@ -577,6 +684,13 @@ function Students() {
                   const hasFace = faceStatusMap[s.student_id] === true;
                   return (
                     <tr key={s.student_id}>
+                      <td style={{ width: "40px", textAlign: "center" }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedStudents.has(s.student_id)}
+                          onChange={() => handleSelectStudent(s.student_id)}
+                        />
+                      </td>
                       <td>{indexOfFirst + idx + 1}</td>
                       <td>
                         <div className="student-id-cell">
@@ -611,7 +725,7 @@ function Students() {
                   );
                 }) : (
                   <tr>
-                    <td colSpan={9} className="no-data">No students found</td>
+                    <td colSpan={10} className="no-data">No students found</td>
                   </tr>
                 )}
               </tbody>
@@ -620,7 +734,7 @@ function Students() {
         </div>
 
         {/* ── Pagination ── */}
-        {!loading && !error && filteredStudents.length > 0 && (
+        {!loading && !error && sortedStudents.length > 0 && (
           <>
             <div className="pagination">
               <button
@@ -636,7 +750,7 @@ function Students() {
               >Next →</button>
             </div>
             <div className="results-count">
-              Showing {indexOfFirst + 1}–{Math.min(indexOfFirst + recordsPerPage, filteredStudents.length)} of {filteredStudents.length} students
+              Showing {indexOfFirst + 1}–{Math.min(indexOfFirst + recordsPerPage, sortedStudents.length)} of {sortedStudents.length} students
             </div>
           </>
         )}

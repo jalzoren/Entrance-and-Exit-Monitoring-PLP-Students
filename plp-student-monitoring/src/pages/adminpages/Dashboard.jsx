@@ -58,6 +58,7 @@ class DashboardService {
         authSuccessRate: data.authSuccessRate ?? 0,
         peakHour:        data.peakHour        ?? null,
         totalStudents:   data.totalStudents   ?? 0,
+        visitorsOnCampus: data.visitorsOnCampus ?? 0,
       };
     } catch (err) {
       console.error('[DashboardService.fetchMetrics] FAILED:', err.message);
@@ -226,6 +227,18 @@ function Dashboard() {
             value={metrics?.totalEntries ?? "—"}
             subtitle="ENTRIES"
             tooltip="Counts all successful student entry events recorded for the current day."
+          />
+          <MetricCard
+            title="Auth Success Rate"
+            value={metrics?.authSuccessRate != null ? `${metrics.authSuccessRate}%` : "—"}
+            subtitle="FACIAL RECOGNITION"
+            tooltip="Percentage of successful facial recognition verifications today."
+          />
+          <MetricCard
+            title="Visitors On Campus"
+            value={metrics?.visitorsOnCampus ?? "—"}
+            subtitle="ACTIVE VISITORS"
+            tooltip="Visitors currently inside the campus based on latest entry without exit."
           />
         </section>
 
