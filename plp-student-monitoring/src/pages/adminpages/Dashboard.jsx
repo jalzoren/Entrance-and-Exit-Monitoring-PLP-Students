@@ -189,7 +189,6 @@ function Dashboard() {
   return (
     <div className="dashboard-wrapper">
       <div className="dashb">
-
         {/* ── HEADER ── */}
         <header className="campus-header">
           <div className="logo-area">
@@ -211,6 +210,12 @@ function Dashboard() {
         {/* ── METRIC CARDS ── */}
         <section className="metrics-row">
           <MetricCard
+            title="Auth Success Rate"
+            value={metrics?.authSuccessRate != null ? `${metrics.authSuccessRate}%` : "—"}
+            subtitle="FACIAL RECOGNITION"
+            tooltip="Percentage of successful facial recognition verifications today."
+          />
+          <MetricCard
             title="Currently On Campus"
             value={metrics?.onCampus ?? "—"}
             subtitle="STUDENTS"
@@ -221,12 +226,6 @@ function Dashboard() {
             value={metrics?.totalEntries ?? "—"}
             subtitle="ENTRIES"
             tooltip="Counts all successful student entry events recorded for the current day."
-          />
-          <MetricCard
-            title="Auth Success Rate"
-            value={metrics?.authSuccessRate != null ? `${metrics.authSuccessRate}%` : "—"}
-            subtitle="FACIAL RECOGNITION"
-            tooltip="Percentage of successful facial recognition verifications today."
           />
         </section>
 
