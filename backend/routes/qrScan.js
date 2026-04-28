@@ -122,7 +122,14 @@ router.post('/', async (req, res) => {
 
     // Query database for student
     const [studentRows] = await db.query(
-      'SELECT * FROM students WHERE student_id = ?',
+      `SELECT 
+        s.student_id, s.last_name, s.first_name, s.year_level, s.status,
+        p.program_name, p.program_code,
+        d.dept_name, d.dept_code
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE s.student_id = ?`,
       [student_id]
     );
 
@@ -134,7 +141,7 @@ router.post('/', async (req, res) => {
     const student = studentRows[0];
     const fullName = `${student.last_name}, ${student.first_name}`;
     const yearLevelNumber = student.year_level;
-    const collegeDept = student.college_department || "Not Specified";
+    const collegeDept = student.dept_name || "Not Specified";
     const course = student.program_name || "Not Specified";
 
     console.log('[QR Scan] Student found in database:', {

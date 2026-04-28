@@ -305,7 +305,7 @@ router.get('/college-distribution', async (req, res) => {
 
     console.log('\n🔍 [DEBUG] Getting students on campus with college info:');
     const [rows] = await db.query(`
-      SELECT s.college_department AS name, COUNT(*) AS value
+      SELECT d.dept_name AS name, COUNT(*) AS value
       FROM (
         SELECT student_id,
           SUBSTRING_INDEX(
@@ -317,8 +317,10 @@ router.get('/college-distribution', async (req, res) => {
         GROUP BY student_id
       ) latest
       JOIN students s ON s.student_id = latest.student_id
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
       WHERE latest.last_action = 'ENTRY'
-      GROUP BY s.college_department
+      GROUP BY d.id, d.dept_name
       ORDER BY value DESC
     `, [dayStart, dayEnd]);
 
@@ -352,7 +354,7 @@ router.get('/departments', async (req, res) => {
 
     console.log('\n🔍 [DEBUG] Getting on-campus students by department:');
     const [onCampusRows] = await db.query(`
-      SELECT latest.student_id, s.college_department
+      SELECT latest.student_id, d.dept_name AS college_department
       FROM (
         SELECT student_id,
           SUBSTRING_INDEX(
@@ -364,6 +366,8 @@ router.get('/departments', async (req, res) => {
         GROUP BY student_id
       ) latest
       JOIN students s ON s.student_id = latest.student_id
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
       WHERE latest.last_action = 'ENTRY'
     `, [dayStart, dayEnd]);
 
@@ -372,10 +376,12 @@ router.get('/departments', async (req, res) => {
 
     console.log('\n🔍 [DEBUG] Getting total students per department:');
     const [totalRows] = await db.query(`
-      SELECT college_department, COUNT(*) AS total
-      FROM students
-      WHERE status != 'Inactive'
-      GROUP BY college_department
+      SELECT d.dept_name AS college_department, COUNT(*) AS total
+      FROM students s
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
+      WHERE s.status != 'Inactive'
+      GROUP BY d.id, d.dept_name
     `);
     console.log(`   Total departments: ${totalRows.length}`);
     const totalMap = new Map(totalRows.map(r => [r.college_department, Number(r.total)]));
@@ -530,23 +536,31 @@ router.get('/report', async (req, res) => {
     let logsQuery = `
       SELECT
         eel.log_id, eel.student_id, eel.action, eel.log_time,
-        s.first_name, s.last_name, s.college_department,
-        s.program_name, s.year_level,
+        s.first_name, s.last_name,
+        d.dept_name AS college_department,
+        p.program_name, s.year_level,
         a.method, a.auth_status, a.accuracy
       FROM entry_exit_logs eel
       JOIN students s  ON s.student_id = eel.student_id
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
       JOIN authentication a ON a.auth_id = eel.auth_id
       WHERE eel.log_time BETWEEN ? AND ?
     `;
     const params = [rangeStart, rangeEnd];
 
-    if (dept) { logsQuery += ' AND s.college_department = ?'; params.push(dept); }
+    if (dept) { logsQuery += ' AND d.dept_name = ?'; params.push(dept); }
     logsQuery += ' ORDER BY eel.log_time DESC';
 
     const [logRows]    = await db.query(logsQuery, params);
-    const [deptTotals] = await db.query(
-      `SELECT college_department, COUNT(*) AS total FROM students WHERE status != 'Inactive' GROUP BY college_department`
-    );
+    const [deptTotals] = await db.query(`
+      SELECT d.dept_name AS college_department, COUNT(*) AS total
+      FROM students s
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
+      WHERE s.status != 'Inactive'
+      GROUP BY d.id, d.dept_name
+    `);
 
     console.log('[analytics/report] logRows found:', logRows.length);
 

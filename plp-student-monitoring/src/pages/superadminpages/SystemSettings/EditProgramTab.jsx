@@ -1,3 +1,4 @@
+// EditProgramTab.jsx
 import React, { useState, useEffect } from 'react';
 import EditProgramModal from './EditProgramModal';
 import AddProgramModal from './AddProgramModal';
@@ -142,8 +143,8 @@ function EditProgramTab() {
         title: '⚠️ Archive Program?',
         html: `
           <div style="text-align: left;">
-            <p><strong>Program:</strong> ${program.programName}</p>
-            <p><strong>Code:</strong> ${program.programCode}</p>
+            <p><strong>Program:</strong> ${program.program_name}</p>
+            <p><strong>Code:</strong> ${program.program_code}</p>
             <p><strong>Department:</strong> ${program.department}</p>
             <p style="color: #e74c3c; margin-top: 15px;">
               <strong>Warning: This action will affect:</strong>
@@ -276,7 +277,7 @@ function EditProgramTab() {
         >
           <option value="">All Departments</option>
           {departments.map((dept) => (
-            <option key={dept.id} value={dept.dept_name}>
+            <option key={dept.id} value={dept.dept_id}>
               {dept.dept_name}
             </option>
           ))}
@@ -313,12 +314,12 @@ function EditProgramTab() {
               paginated.map((prog, idx) => (
                 <tr key={prog.id}>
                   <td>{(safePage - 1) * ROWS_PER_PAGE + idx + 1}</td>
-                  <td>{prog.programCode}</td>
-                  <td>{prog.programName}</td>
-                  <td>{prog.department}</td>
-                  <td><span className={`type-badge ${prog.programType === 'Graduate' ? 'graduate' : 'undergrad'}`}>{prog.programType}</span></td>
+                  <td>{prog.program_code}</td>
+                  <td>{prog.program_name}</td>
+                  <td>{prog.dept_name}</td>
+                  <td><span className={`type-badge ${prog.program_type === 'Graduate' ? 'graduate' : 'undergrad'}`}>{prog.program_type}</span></td>
                   <td>{prog.duration} {prog.duration === 1 ? 'year' : 'years'}</td>
-                  <td><span className={`status-badge ${prog.programStatus === 'Active' ? 'active' : 'inactive'}`}>{prog.programStatus}</span></td>
+                  <td><span className={`status-badge ${prog.program_status === 'Active' ? 'active' : 'inactive'}`}>{prog.program_status}</span></td>
                   <td>{prog.dateCreated ? new Date(prog.dateCreated).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' }) : 'N/A'}</td>
                   <td>
                     <button className="ep-edit-btn" onClick={() => setEditingProgram(prog)}>Edit</button>

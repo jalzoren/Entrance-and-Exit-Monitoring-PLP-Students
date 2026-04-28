@@ -121,7 +121,7 @@ export const LogProvider = ({ children }) => {
       failed: false,
       timestamp: now.toISOString(),
       date: now.toLocaleDateString(),
-      collegeDept: logData.collegeDept || logData.department || logData.college_department || "Not Specified",
+      collegeDept: logData.collegeDept || logData.department || logData.dept_name || "Not Specified",
       yearLevel: logData.yearLevel || logData.year_level || "Not Specified",
       gender: logData.gender || "Not Specified",
       course: logData.course || "Not Specified"

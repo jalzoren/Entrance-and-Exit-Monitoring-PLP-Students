@@ -182,7 +182,7 @@ function Students() {
   // Programs available under the currently selected department (for the filter)
   const programsForFilter = useMemo(() => {
     if (!filterDept) return programOptions;
-    return programOptions.filter(p => p.department === filterDept);
+    return programOptions.filter(p => p.dept_name === filterDept);
   }, [filterDept, programOptions]);
 
   // Unique batch years extracted from loaded student IDs — sorted descending
@@ -216,7 +216,7 @@ function Students() {
         s.student_id?.toLowerCase().includes(q);
 
       // Department
-      const matchDept = !filterDept || s.college_department === filterDept;
+      const matchDept = !filterDept || s.dept_name === filterDept;
 
       // Program
       const matchProg = !filterProgram || s.program_name === filterProgram;
@@ -264,8 +264,8 @@ function Students() {
           bVal = b.student_id?.toLowerCase() || "";
           break;
         case "college_department":
-          aVal = a.college_department?.toLowerCase() || "";
-          bVal = b.college_department?.toLowerCase() || "";
+          aVal = a.dept_name?.toLowerCase() || "";
+          bVal = b.dept_name?.toLowerCase() || "";
           break;
         case "program_name":
           aVal = a.program_name?.toLowerCase() || "";
@@ -535,8 +535,8 @@ function Students() {
           >
             <option value="">All Programs</option>
             {programsForFilter.map(p => (
-              <option key={p.id} value={p.programName}>
-                {p.programName} ({p.programCode})
+              <option key={p.id} value={p.program_name}>
+                {p.program_name} ({p.program_code})
               </option>
             ))}
           </select>

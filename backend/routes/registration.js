@@ -149,8 +149,8 @@ router.post("/register", async (req, res) => {
     await connection.query(
       `INSERT INTO students
       (student_id, email, first_name, last_name, middle_name, extension_name,
-        college_department, program_name, year_level, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        program_id, year_level, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         student_id,
         email?.trim().toLowerCase() ?? null,   
@@ -158,8 +158,7 @@ router.post("/register", async (req, res) => {
         last_name?.trim().toUpperCase(),
         middle_name?.trim().toUpperCase() || null,
         extension_name?.trim() || null,
-        college_department,
-        program,
+        parseInt(program),
         year_level,
         status
       ]
@@ -274,20 +273,25 @@ router.get("/students", async (req, res) => {
 
     const [rows] = await db.query(`
       SELECT
-        student_id,
-        first_name,
-        last_name,
-        middle_name,
-        college_department,
-        program_name,
-        year_level,
-        status,
-        is_archived,
-        created_at,
-        updated_at
-      FROM students
-      WHERE is_archived = 0
-      ORDER BY created_at DESC
+        s.student_id,
+        s.first_name,
+        s.last_name,
+        s.middle_name,
+        s.program_id,
+        s.year_level,
+        s.status,
+        s.is_archived,
+        s.created_at,
+        s.updated_at,
+        p.program_name,
+        p.program_code,
+        d.dept_name AS college_department,
+        d.dept_code
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE s.is_archived = 0
+      ORDER BY s.created_at DESC
     `);
 
     res.json(rows);
@@ -348,7 +352,7 @@ router.put("/students/:student_id", async (req, res) => {
     const { student_id } = req.params;
     const {
       first_name, last_name, middle_name, extension_name,
-      college_department, program_name, year_level, status,
+      program_id, year_level, status,
     } = req.body;
  
     // ── Validate status ──────────────────────────────────────────────────────
@@ -361,7 +365,7 @@ router.put("/students/:student_id", async (req, res) => {
     const [result] = await db.query(
       `UPDATE students
        SET first_name = ?, last_name = ?, middle_name = ?,
-           extension_name = ?, college_department = ?, program_name = ?,
+           extension_name = ?, program_id = ?,
            year_level = ?, status = ?, is_archived = 0, archived_status = NULL,
            updated_at = CURRENT_TIMESTAMP
        WHERE student_id = ?`,
@@ -370,8 +374,7 @@ router.put("/students/:student_id", async (req, res) => {
         last_name?.trim().toUpperCase()     || null,
         middle_name?.trim().toUpperCase()   || null,
         extension_name?.trim()             || null,
-        college_department,
-        program_name || null,
+        parseInt(program_id),
         year_level,
         status,
         student_id,
@@ -400,31 +403,29 @@ router.get("/archived-students", async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT
-        student_id,
-        email,
-        first_name,
-        last_name,
-        middle_name,
-        extension_name,
-        college_department,
-        program_name,
-        year_level,
-        COALESCE(archived_status, status) as status,
-        is_archived,
-        created_at,
-        updated_at
-      FROM students
-      WHERE is_archived = 1
-      ORDER BY updated_at DESC
+        s.student_id,
+        s.email,
+        s.first_name,
+        s.last_name,
+        s.middle_name,
+        s.extension_name,
+        d.dept_name AS college_department,
+        p.program_name,
+        s.year_level,
+        COALESCE(s.archived_status, s.status) AS status,
+        s.is_archived,
+        s.created_at,
+        s.updated_at
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE s.is_archived = 1
+      ORDER BY s.updated_at DESC
     `);
-
     res.json(rows);
-
   } catch (error) {
     console.error("FETCH ARCHIVED ERROR:", error);
-    res.status(500).json({
-      message: "Failed to fetch archived students"
-    });
+    res.status(500).json({ message: "Failed to fetch archived students" });
   }
 });
 

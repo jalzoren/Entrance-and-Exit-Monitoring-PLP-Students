@@ -1,3 +1,4 @@
+// AddProgramModal.jsx
 import React, { useState } from 'react';
 import DepartmentSelect from './DepartmentSelect';
 import Swal from 'sweetalert2';
@@ -5,11 +6,11 @@ import '../../../css/GlobalModal.css';
 
 function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
   const [form, setForm] = useState({
-    programCode: '',
-    programName: '',
-    department: '',
-    programType: 'Undergraduate',
-    programStatus: 'Active',
+    program_code: '',
+    program_name: '',
+    department_id: '',
+    program_type: 'Undergraduate',
+    program_status: 'Active',
     duration: '',
   });
   const [isAdding, setIsAdding] = useState(false);
@@ -72,7 +73,7 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
   const handleAdd = async () => {
     if (isAdding) return;
     
-    if (!form.programCode || !form.programName || !form.department || !form.duration) {
+    if (!form.program_code || !form.program_name || !form.department_id || !form.duration) {
       Swal.fire({
         icon: 'warning',
         title: 'Missing Fields',
@@ -109,7 +110,7 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
       await Swal.fire({
         icon: 'success',
         title: 'Program Added!',
-        text: `${form.programName} has been added successfully.`,
+        text: `${form.program_name} has been added successfully.`,
         timer: 2000,
         showConfirmButton: false
       });
@@ -143,8 +144,8 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
               <label className="modal-label">Program Code <span className="required">*</span></label>
               <input 
                 type="text" 
-                name="programCode" 
-                value={form.programCode} 
+                name="program_code" 
+                value={form.program_code} 
                 onChange={handleChange} 
                 className="modal-input" 
                 placeholder="e.g. BSCS" 
@@ -155,8 +156,8 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
               <label className="modal-label">Program Name <span className="required">*</span></label>
               <input 
                 type="text" 
-                name="programName" 
-                value={form.programName} 
+                name="program_name" 
+                value={form.program_name} 
                 onChange={handleChange} 
                 className="modal-input" 
                 placeholder="e.g. Bachelor of Science in Computer Science" 
@@ -166,18 +167,17 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
             <div className="modal-field modal-full-width">
               <label className="modal-label">Department <span className="required">*</span></label>
               <DepartmentSelect
-                value={form.department}
-                onChange={handleDepartmentChange}
+                value={form.department_id}
+                onChange={(id) => setForm(prev => ({ ...prev, department_id: id }))}
                 departments={departments}
-                onAddDepartment={handleAddDepartment}
               />
             </div>
 
             <div className="modal-field">
               <label className="modal-label">Program Type <span className="required">*</span></label>
               <select 
-                name="programType" 
-                value={form.programType} 
+                name="program_type" 
+                value={form.program_type} 
                 onChange={handleChange} 
                 className="modal-select"
               >
@@ -203,8 +203,8 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
             <div className="modal-field">
               <label className="modal-label">Program Status <span className="required">*</span></label>
               <select 
-                name="programStatus" 
-                value={form.programStatus} 
+                name="program_status" 
+                value={form.program_status} 
                 onChange={handleChange} 
                 className="modal-select"
               >

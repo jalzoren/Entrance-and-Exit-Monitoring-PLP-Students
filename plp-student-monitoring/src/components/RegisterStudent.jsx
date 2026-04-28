@@ -34,14 +34,12 @@ function RegisterStudent({ onClose, onSuccess }) {
   const [lastName, setLastName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [yearLevel, setYearLevel] = useState("");
-  const [college, setCollege] = useState("");
   const [program, setProgram] = useState("");
+  const [autoDept, setAutoDept] = useState("");       // auto-filled from selected program
   const [extension, setExtension] = useState("");
   const [status, setStatus] = useState("");
-  const [departments, setDepartments] = useState([]);
   const [loadingDepartments, setLoadingDepartments] = useState(true);
   const [programs, setPrograms] = useState([]);
-  const [filteredPrograms, setFilteredPrograms] = useState([]);
   const [emailManuallyEdited, setEmailManuallyEdited] = useState(false);
   const maxPhotos = 5;
 
@@ -79,63 +77,40 @@ function RegisterStudent({ onClose, onSuccess }) {
 
   // Fetch departments and programs from backend
   useEffect(() => {
-  const fetchData = async () => {
-    setLoadingDepartments(true);
-    try {
-      // Fetch active departments using status filter
-      const deptResponse = await fetch('http://localhost:5000/api/departments?status=Active');
-      if (!deptResponse.ok) throw new Error(`HTTP ${deptResponse.status}`);
-      const deptData = await deptResponse.json();
-      console.log('Departments response:', deptData);
-      
-      let departmentNames = [];
-      if (Array.isArray(deptData)) {
-        departmentNames = deptData.map(item => item.dept_name).filter(Boolean);
+    const fetchData = async () => {
+      setLoadingDepartments(true);
+      try {
+        const progResponse = await fetch('http://localhost:5000/api/programs?programStatus=Active');
+        if (!progResponse.ok) throw new Error(`HTTP ${progResponse.status}`);
+        const progData = await progResponse.json();
+        setPrograms(Array.isArray(progData) ? progData : []);
+      } catch (error) {
+        console.error('Fetch error:', error);
+        Swal.fire({
+          title: "Connection Error",
+          text: "Failed to connect to server. Please check if the backend is running.",
+          icon: "error",
+          confirmButtonText: "OK",
+          customClass: { popup: "swal-popup", confirmButton: "swal-btn-primary" },
+          buttonsStyling: false,
+        });
+      } finally {
+        setLoadingDepartments(false);
       }
-      setDepartments(departmentNames);
-      
-      // Fetch active programs
-      const progResponse = await fetch('http://localhost:5000/api/programs?programStatus=Active');
-      if (!progResponse.ok) throw new Error(`HTTP ${progResponse.status}`);
-      const progData = await progResponse.json();
-      console.log('Programs response:', progData);
-      setPrograms(Array.isArray(progData) ? progData : []);
-      
-    } catch (error) {
-      console.error('Fetch error:', error);
-      Swal.fire({
-        title: "Connection Error",
-        text: "Failed to connect to server. Please check if the backend is running.",
-        icon: "error",
-        confirmButtonText: "OK",
-        customClass: {
-          popup: "swal-popup",
-          confirmButton: "swal-btn-primary",
-        },
-        buttonsStyling: false,
-      });
-    } finally {
-      setLoadingDepartments(false);
-    }
-  };
-  fetchData();
-}, []);
+    };
+    fetchData();
+  }, []);
 
   // Filter programs when department changes
   useEffect(() => {
-    if (college) {
-      const filtered = programs.filter(prog => {
-        const progDept = typeof prog === 'object' ? prog.department : null;
-        return progDept === college;
-      });
-      setFilteredPrograms(filtered);
-      setProgram('');
-      setFormErrors(prev => ({ ...prev, program: "" }));
+    if (program) {
+      // Find the selected program object and auto-fill department
+      const selected = programs.find(p => String(p.id) === String(program));
+      setAutoDept(selected ? selected.dept_name : '');
     } else {
-      setFilteredPrograms([]);
-      setProgram('');
+      setAutoDept('');
     }
-  }, [college, programs]);
+  }, [program, programs]);
 
   // Auto-generate email
   useEffect(() => {
@@ -203,7 +178,6 @@ function RegisterStudent({ onClose, onSuccess }) {
         : "",
       lastName: !lastName.trim() ? "Last Name is required" : "",
       firstName: !firstName.trim() ? "First Name is required" : "",
-      college: !college ? "College Department is required" : "",
       program: !program ? "Program is required" : "",
       yearLevel: !yearLevel.toString().trim() ? "Year Level is required" : "",
       status: !status ? "Status is required" : "",
@@ -425,8 +399,7 @@ function RegisterStudent({ onClose, onSuccess }) {
           last_name: lastName,
           middle_name: middleName,
           extension_name: extension,
-          college_department: college,
-          program: program,
+          program_id: parseInt(program),
           year_level: parseInt(yearLevel),
           status: status,
           images: validImages
@@ -567,29 +540,28 @@ function RegisterStudent({ onClose, onSuccess }) {
             </div>
             
             <div className="input-group">
-              <label>College Department <span className="required">*</span></label>
+              <label>Program <span className="required">*</span></label>
               <select
-                value={college}
-                onChange={(e) => { 
-                  setCollege(e.target.value); 
-                  setFormErrors(prev => ({...prev, college: ""}));
+                value={program}
+                onChange={(e) => {
+                  setProgram(e.target.value);
+                  setFormErrors(prev => ({ ...prev, program: "" }));
                 }}
-                className={formErrors.college ? "input-error" : ""}
-                ref={collegeRef}
-                onKeyDown={(e) => handleEnter(e, programRef)}
-                required
+                className={formErrors.program ? "input-error" : ""}
+                ref={programRef}
                 disabled={loadingDepartments}
+                required
               >
                 <option value="">
-                  {loadingDepartments ? "Loading departments..." : "Select College Department"}
+                  {loadingDepartments ? "Loading programs..." : "Select Program"}
                 </option>
-                {departments.map((dept, index) => (
-                  <option key={index} value={dept}>
-                    {dept}
+                {programs.map((prog) => (
+                  <option key={prog.id} value={prog.id}>
+                    {prog.program_name} ({prog.program_code})
                   </option>
                 ))}
               </select>
-              {formErrors.college && <span className="field-error">{formErrors.college}</span>}
+              {formErrors.program && <span className="field-error">{formErrors.program}</span>}
             </div>
           </div>
 
@@ -608,27 +580,18 @@ function RegisterStudent({ onClose, onSuccess }) {
             </div>
             
             <div className="input-group">
-              <label>Program <span className="required">*</span></label>
-              <select
-                value={program}
-                onChange={(e) => { 
-                  setProgram(e.target.value); 
-                  setFormErrors(prev => ({...prev, program: ""}));
-                }}
-                className={formErrors.program ? "input-error" : ""}
-                ref={programRef}
-                onKeyDown={(e) => handleEnter(e, yearLevelRef)}
-                disabled={!college}
-                required
-              >
-                <option value="">{college ? "Select Program" : "Select Department First"}</option>
-                {filteredPrograms.map((prog, index) => (
-                  <option key={index} value={prog.programName || prog.name || prog}>
-                    {prog.programName || prog.name || prog} {prog.programCode ? `(${prog.programCode})` : ''}
-                  </option>
-                ))}
-              </select>
-              {formErrors.program && <span className="field-error">{formErrors.program}</span>}
+              <label>College Department</label>
+              <input
+                type="text"
+                value={autoDept}
+                disabled
+                placeholder="Auto-filled from program"
+                className="input-disabled"
+                style={{ opacity: autoDept ? 1 : 0.5, background: '#f5f5f5' }}
+              />
+              <span className="field-hint" style={{ fontSize: '11px', color: '#888', marginTop: '3px', display: 'block' }}>
+                Automatically set based on selected program
+              </span>
             </div>
           </div>
 

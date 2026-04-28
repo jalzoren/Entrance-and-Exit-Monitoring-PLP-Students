@@ -1,3 +1,4 @@
+// DepartmentSelect.jsx – FIXED VERSION
 import React from 'react';
 
 function DepartmentSelect({ 
@@ -11,24 +12,20 @@ function DepartmentSelect({
     <div className="dept-select-container">
       <div className="modal-select-wrapper">
         <select
-          name="department"
+          name="department_id"      
           value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}   
           className="modal-select"
           disabled={disabled}
         >
           <option value="">{placeholder}</option>
           
           {departments.map((dept) => {
-            // Handle both object format (from DB) and string fallback
-            const deptName = typeof dept === 'object' ? dept.dept_name : dept;
-            const deptId = typeof dept === 'object' ? dept.id : deptName;
+            const deptId   = dept.id;
+            const deptName = dept.dept_name;
 
             return (
-              <option 
-                key={deptId || deptName} 
-                value={deptName}
-              >
+              <option key={deptId} value={deptId}>
                 {deptName}
               </option>
             );

@@ -126,7 +126,17 @@ router.post("/recognize", async (req, res) => {
 
     // ── Step 8: Fetch student details ─────────────────────────────────
     const [studentRows] = await pool.query(
-      'SELECT first_name, last_name, college_department FROM students WHERE student_id = ?',
+      `SELECT 
+        s.first_name, 
+        s.last_name,
+        d.dept_name AS college_department,
+        d.dept_code,
+        p.program_name,
+        p.program_code
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE s.student_id = ?`,
       [matchedStudent]
     );
 

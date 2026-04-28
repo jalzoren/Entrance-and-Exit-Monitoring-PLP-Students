@@ -69,8 +69,7 @@ function EditStudent({ student, onClose }) {
   const [lastName,    setLastName]    = useState(student.last_name         || "");
   const [middleName,  setMiddleName]  = useState(student.middle_name       || "");
   const [extension,   setExtension]   = useState(student.extension_name    || "");
-  const [college,     setCollege]     = useState(student.college_department|| "");
-  const [program,     setProgram]     = useState(student.program_name      || "");
+  const [program,     setProgram]     = useState(student.program_id || "");
   const [yearLevel,   setYearLevel]   = useState(student.year_level        || "");
   const [status,      setStatus]      = useState(student.status            || "");
   const [formErrors,  setFormErrors]  = useState({});
@@ -89,7 +88,7 @@ function EditStudent({ student, onClose }) {
   // Departments and programs
   const [activeDepartments, setActiveDepartments] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [filteredPrograms, setFilteredPrograms] = useState([]);
+  const [autoDept, setAutoDept] = useState("");
 
    // ── Tab 2: face capture ────────────────────────────────
   const [photoPreviews,  setPhotoPreviews]  = useState(Array(MAX_PHOTOS).fill(null));
@@ -123,37 +122,30 @@ function EditStudent({ student, onClose }) {
   useEffect(() => {
     const fetchPrograms = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/programs?programStatus=Active');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.json();
-        setPrograms(data);
-      } catch (error) {
-        console.error('Error fetching programs:', error);
+        const res = await fetch('http://localhost:5000/api/programs?programStatus=Active');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        setPrograms(Array.isArray(data) ? data : []);
+      } catch (err) {
+        console.error('Error fetching programs:', err);
       }
     };
     fetchPrograms();
   }, []);
 
-  // Filter programs when college changes
+
   useEffect(() => {
-    if (college) {
-      const filtered = programs.filter(prog => prog.department === college);
-      setFilteredPrograms(filtered);
-      // If current program not in filtered list, clear it
-      if (program && !filtered.some(p => p.programName === program)) {
-        setProgram('');
-      }
-    } else {
-      setFilteredPrograms([]);
+    if (program && programs.length > 0) {
+      const selected = programs.find(p => String(p.id) === String(program));
+      if (selected) setAutoDept(selected.dept_name);
     }
-  }, [college, programs]);
+  }, [program, programs]);
 
   // Validation (including program)
   const validateInfo = () => {
     const errors = {
       lastName:  !lastName.trim()  ? "Last Name is required"           : "",
       firstName: !firstName.trim() ? "First Name is required"          : "",
-      college:   !college          ? "College Department is required"  : "",
       yearLevel: !yearLevel        ? "Year Level is required"          : "",
       status:    !status           ? "Status is required"              : "",
       program:   !program          ? "Program is required"             : "",
@@ -176,8 +168,7 @@ function EditStudent({ student, onClose }) {
           last_name: lastName.trim().toUpperCase(),
           middle_name: middleName.trim().toUpperCase(),
           extension_name: extension,
-          college_department: college,
-          program_name: program,
+          program_id: parseInt(program),
           year_level: yearLevel,
           status,
         }
@@ -403,40 +394,39 @@ function EditStudent({ student, onClose }) {
             </div>
 
             <div className="form-row">
-              <div className="input-group">
-                <label>College Department <span className="required">*</span></label>
-                <select
-                  value={college}
-                  onChange={(e) => { setCollege(e.target.value); setFormErrors(p => ({ ...p, college: "" })); }}
-                  className={formErrors.college ? "input-error" : ""}
-                >
-                  <option value="">Select College Department</option>
-                  {activeDepartments.map((dept) => (
-                    <option key={dept.id} value={dept.dept_name}>
-                      {dept.dept_name}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.college && <span className="field-error">{formErrors.college}</span>}
-              </div>
-
+              {/* Program first */}
               <div className="input-group">
                 <label>Program <span className="required">*</span></label>
                 <select
                   value={program}
                   onChange={(e) => { setProgram(e.target.value); setFormErrors(p => ({ ...p, program: "" })); }}
                   className={formErrors.program ? "input-error" : ""}
-                  disabled={!college}
                   required
                 >
-                  <option value="">{college ? "Select Program" : "Select Department First"}</option>
-                  {filteredPrograms.map((prog) => (
-                    <option key={prog.id} value={prog.programName}>
-                      {prog.programName} ({prog.programCode})
+                  <option value="">Select Program</option>
+                  {programs.map((prog) => (
+                    <option key={prog.id} value={prog.id}>
+                      {prog.program_name} ({prog.program_code})
                     </option>
                   ))}
                 </select>
                 {formErrors.program && <span className="field-error">{formErrors.program}</span>}
+              </div>
+
+              {/* Department — auto-filled */}
+              <div className="input-group">
+                <label>College Department</label>
+                <input
+                  type="text"
+                  value={autoDept}
+                  disabled
+                  placeholder="Auto-filled from program"
+                  className="input-disabled"
+                  style={{ opacity: autoDept ? 1 : 0.5, background: '#f5f5f5' }}
+                />
+                <span className="field-hint" style={{ fontSize: '11px', color: '#888', marginTop: '3px', display: 'block' }}>
+                  Automatically set based on selected program
+                </span>
               </div>
 
               <div className="input-group">
