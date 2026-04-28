@@ -19,17 +19,15 @@ function EditProgramTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [totalPrograms, setTotalPrograms] = useState(0);
 
-  // Fetch total programs count
-  const fetchTotalPrograms = async () => {
+ const fetchTotalPrograms = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/programs/total/count');
-      const data = await response.json();
-      setTotalPrograms(data.total);
+        const response = await fetch('http://localhost:5000/api/programs/active/count');
+        const data = await response.json();
+        setTotalPrograms(data.total);
     } catch (error) {
-      console.error('Error fetching total programs:', error);
+        console.error('Error fetching total programs:', error);
     }
-  };
-
+};
   // Fetch departments from backend
   const fetchDepartments = async () => {
     try {
