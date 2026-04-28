@@ -7,7 +7,7 @@ import {
   exportLogsToXML, 
   downloadXML
 } from "../../utils/xmlUtils";
-import * as XLSX from 'xlsx';
+//import * as XLSX from 'xlsx';
 
 function LogEntry({ log, animDelay }) {
   // Format student info display

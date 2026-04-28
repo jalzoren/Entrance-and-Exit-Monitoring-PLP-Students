@@ -229,12 +229,6 @@ function Dashboard() {
             tooltip="Counts all successful student entry events recorded for the current day."
           />
           <MetricCard
-            title="Auth Success Rate"
-            value={metrics?.authSuccessRate != null ? `${metrics.authSuccessRate}%` : "—"}
-            subtitle="FACIAL RECOGNITION"
-            tooltip="Percentage of successful facial recognition verifications today."
-          />
-          <MetricCard
             title="Visitors On Campus"
             value={metrics?.visitorsOnCampus ?? "—"}
             subtitle="ACTIVE VISITORS"
