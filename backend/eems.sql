@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 26, 2026 at 02:50 PM
+-- Generation Time: Apr 28, 2026 at 07:28 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -112,7 +112,14 @@ INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, 
 (103, '24-00295', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-22 16:17:24'),
 (104, '24-01283', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-22 16:17:32'),
 (105, '23-00201', 'FACIAL', 'SUCCESS', 76.51, 0, '2026-04-22 16:29:40'),
-(106, '23-00201', 'FACIAL', 'SUCCESS', 76.76, 0, '2026-04-22 16:30:02');
+(106, '23-00201', 'FACIAL', 'SUCCESS', 76.76, 0, '2026-04-22 16:30:02'),
+(107, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-26 21:39:46'),
+(108, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-26 21:39:52'),
+(109, '24-00295', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-26 21:39:58'),
+(110, '24-00179', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-26 21:40:43'),
+(111, '24-01283', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-26 21:41:05'),
+(112, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-28 01:30:18'),
+(113, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, '2026-04-28 01:43:19');
 
 -- --------------------------------------------------------
 
@@ -127,20 +134,21 @@ CREATE TABLE `departments` (
   `status` enum('Active','Inactive') DEFAULT 'Active',
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `departments`
 --
 
 INSERT INTO `departments` (`id`, `dept_code`, `dept_name`, `status`, `created_at`, `updated_at`) VALUES
-(8, 'COE', 'College of Engineering', 'Active', '2026-04-13 04:42:32', '2026-04-20 09:09:14'),
-(9, 'CCS', 'College of Computer Studies', 'Active', '2026-04-13 04:44:09', '2026-04-22 08:32:18'),
-(10, 'CON', 'College of Nursing', 'Active', '2026-04-13 08:07:20', '2026-04-13 08:07:47'),
-(11, 'COED', 'College of Education', 'Active', '2026-04-20 09:11:51', '2026-04-20 09:11:51'),
-(12, 'CBA', 'College of Business and Accountancy', 'Active', '2026-04-20 09:13:47', '2026-04-20 09:13:47'),
-(13, 'CIHM', 'College of International Hospitality Management', 'Active', '2026-04-20 09:26:14', '2026-04-20 09:26:14'),
-(14, 'CAS', 'College of Arts and Sciences', 'Active', '2026-04-20 09:26:56', '2026-04-20 09:26:56');
+(1, 'COE', 'College of Engineering', 'Active', '2026-04-13 04:42:32', '2026-04-27 14:16:25'),
+(2, 'CCS', 'College of Computer Studies', 'Active', '2026-04-13 04:44:09', '2026-04-27 14:16:25'),
+(3, 'CON', 'College of Nursing', 'Active', '2026-04-13 08:07:20', '2026-04-27 14:16:25'),
+(4, 'COED', 'College of Education', 'Active', '2026-04-20 09:11:51', '2026-04-27 14:16:25'),
+(5, 'CBA', 'College of Business and Accountancy', 'Active', '2026-04-20 09:13:47', '2026-04-27 14:16:25'),
+(6, 'CIHM', 'College of International Hospitality Management', 'Active', '2026-04-20 09:26:14', '2026-04-27 14:16:25'),
+(7, 'CAS', 'College of Arts and Sciences', 'Active', '2026-04-20 09:26:56', '2026-04-27 14:16:25'),
+(15, 'CM', 'miah', 'Inactive', '2026-04-27 10:35:45', '2026-04-27 10:36:23');
 
 -- --------------------------------------------------------
 
@@ -205,7 +213,14 @@ INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `log
 (103, '24-00295', 103, 'ENTRY', '2026-04-22 16:17:24'),
 (104, '24-01283', 104, 'ENTRY', '2026-04-22 16:17:32'),
 (105, '23-00201', 105, 'ENTRY', '2026-04-22 16:29:40'),
-(106, '23-00201', 106, 'EXIT', '2026-04-22 16:30:02');
+(106, '23-00201', 106, 'EXIT', '2026-04-22 16:30:02'),
+(107, '23-00298', 107, 'ENTRY', '2026-04-26 21:39:46'),
+(108, '23-00174', 108, 'ENTRY', '2026-04-26 21:39:52'),
+(109, '24-00295', 109, 'ENTRY', '2026-04-26 21:39:58'),
+(110, '24-00179', 110, 'ENTRY', '2026-04-26 21:40:43'),
+(111, '24-01283', 111, 'ENTRY', '2026-04-26 21:41:05'),
+(112, '23-00298', 112, 'ENTRY', '2026-04-28 01:30:18'),
+(113, '23-00298', 113, 'EXIT', '2026-04-28 01:43:19');
 
 -- --------------------------------------------------------
 
@@ -215,34 +230,35 @@ INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `log
 
 CREATE TABLE `programs` (
   `id` int(11) NOT NULL,
-  `programCode` varchar(20) NOT NULL,
-  `programName` varchar(200) NOT NULL,
-  `department` varchar(100) NOT NULL,
-  `programType` enum('Undergraduate','Graduate') NOT NULL DEFAULT 'Undergraduate',
-  `programStatus` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
+  `department_id` int(11) NOT NULL,
+  `program_code` varchar(20) NOT NULL,
+  `program_name` varchar(200) NOT NULL,
+  `program_type` enum('Undergraduate','Graduate') NOT NULL DEFAULT 'Undergraduate',
+  `program_status` enum('Active','Inactive') NOT NULL DEFAULT 'Active',
   `duration` int(11) NOT NULL DEFAULT 0,
-  `dateCreated` date NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `date_created` date NOT NULL,
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `programs`
 --
 
-INSERT INTO `programs` (`id`, `programCode`, `programName`, `department`, `programType`, `programStatus`, `duration`, `dateCreated`) VALUES
-(18, 'BSIT', 'Bachelor of Science in Information Technology', 'College of Computer Studies', 'Undergraduate', 'Active', 4, '2026-04-13'),
-(19, 'BSCS', 'Bachelor of Science in Computer Science', 'College of Computer Studies', 'Undergraduate', 'Active', 4, '2026-04-13'),
-(20, 'BSN', 'Bachelor of Science in Nursing', 'College of Nursing', 'Undergraduate', 'Active', 4, '2026-04-13'),
-(24, 'BSEE', 'Bachelor of Science in Electronics Engineering', 'College of Engineering', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(25, 'BEED', 'Bachelor of Elementary Education', 'College of Education', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(26, 'BSED-FILIPINO', 'Bachelor of Secondary Education Major in Filipino', 'College of Education', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(27, 'BSED-ENGLISH', 'Bachelor of Secondary Education Major in English', 'College of Education', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(28, 'BSED-SCIENCE', 'Bachelor of Secondary Education Major in Science', 'College of Education', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(29, 'BSED-MATHEMATICS', 'Bachelor of Secondary Education Major in Mathematics', 'College of Education', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(30, 'BSA', 'Bachelor of Science in Accountancy', 'College of Business and Accountancy', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(31, 'BSBA-MM', 'Bachelor of Science in Business Administration Major in Marketing Management', 'College of Business and Accountancy', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(33, 'BS-E', 'Bachelor of Science in Entrepreneurship', 'College of Business and Accountancy', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(34, 'BSHM', 'Bachelor of Science in Hospitality Management', 'College of International Hospitality Management', 'Undergraduate', 'Active', 4, '2026-04-20'),
-(35, 'AB-PSYCH', 'Bachelor of Arts in Psychology', 'College of Arts and Sciences', 'Undergraduate', 'Active', 4, '2026-04-20');
+INSERT INTO `programs` (`id`, `department_id`, `program_code`, `program_name`, `program_type`, `program_status`, `duration`, `date_created`, `updated_at`) VALUES
+(18, 2, 'BSIT', 'Bachelor of Science in Information Technology', 'Undergraduate', 'Active', 4, '2026-04-13', '2026-04-27 15:16:52'),
+(19, 2, 'BSCS', 'Bachelor of Science in Computer Science', 'Undergraduate', 'Active', 4, '2026-04-13', '2026-04-27 15:16:52'),
+(20, 3, 'BSN', 'Bachelor of Science in Nursing', 'Undergraduate', 'Active', 4, '2026-04-13', '2026-04-27 15:16:52'),
+(24, 1, 'BSEE', 'Bachelor of Science in Electronics Engineering', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(25, 4, 'BEED', 'Bachelor of Elementary Education', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(26, 4, 'BSED-FILIPINO', 'Bachelor of Secondary Education Major in Filipino', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(27, 4, 'BSED-ENGLISH', 'Bachelor of Secondary Education Major in English', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(28, 4, 'BSED-SCIENCE', 'Bachelor of Secondary Education Major in Science', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(29, 4, 'BSED-MATHEMATICS', 'Bachelor of Secondary Education Major in Mathematics', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(30, 5, 'BSA', 'Bachelor of Science in Accountancy', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(31, 5, 'BSBA-MM', 'Bachelor of Science in Business Administration Major in Marketing Management', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(33, 5, 'BS-E', 'Bachelor of Science in Entrepreneurship', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(34, 6, 'BSHM', 'Bachelor of Science in Hospitality Management', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52'),
+(35, 7, 'AB-PSYCH', 'Bachelor of Arts in Psychology', 'Undergraduate', 'Active', 4, '2026-04-20', '2026-04-27 15:16:52');
 
 -- --------------------------------------------------------
 
@@ -257,8 +273,7 @@ CREATE TABLE `students` (
   `last_name` varchar(50) NOT NULL,
   `middle_name` varchar(50) DEFAULT NULL,
   `extension_name` varchar(11) DEFAULT NULL,
-  `college_department` varchar(100) NOT NULL,
-  `program_name` varchar(200) DEFAULT NULL,
+  `program_id` int(11) NOT NULL,
   `year_level` int(11) NOT NULL,
   `status` enum('Regular','Irregular','LOA','Dropout','Kickout','Graduated','Transferred','Inactive') NOT NULL DEFAULT 'Regular',
   `is_archived` tinyint(4) NOT NULL,
@@ -271,33 +286,13 @@ CREATE TABLE `students` (
 -- Dumping data for table `students`
 --
 
-INSERT INTO `students` (`student_id`, `email`, `first_name`, `last_name`, `middle_name`, `extension_name`, `college_department`, `program_name`, `year_level`, `status`, `is_archived`, `archived_status`, `created_at`, `updated_at`) VALUES
-('23-00158', 'deleon_marithefrancine@plpasig.edu.ph', 'MARITHE FRANCINE', 'DE LEON', 'SUAREZ', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', '2026-04-22 21:59:04'),
-('23-00160', 'fernandez_jamesandrew@plpasig.edu.ph', 'JAMES ANDREW', 'FERNANDEZ', 'BAYONA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00173', 'singin_amira@plpasig.edu.ph', 'AMIRA', 'SINGIN', 'ROBLES', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00174', 'flavier_laurencejames@plpasig.edu.ph', 'LAURENCE JAMES', 'FLAVIER', 'LETANA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-03-30 08:35:17', '2026-04-21 00:24:08'),
-('23-00178', 'campo_alwyn@plpasig.edu.ph', 'ALWYN', 'CAMPO', 'ORESCA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00180', 'asong_jekko@plpasig.edu.ph', 'JEKKO', 'ASONG', 'FRANCO', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00188', 'torres_jamespeterson@plpasig.edu.ph', 'JAMES PETERSON', 'TORRES', 'SANTOS', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00201', 'soriano_vincentmiguel@plpasig.edu.ph', 'VINCENT MIGUEL', 'SORIANO', 'PEREZ', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00206', 'manlangit_jeshuapaulrogel@plpasig.edu.ph', 'JESHUA PAUL ROGEL', 'MANLANGIT', 'SARAZATE', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00236', 'angeles_cyrene@plpasig.edu.ph', 'CYRENE', 'ANGELES', 'ZUNIEGA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00251', 'macuana_arnolddominic@plpasig.edu.ph', 'ARNOLD DOMINIC', 'MACUANA', 'CASTILLO', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00254', 'ramos_athenaeunice@plpasig.edu.ph', 'ATHENA EUNICE', 'RAMOS', 'CRUZ', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00260', 'angulo_michajean@plpasig.edu.ph', 'MICHA JEAN', 'ANGULO', 'CARABLE', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00269', 'larga_johnsebastian@plpasig.edu.ph', 'JOHN SEBASTIAN', 'LARGA', 'VICTORINO', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00282', 'balogbog_charleswynn@plpasig.edu.ph', 'CHARLES WYNN', 'BALOGBOG', 'CONDES', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00298', 'bitancor_jerimiah@plpasig.edu.ph', 'JERIMIAH', 'BITANCOR', 'AMORA', NULL, 'College of Computer Studies', 'Bachelor of Science in Computer Science', 3, 'Regular', 0, NULL, '2026-03-30 08:40:35', '2026-04-21 00:24:18'),
-('23-00306', 'pineda_karllouis@plpasig.edu.ph', 'KARL LOUIS', 'PINEDA', 'MIGUEL', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00334', 'domrique_graceanne@plpasig.edu.ph', 'GRACE ANNE', 'DOMRIQUE', 'CO', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-00898', 'masbate_jancarl@plpasig.edu.ph', 'JAN CARL', 'MASBATE', 'ABUYA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-01023', 'cruz_patriciadiane@plpasig.edu.ph', 'PATRICIA DIANE', 'CRUZ', 'RUIZ', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-01078', 'tadipa_johnlloydchristopher@plpasig.edu.ph', 'JOHN LLOYD CHRISTOPHER', 'TADIPA', 'BUENVIAJE', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-01082', 'villanueva_angel@plpasig.edu.ph', 'ANGEL', 'VILLANUEVA', 'RICO', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('23-01158', 'rojas_johnmel@plpasig.edu.ph', 'JOHNMEL', 'ROJAS', 'VILLAROSA', NULL, 'College of Computer Studies', 'Bachelor of Science in Information Technology', 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', NULL),
-('24-00179', 'mercado_lynnczyla@plpasig.edu.ph', 'LYNN CZYLA', 'ALPUERTO', 'MERCADO', NULL, 'College of Engineering', 'Bachelor of Science in Electronics Engineering', 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-22 16:25:02'),
-('24-00295', 'castillon_biancarain@plpasig.edu.ph', 'BIANCA RAIN', 'CASTILLON', 'CAGURUNGAN', NULL, 'College of Education', 'Bachelor of Secondary Education Major in English', 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-20 17:33:55'),
-('24-01283', 'onrubia_neiladrian@plpasig.edu.ph', 'NEIL ADRIAN', 'ONRUBIA', 'B', NULL, 'College of International Hospitality Management', 'Bachelor of Science in Hospitality Management', 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-20 17:34:20');
+INSERT INTO `students` (`student_id`, `email`, `first_name`, `last_name`, `middle_name`, `extension_name`, `program_id`, `year_level`, `status`, `is_archived`, `archived_status`, `created_at`, `updated_at`) VALUES
+('23-00174', 'flavier_laurencejames@plpasig.edu.ph', 'LAURENCE JAMES', 'FLAVIER', 'LETANA', NULL, 18, 3, 'Regular', 0, NULL, '2026-03-30 08:35:17', '2026-04-28 11:38:09'),
+('23-00201', 'soriano_vincentmiguel@plpasig.edu.ph', 'VINCENT MIGUEL', 'SORIANO', 'PEREZ', NULL, 18, 3, 'Regular', 0, NULL, '2026-04-22 08:25:42', '2026-04-28 11:38:09'),
+('23-00298', 'bitancor_jerimiah@plpasig.edu.ph', 'JERIMIAH', 'BITANCOR', 'AMORA', NULL, 19, 3, 'Regular', 0, NULL, '2026-03-30 08:40:35', '2026-04-28 11:38:09'),
+('24-00179', 'mercado_lynnczyla@plpasig.edu.ph', 'LYNN CZYLA', 'ALPUERTO', 'MERCADO', NULL, 24, 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-28 11:38:09'),
+('24-00295', 'castillon_biancarain@plpasig.edu.ph', 'BIANCA RAIN', 'CASTILLON', 'CAGURUNGAN', NULL, 27, 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-28 11:38:09'),
+('24-01283', 'onrubia_neiladrian@plpasig.edu.ph', 'NEIL ADRIAN', 'ONRUBIA', 'B', NULL, 34, 3, 'Regular', 0, NULL, '2026-04-20 06:51:36', '2026-04-28 11:38:09');
 
 -- --------------------------------------------------------
 
@@ -423,14 +418,17 @@ INSERT INTO `visitor_logs` (`visitor_id`, `full_name`, `email`, `reason`, `other
 -- Indexes for table `admins`
 --
 ALTER TABLE `admins`
-  ADD PRIMARY KEY (`admin_id`);
+  ADD PRIMARY KEY (`admin_id`),
+  ADD UNIQUE KEY `email` (`email`);
 
 --
 -- Indexes for table `authentication`
 --
 ALTER TABLE `authentication`
   ADD PRIMARY KEY (`auth_id`),
-  ADD KEY `idx_auth_student` (`student_id`);
+  ADD KEY `idx_auth_student` (`student_id`),
+  ADD KEY `idx_auth_timestamp` (`timestamp`),
+  ADD KEY `idx_auth_method` (`method`);
 
 --
 -- Indexes for table `departments`
@@ -449,21 +447,27 @@ ALTER TABLE `entry_exit_logs`
   ADD PRIMARY KEY (`log_id`),
   ADD KEY `auth_id` (`auth_id`),
   ADD KEY `idx_log_student` (`student_id`),
-  ADD KEY `idx_log_time` (`log_time`);
+  ADD KEY `idx_log_time` (`log_time`),
+  ADD KEY `idx_student_logtime` (`student_id`,`log_time`);
 
 --
 -- Indexes for table `programs`
 --
 ALTER TABLE `programs`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `programCode` (`programCode`);
+  ADD UNIQUE KEY `programCode` (`program_code`),
+  ADD KEY `fk_program_department` (`department_id`);
 
 --
 -- Indexes for table `students`
 --
 ALTER TABLE `students`
   ADD PRIMARY KEY (`student_id`),
-  ADD UNIQUE KEY `email` (`email`);
+  ADD UNIQUE KEY `email` (`email`),
+  ADD KEY `idx_status` (`status`),
+  ADD KEY `idx_year_level` (`year_level`),
+  ADD KEY `idx_is_archived` (`is_archived`),
+  ADD KEY `fk_student_program` (`program_id`);
 
 --
 -- Indexes for table `student_face_embeddings`
@@ -482,7 +486,8 @@ ALTER TABLE `system_settings`
 -- Indexes for table `visitor_logs`
 --
 ALTER TABLE `visitor_logs`
-  ADD PRIMARY KEY (`visitor_id`);
+  ADD PRIMARY KEY (`visitor_id`),
+  ADD KEY `idx_qr_token` (`qr_token`);
 
 --
 -- AUTO_INCREMENT for dumped tables
@@ -498,19 +503,19 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 --
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=107;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=114;
 
 --
 -- AUTO_INCREMENT for table `programs`
@@ -538,14 +543,26 @@ ALTER TABLE `visitor_logs`
 -- Constraints for table `authentication`
 --
 ALTER TABLE `authentication`
-  ADD CONSTRAINT `authentication_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `authentication_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  ADD CONSTRAINT `entry_exit_logs_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `entry_exit_logs_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON UPDATE CASCADE,
   ADD CONSTRAINT `entry_exit_logs_ibfk_2` FOREIGN KEY (`auth_id`) REFERENCES `authentication` (`auth_id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `programs`
+--
+ALTER TABLE `programs`
+  ADD CONSTRAINT `fk_program_department` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `students`
+--
+ALTER TABLE `students`
+  ADD CONSTRAINT `fk_student_program` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `student_face_embeddings`
