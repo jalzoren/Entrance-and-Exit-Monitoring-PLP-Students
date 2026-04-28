@@ -47,8 +47,8 @@ function EditProgramTab() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (college) params.append('department', college);
-      if (programType && programType !== 'All') params.append('programType', programType);
-      params.append('programStatus', 'Active');
+      if (programType && programType !== 'All') params.append('program_type', programType);
+      params.append('program_status', 'Active');
       
       const response = await fetch(`http://localhost:5000/api/programs?${params}`);
       const data = await response.json();
@@ -224,7 +224,7 @@ function EditProgramTab() {
           Swal.fire({
             icon: 'success',
             title: 'Archived!',
-            text: `"${program.programName}" has been archived.`,
+            text: `"${program.program_name}" has been archived.`,
             timer: 1500,
             showConfirmButton: false
           });
@@ -275,7 +275,7 @@ function EditProgramTab() {
         >
           <option value="">All Departments</option>
           {departments.map((dept) => (
-            <option key={dept.id} value={dept.dept_id}>
+            <option key={dept.id} value={dept.id}>
               {dept.dept_name}
             </option>
           ))}

@@ -20,8 +20,8 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDepartmentChange = (dept) => {
-    setForm((prev) => ({ ...prev, department: dept }));
+  const handleDepartmentChange = (deptId) => {
+    setForm((prev) => ({ ...prev, department_id: deptId }));
   };
 
   const handleAddDepartment = async (newDepartment) => {
@@ -43,6 +43,8 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
       
       if (!response.ok) throw new Error('Failed to add department');
       
+      const newDept = await response.json();
+      
       Swal.fire({
         icon: 'success',
         title: 'Department Added!',
@@ -57,7 +59,7 @@ function AddProgramModal({ onClose, onAdd, departments, onDepartmentAdded }) {
         onDepartmentAdded(updatedDepts);
       }
       
-      setForm((prev) => ({ ...prev, department: newDepartment }));
+      setForm((prev) => ({ ...prev, department_id: newDept.id }));
       
     } catch (error) {
       console.error('Error adding department:', error);

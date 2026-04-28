@@ -45,7 +45,7 @@ function ArchivedPrograms() {
   };
 
   const filtered = archivedPrograms.filter((program) => {
-    const matchesSearch = [program.programCode, program.programName, program.department]
+    const matchesSearch = [program.program_code, program.program_name, program.dept_name]
       .join(' ').toLowerCase().includes(search.toLowerCase());
     return matchesSearch;
   });
@@ -143,14 +143,14 @@ function ArchivedPrograms() {
               paginated.map((program, idx) => (
                 <tr key={program.id}>
                   <td>{(safePage - 1) * ROWS_PER_PAGE + idx + 1}</td>
-                  <td>{program.programCode || 'N/A'}</td>
-                  <td>{program.programName || 'N/A'}</td>
-                  <td>{program.department || 'N/A'}</td>
-                  <td>{program.programType || 'N/A'}</td>
+                  <td>{program.program_code || 'N/A'}</td>
+                  <td>{program.program_name || 'N/A'}</td>
+                  <td>{program.dept_name || 'N/A'}</td>
+                  <td>{program.program_type || 'N/A'}</td>
                   <td>{program.duration || 'N/A'}</td>
                   <td>
-                    <span className={`status-badge ${program.programStatus === 'Active' ? 'active' : 'inactive'}`}>
-                      {program.programStatus}
+                    <span className={`status-badge ${program.program_status === 'Active' ? 'active' : 'inactive'}`}>
+                      {program.program_status}
                     </span>
                   </td>
                   <td>
@@ -226,9 +226,9 @@ function ArchivedPrograms() {
                   fontWeight: '500',
                   color: '#333'
                 }}>
-                  <div><strong>Code:</strong> {selectedProgram.programCode}</div>
-                  <div><strong>Name:</strong> {selectedProgram.programName}</div>
-                  <div><strong>Department:</strong> {selectedProgram.department}</div>
+                  <div><strong>Code:</strong> {selectedProgram.program_code}</div>
+                  <div><strong>Name:</strong> {selectedProgram.program_name}</div>
+                  <div><strong>Department:</strong> {selectedProgram.dept_name}</div>
                   <div><strong>Status:</strong> Active</div>
                 </div>
               </div>
