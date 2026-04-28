@@ -21,16 +21,17 @@ function DepartmentsTab() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [totalDepartments, setTotalDepartments] = useState(0);
 
-  // Fetch total departments count
   const fetchTotalDepartments = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/departments/total/count');
-      const data = await response.json();
-      setTotalDepartments(data.total);
+        // Change this to count only ACTIVE departments
+        const response = await fetch('http://localhost:5000/api/departments?status=Active');
+        const data = await response.json();
+        // Set total to the count of active departments
+        setTotalDepartments(data.length);
     } catch (error) {
-      console.error('Error fetching total departments:', error);
+        console.error('Error fetching total departments:', error);
     }
-  };
+};
 
   // Fetch departments
   const fetchDepartments = async () => {

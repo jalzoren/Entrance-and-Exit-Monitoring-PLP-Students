@@ -605,4 +605,30 @@ router.patch('/programs/:id/restore', async (req, res) => {
     }
 });
 
+// Get count of ACTIVE departments only
+router.get('/departments/active/count', async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as total FROM departments WHERE status = "Active"'
+        );
+        res.json({ total: result[0].total || 0 });
+    } catch (error) {
+        console.error('Error fetching active departments count:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Get count of ACTIVE programs only
+router.get('/programs/active/count', async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'SELECT COUNT(*) as total FROM programs WHERE programStatus = "Active"'
+        );
+        res.json({ total: result[0].total || 0 });
+    } catch (error) {
+        console.error('Error fetching active programs count:', error);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 module.exports = router;
