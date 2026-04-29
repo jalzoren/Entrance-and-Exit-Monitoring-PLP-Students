@@ -380,7 +380,7 @@ router.get('/programs', async (req, res) => {
     try {
         const { search, department, program_type, program_status } = req.query;
         
-        let query = 'SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_status, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE 1=1';
+        let query = 'SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_type, p.program_status, p.duration, p.date_created, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE 1=1';
         let params = [];
         
         if (search) {
@@ -419,7 +419,7 @@ router.get('/programs/archived', async (req, res) => {
     try {
         const { search, department, program_type } = req.query;
         
-        let query = 'SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_status, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE p.program_status = "Inactive"';
+        let query = 'SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_type, p.program_status, p.duration, p.date_created, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE p.program_status = "Inactive"';
         let params = [];
         
         if (search) {
@@ -451,7 +451,7 @@ router.get('/programs/archived', async (req, res) => {
 // Get single program by ID
 router.get('/programs/:id', async (req, res) => {
     try {
-        const [rows] = await pool.query('SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_status, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE p.id = ?', [req.params.id]);
+        const [rows] = await pool.query('SELECT p.id, p.program_code, p.program_name, p.department_id, p.program_type, p.program_status, p.duration, p.date_created, d.dept_name FROM programs p LEFT JOIN departments d ON p.department_id = d.id WHERE p.id = ?', [req.params.id]);
         
         if (rows.length === 0) {
             return res.status(404).json({ error: 'Program not found' });

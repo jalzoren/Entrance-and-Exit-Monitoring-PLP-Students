@@ -79,7 +79,7 @@ function ArchivedPrograms() {
 
       Swal.fire({
         title: 'Success',
-        html: `<p><strong>"${selectedProgram.programName}"</strong> has been restored successfully!</p>`,
+        html: `<p><strong>"${selectedProgram.program_name}"</strong> has been restored successfully!</p>`,
         icon: 'success',
         confirmButtonText: 'Done'
       });
@@ -154,8 +154,8 @@ function ArchivedPrograms() {
                     </span>
                   </td>
                   <td>
-                    {program.dateCreated
-                      ? new Date(program.dateCreated).toLocaleDateString()
+                    {program.date_created
+                      ? new Date(program.date_created).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' })
                       : 'N/A'}
                   </td>
                   <td>

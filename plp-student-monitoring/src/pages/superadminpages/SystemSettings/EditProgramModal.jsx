@@ -6,12 +6,12 @@ import '../../../css/GlobalModal.css';
 
 function EditProgramModal({ program, onClose, onSave, departments, onDepartmentAdded }) {
   const [form, setForm] = useState({
-    program_code: program.program_code,
-    program_name: program.program_name,
-    department_id: program.department_id,
-    program_type: program.program_type,
-    program_status: program.program_status,
-    duration: program.duration,
+    program_code: program.program_code || '',
+    program_name: program.program_name || '',
+    department_id: program.department_id || '',
+    program_type: program.program_type || 'Undergraduate',
+    program_status: program.program_status || 'Active',
+    duration: program.duration || '',
   });
 
   const handleChange = (e) => {

@@ -143,7 +143,7 @@ function EditProgramTab() {
           <div style="text-align: left;">
             <p><strong>Program:</strong> ${program.program_name}</p>
             <p><strong>Code:</strong> ${program.program_code}</p>
-            <p><strong>Department:</strong> ${program.department}</p>
+            <p><strong>Department:</strong> ${program.dept_name}</p>
             <p style="color: #e74c3c; margin-top: 15px;">
               <strong>Warning: This action will affect:</strong>
             </p>
@@ -318,7 +318,7 @@ function EditProgramTab() {
                   <td><span className={`type-badge ${prog.program_type === 'Graduate' ? 'graduate' : 'undergrad'}`}>{prog.program_type}</span></td>
                   <td>{prog.duration} {prog.duration === 1 ? 'year' : 'years'}</td>
                   <td><span className={`status-badge ${prog.program_status === 'Active' ? 'active' : 'inactive'}`}>{prog.program_status}</span></td>
-                  <td>{prog.dateCreated ? new Date(prog.dateCreated).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' }) : 'N/A'}</td>
+                  <td>{prog.date_created ? new Date(prog.date_created).toLocaleDateString('en-US', { timeZone: 'Asia/Manila' }) : 'N/A'}</td>
                   <td>
                     <button className="ep-edit-btn" onClick={() => setEditingProgram(prog)}>Edit</button>
                     <button className="ep-archive-btn" onClick={() => handleArchive(prog)}>Archive</button>
