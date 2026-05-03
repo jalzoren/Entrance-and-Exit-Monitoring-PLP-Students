@@ -1,11 +1,10 @@
-// backend/routes/login.js
 const express = require('express');
 const bcrypt  = require('bcrypt');
 const pool    = require("../src/db");
 const router  = express.Router();
 
 // ============================
-// 🔐 Login with Role Validation
+// 🔐 Login with Role Validation & Archive Check
 // ============================
 router.post('/login', async (req, res) => {
   try {
@@ -26,7 +25,7 @@ router.post('/login', async (req, res) => {
     }
 
     // 1️⃣ Valid roles whitelist — reject unknown roles immediately
-   const VALID_ROLES = ['Super Admin', 'EEMS Admin', 'EAMS Admin']; 
+    const VALID_ROLES = ['Super Admin', 'EEMS Admin', 'EAMS Admin']; 
 
     if (!VALID_ROLES.includes(role)) {
       return res.status(400).json({
@@ -35,8 +34,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 2️⃣ Fetch user by email only (we validate role separately to avoid
-    //    leaking which combination of email+role is registered)
+    // 2️⃣ Fetch user by email - now checking status as well
     const [rows] = await pool.query(
       'SELECT * FROM admins WHERE email = ?',
       [email]
@@ -51,7 +49,15 @@ router.post('/login', async (req, res) => {
 
     const user = rows[0];
 
-    // 3️⃣ Compare hashed password
+    // 3️⃣ Check if user is archived
+    if (user.status === 'archived') {
+      return res.status(403).json({
+        success: false,
+        message: 'Your account has been archived. Please contact the system administrator.'
+      });
+    }
+
+    // 4️⃣ Compare hashed password
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({
@@ -60,7 +66,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 4️⃣ Validate that the selected role matches the user's actual role
+    // 5️⃣ Validate that the selected role matches the user's actual role
     if (user.role !== role) {
       return res.status(403).json({
         success: false,
@@ -68,7 +74,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // 5️⃣ Strip password before storing in session
+    // 6️⃣ Strip password before storing in session
     const { password: _, ...userWithoutPassword } = user;
 
     req.session.user      = userWithoutPassword;
@@ -84,7 +90,7 @@ router.post('/login', async (req, res) => {
         });
       }
 
-      // 6️⃣ Redirect based on role
+      // 7️⃣ Redirect based on role
       let redirect = '/dashboard';
       if (user.role === 'Super Admin') redirect = '/superdashboard';
       if (user.role === 'EAMS Admin')  redirect = '/eamsdashboard'; 
@@ -107,17 +113,48 @@ router.post('/login', async (req, res) => {
 });
 
 // ============================
-// 🔍 Check Session
+// 🔍 Check Session (with archive check)
 // ============================
-router.get('/check-session', (req, res) => {
-  if (req.session.user) {
+router.get('/check-session', async (req, res) => {
+  if (!req.session.user) {
+    return res.json({ authenticated: false });
+  }
+  
+  try {
+    // Check if user is still active in database
+    const [rows] = await pool.query(
+      'SELECT status FROM admins WHERE email = ?',
+      [req.session.user.email]
+    );
+    
+    // If user is archived, destroy session and force logout
+    if (rows.length > 0 && rows[0].status === 'archived') {
+      req.session.destroy((err) => {
+        if (err) console.error('Error destroying session:', err);
+        res.clearCookie('connect.sid');
+        return res.json({ 
+          authenticated: false, 
+          archived: true 
+        });
+      });
+      return;
+    }
+    
+    // User is active, return session data
     res.json({
       authenticated: true,
       user: req.session.user,
       role: req.session.role
     });
-  } else {
-    res.json({ authenticated: false });
+    
+  } catch (err) {
+    console.error('Error checking user status:', err);
+    // On error, still return session data (fail open)
+    res.json({
+      authenticated: true,
+      user: req.session.user,
+      role: req.session.role
+    });
   }
 });
 

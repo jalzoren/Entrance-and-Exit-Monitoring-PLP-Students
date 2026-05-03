@@ -3,11 +3,101 @@ const bcrypt = require('bcrypt');
 const pool = require("../src/db"); 
 const router = express.Router();
 
-// GET all users
+// ============== ARCHIVE ROUTES (put FIRST to avoid route conflicts) ==============
+
+// BULK ARCHIVE users
+router.put('/users/archive/bulk', async (req, res) => {
+    try {
+        const { emails } = req.body;
+        
+        console.log('Bulk archive request:', emails);
+        
+        if (!emails || !emails.length) {
+            return res.status(400).json({ error: 'No users selected' });
+        }
+        
+        const placeholders = emails.map(() => '?').join(',');
+        const [result] = await pool.query(
+            `UPDATE admins SET status = 'archived', archived_at = NOW() 
+             WHERE email IN (${placeholders})`,
+            emails
+        );
+        
+        res.json({ 
+            message: `${result.affectedRows} user(s) archived successfully`,
+            count: result.affectedRows
+        });
+        
+    } catch (err) {
+        console.error('Error bulk archiving users:', err);
+        res.status(500).json({ error: 'Database error: ' + err.message });
+    }
+});
+
+// GET archived users
+router.get('/users/archived/all', async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT email, fullname, role, created, archived_at FROM admins WHERE status = "archived" ORDER BY archived_at DESC'
+        );
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching archived users:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// ARCHIVE single user
+router.put('/users/archive/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const [result] = await pool.query(
+            'UPDATE admins SET status = "archived", archived_at = NOW() WHERE email = ?',
+            [id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({ message: 'User archived successfully' });
+        
+    } catch (err) {
+        console.error('Error archiving user:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// RESTORE user from archive
+router.put('/users/restore/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        const [result] = await pool.query(
+            'UPDATE admins SET status = "active", archived_at = NULL WHERE email = ?',
+            [id]
+        );
+        
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+        
+        res.json({ message: 'User restored successfully' });
+        
+    } catch (err) {
+        console.error('Error restoring user:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// ============== REGULAR CRUD ROUTES ==============
+
+// GET all active users
 router.get('/users', async (req, res) => {
     try {
         const [rows] = await pool.query(
-            'SELECT email, fullname, role, created FROM admins ORDER BY created DESC'
+            'SELECT email, fullname, role, created FROM admins WHERE status = "active" OR status IS NULL ORDER BY created DESC'
         );
         res.json(rows);
     } catch (err) {
@@ -46,7 +136,6 @@ router.post('/users', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Construct fullname with extension if provided
         let fullname;
         if (middleName && extension) {
             fullname = `${lastName}, ${firstName} ${middleName} ${extension}`;
@@ -61,9 +150,9 @@ router.post('/users', async (req, res) => {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         
-        const sql = 'INSERT INTO admins (email, fullname, role, password) VALUES (?, ?, ?, ?)';
+        const sql = 'INSERT INTO admins (email, fullname, role, password, status) VALUES (?, ?, ?, ?, ?)';
         
-        const [result] = await pool.query(sql, [email, fullname, role, hashedPassword]);
+        const [result] = await pool.query(sql, [email, fullname, role, hashedPassword, 'active']);
         
         const [newUser] = await pool.query(
             'SELECT email, fullname, role, created FROM admins WHERE email = ?',
@@ -93,7 +182,6 @@ router.put('/users/:id', async (req, res) => {
             return res.status(400).json({ error: 'Missing required fields' });
         }
         
-        // Construct fullname with extension if provided
         let fullname;
         if (middleName && extension) {
             fullname = `${lastName}, ${firstName} ${middleName} ${extension}`;
@@ -133,25 +221,6 @@ router.put('/users/:id', async (req, res) => {
             return res.status(400).json({ error: 'Email already exists' });
         }
         
-        res.status(500).json({ error: 'Database error' });
-    }
-});
-
-// DELETE user
-router.delete('/users/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        
-        const [result] = await pool.query('DELETE FROM admins WHERE email = ?', [id]);
-        
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        
-        res.json({ message: 'User deleted successfully' });
-        
-    } catch (err) {
-        console.error('Error deleting user:', err);
         res.status(500).json({ error: 'Database error' });
     }
 });
