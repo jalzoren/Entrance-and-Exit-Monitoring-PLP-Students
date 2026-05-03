@@ -43,16 +43,6 @@ const REQUIRED_COLUMNS = [
 const OPTIONAL_COLUMNS = ["Extension Name"];
 
 // ── Allowed values ────────────────────────────────────────────────────────────
-const VALID_DEPARTMENTS = [
-  "College of Nursing",
-  "College of Engineering",
-  "College of Education",
-  "College of Computer Studies",
-  "College of Business Administration",
-  "College of Arts and Sciences",
-  "College of Hospitality Management",
-];
-
 const VALID_YEAR_LEVELS = {
   "1": 1, "1st": 1,
   "2": 2, "2nd": 2,
@@ -67,19 +57,19 @@ const STUDENT_ID_REGEX    = /^\d{2}-\d{5}$/;
 const PLPASIG_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
 
 // ── Row validator ─────────────────────────────────────────────────────────────
-const validateRow = (row, rowNumber) => {
+const validateRow = (row, rowNumber, normalizedHeaders, programMap, deptMap) => {
   const errors = [];
 
-  const studentId    = (row["Student ID"]         || "").toString().trim();
-  const email        = (row["Email"]              || "").toString().trim();
-  const firstName    = (row["First Name"]         || "").toString().trim();
-  const lastName     = (row["Last Name"]          || "").toString().trim();
-  const middleName   = (row["Middle Name"]        || "").toString().trim();
-  const collegeDept  = (row["College Department"] || "").toString().trim();
-  const programName  = (row["Program Name"]       || "").toString().trim();
-  const yearLevel    = (row["Year Level"]         || "").toString().trim();
-  const enrollStatus = (row["Enrollment Status"]  || "").toString().trim();
-  const extensionName = (row["Extension Name"]    || "").toString().trim();
+  const studentId    = getFieldValue(row, normalizedHeaders, "Student ID");
+  const email        = getFieldValue(row, normalizedHeaders, "Email");
+  const firstName    = getFieldValue(row, normalizedHeaders, "First Name");
+  const lastName     = getFieldValue(row, normalizedHeaders, "Last Name");
+  const middleName   = getFieldValue(row, normalizedHeaders, "Middle Name");
+  const collegeDept  = getFieldValue(row, normalizedHeaders, "College Department");
+  const programName  = getFieldValue(row, normalizedHeaders, "Program Name");
+  const yearLevel    = getFieldValue(row, normalizedHeaders, "Year Level");
+  const enrollStatus = getFieldValue(row, normalizedHeaders, "Enrollment Status");
+  const extensionName = getFieldValue(row, normalizedHeaders, "Extension Name");
 
   if (!studentId)    errors.push(`Row ${rowNumber}: Student ID is empty.`);
   if (!email)        errors.push(`Row ${rowNumber}: Email is empty.`);
@@ -97,11 +87,24 @@ const validateRow = (row, rowNumber) => {
   if (email && !PLPASIG_EMAIL_REGEX.test(email))
     errors.push(`Row ${rowNumber}: Email "${email}" must be a valid @plpasig.edu.ph address.`);
 
-  if (collegeDept && !VALID_DEPARTMENTS.includes(collegeDept))
-    errors.push(`Row ${rowNumber}: College Department "${collegeDept}" is invalid. Valid options: ${VALID_DEPARTMENTS.join(", ")}.`);
+  if (collegeDept) {
+    const deptKey = collegeDept.toLowerCase().trim();
+    if (!deptMap[deptKey]) {
+      const validDepts = Object.keys(deptMap).map(k => {
+        // Find original case from lookup
+        const [deptRow] = Object.values(deptMap);
+        return collegeDept;
+      });
+      errors.push(`Row ${rowNumber}: College Department "${collegeDept}" not found in system. Please check the department name.`);
+    }
+  }
 
-  if (programName && programName.length > 200)
-    errors.push(`Row ${rowNumber}: Program Name exceeds the 200-character limit.`);
+  if (programName) {
+    const progKey = programName.toLowerCase().trim();
+    if (!programMap[progKey]) {
+      errors.push(`Row ${rowNumber}: Program Name "${programName}" not found in system. Please check the program name.`);
+    }
+  }
 
   if (yearLevel && !(yearLevel.toLowerCase() in VALID_YEAR_LEVELS))
     errors.push(`Row ${rowNumber}: Year Level "${yearLevel}" is invalid. Valid options: 1, 2, 3, 4.`);
@@ -116,23 +119,100 @@ const validateRow = (row, rowNumber) => {
 };
 
 
+// ─── Helper: Normalize column names (case-insensitive) ──────────────────────
+const normalizeColumnHeaders = (headers) => {
+  const normalized = {};
+  headers.forEach(header => {
+    const lowerHeader = header.toLowerCase().trim();
+    normalized[lowerHeader] = header;
+  });
+  return normalized;
+};
+
+// ─── Helper: Find column by normalized name ──────────────────────────────────
+const findColumnByName = (row, normalizedHeaders, targetName) => {
+  const target = targetName.toLowerCase().trim();
+  for (const [lowerKey, originalKey] of Object.entries(normalizedHeaders)) {
+    if (lowerKey === target) {
+      return row[originalKey];
+    }
+  }
+  return undefined;
+};
+
+// ─── Helper: Get field value from row using normalized headers ──────────────
+const getFieldValue = (row, normalizedHeaders, fieldName) => {
+  const value = findColumnByName(row, normalizedHeaders, fieldName);
+  return (value || "").toString().trim();
+};
+
 // ─── POST /api/import-students ────────────────────────────────────────────────
 router.post("/import-students", upload.single("file"), async (req, res) => {
   try {
     if (!req.file)
       return res.status(400).json({ message: "No file uploaded." });
 
-    const workbook  = XLSX.read(req.file.buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const rows      = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
 
-    if (rows.length === 0)
-      return res.status(400).json({ message: "The uploaded file is empty." });
+    // ── Check if file has sheets ──────────────────────────────────────────
+    if (!workbook.SheetNames || workbook.SheetNames.length === 0)
+      return res.status(400).json({ message: "The uploaded file contains no sheets." });
 
-    // ── Column presence check ─────────────────────────────────────────────
-    const fileColumns    = Object.keys(rows[0]);
-    const missingColumns = REQUIRED_COLUMNS.filter(col => !fileColumns.includes(col));
+    // ── Show available sheets if multiple sheets exist ────────────────────
+    if (workbook.SheetNames.length > 1) {
+      console.log(`File contains ${workbook.SheetNames.length} sheets: ${workbook.SheetNames.join(", ")}`);
+    }
+
+    // ── Read all sheets and combine data ──────────────────────────────────
+    let allRows = [];
+    for (const sheetName of workbook.SheetNames) {
+      const worksheet = workbook.Sheets[sheetName];
+      const sheetRows = XLSX.utils.sheet_to_json(worksheet, { defval: "" });
+      if (sheetRows.length > 0) {
+        allRows = allRows.concat(sheetRows);
+      }
+    }
+
+    if (allRows.length === 0)
+      return res.status(400).json({ message: "All sheets in the file are empty." });
+
+    const rows = allRows;
+
+    // ── Fetch programs and departments from database ───────────────────────
+    const [programRows] = await db.query(
+      `SELECT p.id, p.program_name, p.department_id, d.dept_name 
+       FROM programs p 
+       LEFT JOIN departments d ON p.department_id = d.id 
+       WHERE p.program_status = 'Active'`
+    );
+
+    const [deptRows] = await db.query(
+      `SELECT id, dept_name FROM departments WHERE status = 'Active'`
+    );
+
+    // ── Build lookup maps ─────────────────────────────────────────────────
+    const programMap = {};
+    const deptMap = {};
+
+    programRows.forEach(row => {
+      programMap[row.program_name.toLowerCase().trim()] = {
+        id: row.id,
+        dept_id: row.department_id,
+        dept_name: row.dept_name
+      };
+    });
+
+    deptRows.forEach(row => {
+      deptMap[row.dept_name.toLowerCase().trim()] = row.id;
+    });
+
+    // ── Column presence check (case-insensitive) ──────────────────────────
+    const firstRowHeaders = Object.keys(rows[0]);
+    const normalizedHeaders = normalizeColumnHeaders(firstRowHeaders);
+    
+    const missingColumns = REQUIRED_COLUMNS.filter(col => 
+      !Object.keys(normalizedHeaders).includes(col.toLowerCase().trim())
+    );
 
     if (missingColumns.length > 0) {
       return res.status(400).json({
@@ -143,7 +223,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
     // ── Row-level validation ──────────────────────────────────────────────
     const validationErrors = [];
     rows.forEach((row, index) => {
-      validationErrors.push(...validateRow(row, index + 2));
+      validationErrors.push(...validateRow(row, index + 2, normalizedHeaders, programMap, deptMap));
     });
 
     if (validationErrors.length > 0) {
@@ -154,7 +234,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
     }
 
     // ── Duplicate checks within the file itself ───────────────────────────
-    const fileStudentIds  = rows.map(r => r["Student ID"].toString().trim());
+    const fileStudentIds = rows.map(r => getFieldValue(r, normalizedHeaders, "Student ID"));
     const duplicateInFile = fileStudentIds.filter((id, i) => fileStudentIds.indexOf(id) !== i);
 
     if (duplicateInFile.length > 0) {
@@ -163,7 +243,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       });
     }
 
-    const fileEmails      = rows.map(r => r["Email"].toString().trim().toLowerCase());
+    const fileEmails = rows.map(r => getFieldValue(r, normalizedHeaders, "Email").toLowerCase());
     const duplicateEmails = fileEmails.filter((e, i) => fileEmails.indexOf(e) !== i);
 
     if (duplicateEmails.length > 0) {
@@ -193,8 +273,8 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
 
     for (let i = 0; i < rows.length; i++) {
       const row       = rows[i];
-      const studentId = row["Student ID"].toString().trim();
-      const email     = row["Email"].toString().trim().toLowerCase();
+      const studentId = getFieldValue(row, normalizedHeaders, "Student ID");
+      const email     = getFieldValue(row, normalizedHeaders, "Email").toLowerCase();
 
       if (existingIdSet.has(studentId)) {
         skippedRows.push({ studentId, reason: "Student ID already exists in the system" });
@@ -222,24 +302,33 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
     const failedRows       = [];
 
     for (const row of rowsToInsert) {
-      const studentId   = row["Student ID"].toString().trim();
-      const email       = row["Email"].toString().trim().toLowerCase();
-      const firstName   = row["First Name"].toString().trim();
-      const middleName  = row["Middle Name"].toString().trim();
-      const lastName    = row["Last Name"].toString().trim();
-      const collegeDept = row["College Department"].toString().trim();
-      const programName = row["Program Name"].toString().trim();
-      const yearLevel   = VALID_YEAR_LEVELS[row["Year Level"].toString().trim().toLowerCase()];
-      const status      = row["Enrollment Status"].toString().trim();
-      const extName     = (row["Extension Name"] || "").toString().trim() || null;
+      const studentId   = getFieldValue(row, normalizedHeaders, "Student ID");
+      const email       = getFieldValue(row, normalizedHeaders, "Email").toLowerCase();
+      const firstName   = getFieldValue(row, normalizedHeaders, "First Name");
+      const middleName  = getFieldValue(row, normalizedHeaders, "Middle Name");
+      const lastName    = getFieldValue(row, normalizedHeaders, "Last Name");
+      const collegeDept = getFieldValue(row, normalizedHeaders, "College Department");
+      const programName = getFieldValue(row, normalizedHeaders, "Program Name");
+      const yearLevel   = VALID_YEAR_LEVELS[getFieldValue(row, normalizedHeaders, "Year Level").toLowerCase()];
+      const status      = getFieldValue(row, normalizedHeaders, "Enrollment Status");
+      const extName     = getFieldValue(row, normalizedHeaders, "Extension Name") || null;
 
       try {
+        // ── Lookup program ID from database ───────────────────────────────
+        const progKey = programName.toLowerCase().trim();
+        const programData = programMap[progKey];
+
+        if (!programData) {
+          failedRows.push({ studentId, reason: `Program "${programName}" not found in database` });
+          continue;
+        }
+
         await db.query(
           `INSERT INTO students
              (student_id, email, first_name, last_name, middle_name,
-              extension_name, program_name, college_department,
-              year_level, status, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
+              extension_name, program_id,
+              year_level, status, is_archived, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
           [
             studentId,
             email,
@@ -247,8 +336,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
             lastName.toUpperCase(),
             middleName.toUpperCase() || null,
             extName,
-            programName,
-            collegeDept,
+            programData.id,
             yearLevel,
             status,
           ]
