@@ -20,8 +20,10 @@ import {
   FaPlusCircle, FaChartBar, FaDownload,
   FaEnvelope, FaCheckCircle, FaClock,
   FaCode, FaCalendar, FaCircle, FaSync,
+  FaUserTie, FaChartLine, FaTimes,
 } from "react-icons/fa";
 import * as timeUtils from "../../utils/timeUtils";
+import GenerateReportFilter from "../../components/GenerateReportFilter";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVICE CLASSES
@@ -135,6 +137,16 @@ function Dashboard() {
   const [trafficDays, setTrafficDays] = useState(7);
   const [chartKey,    setChartKey]    = useState(0);
   const [loadError,   setLoadError]   = useState(false);
+
+  // Modal states
+  const [showReportModal,   setShowReportModal]   = useState(false);
+  const [showVisitorRecords, setShowVisitorRecords] = useState(false);
+  const [visitorRecords,    setVisitorRecords]    = useState([]);
+  const [visitorLoading,    setVisitorLoading]    = useState(false);
+  const [showAnalyticsInfo, setShowAnalyticsInfo] = useState(false);
+  const [showSupportModal,  setShowSupportModal]  = useState(false);
+  const [showGuideModal,    setShowGuideModal]    = useState(false);
+  const [selectedGuide,     setSelectedGuide]     = useState(null);
 
   // ── Server clock ────────────────────────────────────────────────────────
   useEffect(() => {
@@ -296,28 +308,47 @@ function Dashboard() {
             <h3><FaBolt /> Quick Actions</h3>
           </div>
           <div className="actions-grid">
-            <button className="action-card primary">
-              <span className="action-icon"><FaPlusCircle /></span>
-              <div className="action-content">
-                <span className="action-title">Register New Student</span>
-                <span className="action-desc">Add student record</span>
-              </div>
-            </button>
-            <button className="action-card success">
+            <button className="action-card success" onClick={() => setShowReportModal(true)}>
               <span className="action-icon"><FaChartBar /></span>
               <div className="action-content">
                 <span className="action-title">Generate Report</span>
                 <span className="action-desc">Export analytics</span>
               </div>
             </button>
-            <button className="action-card warning">
-              <span className="action-icon"><FaDownload /></span>
+            <button className="action-card" onClick={() => {
+              setVisitorLoading(true);
+              setVisitorRecords([]);
+              setShowVisitorRecords(true);
+              fetch('/api/analytics/records')
+                .then((response) => {
+                  if (!response.ok) {
+                    return response.text().then((text) => { throw new Error(text || `HTTP ${response.status}`); });
+                  }
+                  return response.json();
+                })
+                .then((data) => {
+                  setVisitorRecords(Array.isArray(data.visitors) ? data.visitors : []);
+                })
+                .catch((err) => {
+                  console.error('Error loading visitor records:', err);
+                  setVisitorRecords([]);
+                })
+                .finally(() => setVisitorLoading(false));
+            }}>
+              <span className="action-icon"><FaUserTie /></span>
               <div className="action-content">
-                <span className="action-title">Export Data</span>
-                <span className="action-desc">CSV, PDF</span>
+                <span className="action-title">Show Visitor Records</span>
+                <span className="action-desc">Visitor entry/exit logs</span>
               </div>
             </button>
-            <button className="action-card">
+            <button className="action-card info" onClick={() => setShowAnalyticsInfo(true)}>
+              <span className="action-icon"><FaChartLine /></span>
+              <div className="action-content">
+                <span className="action-title">View Analytics</span>
+                <span className="action-desc">Detailed insights</span>
+              </div>
+            </button>
+            <button className="action-card warning" onClick={() => setShowSupportModal(true)}>
               <span className="action-icon"><FaEnvelope /></span>
               <div className="action-content">
                 <span className="action-title">Contact Support</span>
@@ -332,15 +363,73 @@ function Dashboard() {
           <h3><FaBook /> Quick Guide &amp; FAQs</h3>
           <div className="guide-grid">
             {[
-              { icon: <FaBook />,          title: "Getting Started",     items: ["Monitor real-time entries/exits","View daily traffic trends","Check college distribution","Generate reports weekly"] },
-              { icon: <FaQuestionCircle />, title: "Frequently Asked",    items: ["How to add new students?","What if facial recognition fails?","How to export reports?","Who to contact for support?"] },
-              { icon: <FaBolt />,           title: "Quick Tips",          items: ["Use filters to narrow logs","Hover over cards for details","Click charts to zoom","Export data as CSV"] },
-              { icon: <FaHeadset />,        title: "Contact Support",     items: ["IT Helpdesk: ext. 1234","Email: support@plp.edu","Hours: 8AM - 5PM","Emergency: 0917-123-4567"] },
-            ].map(({ icon, title, items }) => (
-              <div key={title} className="guide-card">
+              { 
+                icon: <FaBook />,          
+                title: "Getting Started",
+                overview: "Learn how to log in, navigate the dashboard, and access key features.",
+                items: [
+                  "Log in using your PLP credentials (username and password)",
+                  "Navigate to 'Dashboard' to view real-time campus traffic and key metrics",
+                  "Use 'Records' tab to view detailed student and visitor entry/exit logs",
+                  "Access 'Settings' to configure system preferences and user roles",
+                  "Generate monthly reports from the 'Generate Report' quick action button"
+                ] 
+              },
+              { 
+                icon: <FaQuestionCircle />, 
+                title: "Frequently Asked",
+                overview: "Answers to common questions about adding students, troubleshooting, and support.",
+                items: [
+                  "Q: How to add new students? A: Go to Students page and click 'Import Students' or 'Register Student' to add records manually or in bulk via CSV.",
+                  "Q: What if facial recognition fails? A: The system automatically falls back to QR code scanning or manual entry. Ensure proper lighting and camera calibration.",
+                  "Q: How to export reports? A: Use 'Generate Report' action, select date range and filters, then choose PDF or CSV format to download.",
+                  "Q: Who to contact for support? A: Contact PLP IT Helpdesk at ext. 1234 or email ithelpdesk@plp.edu.ph (8AM-5PM Mon-Fri).",
+                  "Q: Can I view historical data? A: Yes, use the Records page with date filters to view data from any date range.",
+                  "Q: How often is data synced? A: Real-time data syncs every 5 seconds. Check 'Last Sync' time in dashboard footer."
+                ] 
+              },
+              { 
+                icon: <FaBolt />,           
+                title: "Quick Tips",
+                overview: "Practical tips to maximize efficiency using filters, search, and data export tools.",
+                items: [
+                  "Use the search bar in Records to quickly find a specific student or visitor by name or ID",
+                  "Apply multiple filters (Year Level, Department, Action, Date) to narrow down results efficiently",
+                  "Hover over metric cards in the dashboard to see detailed tooltips explaining each metric",
+                  "Click on the traffic chart to expand and see daily traffic trends for up to 30 days",
+                  "Reset filters with one click using the 'Reset Filters' button when you need to start over",
+                  "Use the college distribution pie chart to monitor student distribution across departments",
+                  "Check the peak entry hour banner to identify busiest times for resource planning",
+                  "Export data as CSV from reports for further analysis in Excel or other tools"
+                ] 
+              },
+              { 
+                icon: <FaHeadset />,        
+                title: "Support Information",
+                overview: "Contact details for IT support, technical issues, and after-hours emergencies.",
+                items: [
+                  "📞 Main Support Line: (+63) 2-1234-5678 ext. 1234",
+                  "✉️ General Email: ithelpdesk@plp.edu.ph",
+                  "⏰ Business Hours: Monday-Friday, 8:00 AM - 5:00 PM",
+                  "🚨 After-Hours Emergency: 0917-123-4567",
+                  "📧 Facial Recognition Issues: fr_support@plp.edu.ph",
+                  "📧 System Access/Login Problems: sysaccess@plp.edu.ph",
+                  "📧 Reports & Analytics: analytics@plp.edu.ph",
+                  "💡 For faster resolution, provide your issue details and system version (shown in dashboard footer)"
+                ] 
+              },
+            ].map(({ icon, title, overview, items }) => (
+              <div key={title} className="guide-card" onClick={() => {
+                setSelectedGuide({ title, items });
+                setShowGuideModal(true);
+              }} style={{ cursor: 'pointer' }}>
                 <div className="guide-icon">{icon}</div>
                 <h4>{title}</h4>
-                <ul>{items.map(i => <li key={i}><FaCircle />{i}</li>)}</ul>
+                <p className="guide-overview">{overview}</p>
+                <div className="guide-preview">
+                  <FaCircle style={{ fontSize: '0.5rem', marginRight: '6px' }} />
+                  <span>Click for details</span>
+                </div>
               </div>
             ))}
           </div>
@@ -363,6 +452,138 @@ function Dashboard() {
         </footer>
 
       </div>
+
+      {/* ── MODALS ── */}
+      {showReportModal && (
+        <div className="modal-overlay" onClick={() => setShowReportModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Generate Report</h2>
+              <button className="modal-close" onClick={() => setShowReportModal(false)}><FaTimes /></button>
+            </div>
+            <GenerateReportFilter onClose={() => setShowReportModal(false)} />
+          </div>
+        </div>
+      )}
+
+      {showVisitorRecords && (
+        <div className="modal-overlay" onClick={() => setShowVisitorRecords(false)}>
+          <div className="modal-content visitor-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Visitor Records</h2>
+              <button className="modal-close" onClick={() => setShowVisitorRecords(false)}><FaTimes /></button>
+            </div>
+            <div className="modal-body">
+              {visitorLoading ? (
+                <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>Loading visitor records...</p>
+              ) : visitorRecords.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#999', padding: '20px' }}>No visitor records found.</p>
+              ) : (
+                <div className="visitor-records-table-wrapper">
+                  <div style={{ overflowX: 'auto' }}>
+                    <table className="visitor-records-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>ID / Plate</th>
+                          <th>Email</th>
+                          <th>Reason</th>
+                          <th>Logged At</th>
+                          <th>Action</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visitorRecords.map((record, idx) => (
+                          <tr key={idx}>
+                            <td>{record.name || record.visitor_name || '—'}</td>
+                            <td>{record.visitorId || record.id_number || record.plate_number || '—'}</td>
+                            <td>{record.email || '—'}</td>
+                            <td>{record.visitReason || record.reason || record.otherReason || '—'}</td>
+                            <td className="time-cell">{record.timestamp ? new Date(record.timestamp).toLocaleString('en-US', { timeZone: 'Asia/Manila' }) : '—'}</td>
+                            <td>{record.actionLabel || record.action || '—'}</td>
+                            <td>
+                              <span className={`status-badge ${record.action === 'EXIT' ? 'exited' : 'active'}`}>
+                                {record.action === 'EXIT' ? 'Exited' : record.action === 'ENTRY' ? 'Entered' : 'Recorded'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAnalyticsInfo && (
+        <div className="modal-overlay" onClick={() => setShowAnalyticsInfo(false)}>
+          <div className="modal-content small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Analytics Overview</h2>
+              <button className="modal-close" onClick={() => setShowAnalyticsInfo(false)}><FaTimes /></button>
+            </div>
+            <div className="modal-body">
+              <h3>Current Campus Status</h3>
+              <ul style={{ lineHeight: '1.8' }}>
+                <li><strong>Students On Campus:</strong> {metrics?.onCampus ?? 0}</li>
+                <li><strong>Visitors On Campus:</strong> {metrics?.visitorsOnCampus ?? 0}</li>
+                <li><strong>Today's Entries:</strong> {metrics?.totalEntries ?? 0}</li>
+                <li><strong>Auth Success Rate:</strong> {metrics?.authSuccessRate ?? 0}%</li>
+                <li><strong>Peak Entry Hour:</strong> {peakHourLabel || 'Not available'}</li>
+                <li><strong>Total Students:</strong> {metrics?.totalStudents ?? 0}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSupportModal && (
+        <div className="modal-overlay" onClick={() => setShowSupportModal(false)}>
+          <div className="modal-content small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Contact Support</h2>
+              <button className="modal-close" onClick={() => setShowSupportModal(false)}><FaTimes /></button>
+            </div>
+            <div className="modal-body">
+              <h3>PLP IT Helpdesk</h3>
+              <p><strong>📞 Hotline:</strong> (+63) 2-1234-5678 ext. 1234</p>
+              <p><strong>✉️ Email:</strong> ithelpdesk@plp.edu.ph</p>
+              <p><strong>⏰ Operating Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM</p>
+              <p><strong>🚨 Emergency/After Hours:</strong> 0917-123-4567</p>
+              <hr style={{ margin: '15px 0', border: 'none', borderTop: '1px solid #ddd' }} />
+              <h4>Specialized Support Contacts:</h4>
+              <ul>
+                <li><strong>Facial Recognition Issues:</strong> fr_support@plp.edu.ph</li>
+                <li><strong>System Access/Login:</strong> sysaccess@plp.edu.ph</li>
+                <li><strong>Reports & Data Export:</strong> analytics@plp.edu.ph</li>
+                <li><strong>Student Records:</strong> records@plp.edu.ph</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showGuideModal && selectedGuide && (
+        <div className="modal-overlay" onClick={() => setShowGuideModal(false)}>
+          <div className="modal-content guide-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{selectedGuide.title}</h2>
+              <button className="modal-close" onClick={() => setShowGuideModal(false)}><FaTimes /></button>
+            </div>
+            <div className="modal-body guide-body">
+              <ul className="guide-items-list">
+                {selectedGuide.items.map((item, idx) => (
+                  <li key={idx}><span className="guide-item-number">{idx + 1}.</span> {item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
