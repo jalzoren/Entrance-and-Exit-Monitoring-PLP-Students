@@ -136,9 +136,12 @@ router.post("/register", async (req, res) => {
       images
     } = req.body;
 
-    if (!student_id || !images || images.length !== 5) {
-      throw new Error("Missing required student data or images");
+    if (!student_id) {
+      throw new Error("Missing required student data");
     }
+
+    // Images are optional - student can register without face and add later
+    const hasFaceImages = images && Array.isArray(images) && images.length === 5;
 
     console.log("Registering student:", student_id);
 
@@ -167,72 +170,68 @@ router.post("/register", async (req, res) => {
     console.log("Student info saved");
 
     /* -----------------------------
-       CALL PYTHON API
+       FACE EMBEDDINGS (Optional)
     ----------------------------- */
 
-    const response = await axios.post(
-      "http://127.0.0.1:8000/generate-embedding",
-      { images }
-    );
+    if (hasFaceImages) {
+      console.log("Processing face images...");
 
-    console.log("Python response:", response.data);
-
-    const embeddings =
-      response.data.embeddings ||
-      (response.data.embedding ? [response.data.embedding] : null);
-
-    console.log("Total embeddings received:", embeddings ? embeddings.length : 0);
-
-    /* -----------------------------
-       VALIDATE EMBEDDINGS
-    ----------------------------- */
-
-    if (!response.data.success) {
-      throw new Error("Face detection failed");
-    }
-
-    if (!embeddings || embeddings.length !== 5) {
-      throw new Error("Expected 5 face embeddings");
-    }
-
-    /* -----------------------------
-       FACE POSITIONS
-    ----------------------------- */
-
-    const positions = [
-      "center",
-      "left",
-      "right",
-      "up",
-      "down"
-    ];
-
-    /* -----------------------------
-       SAVE ALL EMBEDDINGS
-    ----------------------------- */
-
-    for (let i = 0; i < embeddings.length; i++) {
-
-      const emb = embeddings[i];
-
-      if (!emb || emb.length !== 512) {
-        throw new Error("Invalid embedding size");
-      }
-
-      await connection.query(
-        `INSERT INTO student_face_embeddings
-         (student_id, face_position, face_embedding)
-         VALUES (?, ?, ?)`,
-        [
-          student_id,
-          positions[i],
-          JSON.stringify(emb)
-        ]
+      /* CALL PYTHON API */
+      const response = await axios.post(
+        "http://127.0.0.1:8000/generate-embedding",
+        { images }
       );
 
-    }
+      console.log("Python response:", response.data);
 
-    console.log("All 5 face embeddings saved");
+      const embeddings =
+        response.data.embeddings ||
+        (response.data.embedding ? [response.data.embedding] : null);
+
+      console.log("Total embeddings received:", embeddings ? embeddings.length : 0);
+
+      /* VALIDATE EMBEDDINGS */
+      if (!response.data.success) {
+        throw new Error("Face detection failed");
+      }
+
+      if (!embeddings || embeddings.length !== 5) {
+        throw new Error("Expected 5 face embeddings");
+      }
+
+      /* FACE POSITIONS */
+      const positions = [
+        "center",
+        "left",
+        "right",
+        "up",
+        "down"
+      ];
+
+      /* SAVE ALL EMBEDDINGS */
+      for (let i = 0; i < embeddings.length; i++) {
+        const emb = embeddings[i];
+
+        if (!emb || emb.length !== 512) {
+          throw new Error("Invalid embedding size");
+        }
+
+        await connection.query(
+          `INSERT INTO student_face_embeddings
+           (student_id, face_position, face_embedding)
+           VALUES (?, ?, ?)`,
+          [
+            student_id,
+            positions[i],
+            JSON.stringify(emb)
+          ]
+        );
+      }
+
+      console.log("All 5 face embeddings saved");
+    } else {
+      console.log("No face images provided - student registered without facial recognition");
+    }
 
     await connection.commit();
 
