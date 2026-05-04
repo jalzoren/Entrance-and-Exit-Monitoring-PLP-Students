@@ -1,5 +1,5 @@
-// SystemSettings.jsx - Updated with Archived Users tab
-import React, { useState } from 'react';
+// SystemSettings.jsx - Updated with Archived Users tab and notification badges
+import React, { useState, useEffect } from 'react';
 import GeneralSettings     from './GeneralSettings';
 import EditProgramTab      from './EditProgramTab';
 import ArchivedStudents    from './ArchivedStudents';
@@ -9,6 +9,7 @@ import ArchivedUsers       from './ArchivedUsers'; // Import the new component
 import DepartmentsTab      from './DepartmentsTab';
 import "../../../css/SystemSettings.css";
 import "../../../css/GeneralSettings.css";
+// Define the tabs for the system settings
 
 const TABS = [
   'General Settings',
@@ -22,6 +23,37 @@ const TABS = [
 
 function SystemSettings() {
   const [activeTab, setActiveTab] = useState('General Settings');
+  const [notificationBadge, setNotificationBadge] = useState(0);
+
+  // Fetch academic info to check for notifications
+  useEffect(() => {
+    const checkNotifications = async () => {
+      try {
+        const acadRes = await fetch('/api/settings/academic-year');
+        if (acadRes.ok) {
+          const acad = await acadRes.json();
+          let badges = 0;
+
+          // Check if school year has started or ended
+          if (acad.schoolYearStarted) badges++;
+          if (acad.schoolYearEnded) badges++;
+
+          // Check if semester has started or ended
+          if (acad.semesterStarted) badges++;
+          if (acad.semesterEnded) badges++;
+
+          setNotificationBadge(badges);
+        }
+      } catch (err) {
+        console.error('Failed to check notifications:', err);
+      }
+    };
+
+    checkNotifications();
+    // Check every 5 minutes
+    const interval = setInterval(checkNotifications, 5 * 60_000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div>
@@ -42,6 +74,9 @@ function SystemSettings() {
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
+                {tab === 'General Settings' && notificationBadge > 0 && (
+                  <span className="notification-badge">{notificationBadge > 9 ? '9+' : notificationBadge}</span>
+                )}
               </button>
             ))}
           </div>
