@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
-function AcademicYearSettings() {
+function AcademicYearSettings() {2
   const [form, setForm] = useState({
     school_year_start: '2025',
     school_year_end:   '2026',
@@ -166,6 +166,44 @@ function AcademicYearSettings() {
           {academicInfo.promotionDue && (
             <div className="promotion-warning">
               ⚠️ School year has ended — student promotion is due.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Compliance Notifications ──────────────────────────────────────── */}
+      {academicInfo && (
+        <div className="compliance-notifications">
+          {academicInfo.schoolYearStarted && (
+            <div className="compliance-alert compliance-alert-started">
+              <span className="alert-icon">📅</span>
+              <div className="alert-content">
+                <strong>School Year Started:</strong> The current school year ({academicInfo.schoolYear}) has begun. Check for any student status changes or new enrollments.
+              </div>
+            </div>
+          )}
+          {academicInfo.schoolYearEnded && (
+            <div className="compliance-alert compliance-alert-ended">
+              <span className="alert-icon">⏰</span>
+              <div className="alert-content">
+                <strong>School Year Ended:</strong> The current school year ({academicInfo.schoolYear}) has concluded. Review and process any remaining graduation requirements. Consider running student promotion.
+              </div>
+            </div>
+          )}
+          {academicInfo.semesterStarted && (
+            <div className="compliance-alert compliance-alert-started">
+              <span className="alert-icon">📖</span>
+              <div className="alert-content">
+                <strong>Semester Started:</strong> Semester {academicInfo.detectedSemester} has begun. Verify student enrollment status and attendance records.
+              </div>
+            </div>
+          )}
+          {academicInfo.semesterEnded && (
+            <div className="compliance-alert compliance-alert-ended">
+              <span className="alert-icon">✅</span>
+              <div className="alert-content">
+                <strong>Semester Ended:</strong> Semester {academicInfo.detectedSemester} has finished. Review final grades and student performance records. Check for promotions needed.
+              </div>
             </div>
           )}
         </div>

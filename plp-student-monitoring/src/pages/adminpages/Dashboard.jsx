@@ -15,6 +15,7 @@ import {
   CartesianGrid,
 } from "recharts";
 import "../../css/Dashboard.css";
+import "../../css/SettingsDisplay.css";
 import {
   FaBook, FaQuestionCircle, FaBolt, FaHeadset,
   FaPlusCircle, FaChartBar, FaDownload,
@@ -24,6 +25,7 @@ import {
 } from "react-icons/fa";
 import * as timeUtils from "../../utils/timeUtils";
 import GenerateReportFilter from "../../components/GenerateReportFilter";
+import SettingsDisplay from "../../components/SettingsDisplay";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVICE CLASSES
@@ -219,6 +221,9 @@ function Dashboard() {
             <div className="time">{formatted.time}</div>
           </div>
         </header>
+
+        {/* ── SETTINGS DISPLAY (Academic Year & Gate Settings) ── */}
+        <SettingsDisplay />
 
         {/* ── METRIC CARDS ── */}
         <section className="metrics-row">

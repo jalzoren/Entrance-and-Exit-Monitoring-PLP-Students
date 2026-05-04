@@ -5,6 +5,7 @@ import RegisterStudent from "../../components/RegisterStudent";
 import ImportStudent   from "../../components/ImportStudents";
 import EditStudent     from "../../components/EditStudent";
 import axios from "axios";
+import Swal from 'sweetalert2';
 import { FaUserGraduate } from "react-icons/fa";
 import { BsPersonFillDash } from "react-icons/bs";
 import { BsPersonFillSlash } from "react-icons/bs";
@@ -350,28 +351,60 @@ function Students() {
     closeModal(); setShowEditModal(false); setEditingStudent(null); refreshAll();
   };
 
-  // ── Bulk archive ──────────────────────────────────────────────────────────
+  // ── Bulk archive with SweetAlert ──────────────────────────────────────────
   const ARCHIVABLE_STATUSES = ["LOA", "Dropout", "Kickout", "Graduated", "Transferred"];
 
   const handleArchiveByStatus = async (status) => {
     // Validate status
     if (!status || !ARCHIVABLE_STATUSES.includes(status)) {
-      alert(`Invalid status: ${status}`);
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Status',
+        text: `Cannot archive status: ${status}`,
+        confirmButtonColor: '#3085d6'
+      });
       return;
     }
 
     const count = students.filter(s => s.status === status).length;
     if (count === 0) {
-      alert(`No ${status} students to archive.`);
+      Swal.fire({
+        icon: 'info',
+        title: 'No Students Found',
+        text: `No ${status} students to archive.`,
+        confirmButtonColor: '#3085d6'
+      });
       return;
     }
 
-    if (!window.confirm(`Archive all ${count} ${status} student${count > 1 ? "s" : ""}? Their original status will be preserved.`)) {
+    // Show confirmation dialog
+    const result = await Swal.fire({
+      title: 'Archive Students?',
+      html: `Are you sure you want to archive <strong>${count}</strong> ${status} student${count > 1 ? 's' : ''}?<br><br>Their original status will be preserved and they will be moved to the archived students list.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: `Yes, archive ${count} student${count > 1 ? 's' : ''}!`,
+      cancelButtonText: 'Cancel'
+    });
+
+    if (!result.isConfirmed) {
       return;
     }
+
+    // Show loading
+    Swal.fire({
+      title: 'Archiving...',
+      text: `Please wait while we archive ${count} student${count > 1 ? 's' : ''}.`,
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
 
     try {
-      setLoading(true);
       const res = await axios.put("/api/students/archive-by-status", { status });
       
       // Immediately remove archived students from the local state for instant UI feedback
@@ -379,11 +412,24 @@ function Students() {
         prevStudents.filter(s => s.status !== status)
       );
       
-      alert(res.data.message || `Archived ${count} students`);
+      Swal.fire({
+        icon: 'success',
+        title: 'Archived Successfully!',
+        html: `<strong>${res.data.count || count}</strong> ${status} student${(res.data.count || count) > 1 ? 's have' : ' has'} been archived.`,
+        timer: 3000,
+        showConfirmButton: false
+      });
+      
       // Refresh all data from backend to ensure consistency
       refreshAll();
     } catch (err) {
-      alert(`Archive failed: ${err.response?.data?.message || err.message}`);
+      console.error('Archive error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Archive Failed',
+        text: err.response?.data?.message || 'Something went wrong. Please try again.',
+        confirmButtonColor: '#3085d6'
+      });
       // Refresh on error to ensure UI is in sync with backend
       refreshAll();
     } finally {
@@ -690,7 +736,7 @@ function Students() {
                           checked={selectedStudents.has(s.student_id)}
                           onChange={() => handleSelectStudent(s.student_id)}
                         />
-                      </td>
+                       </td>
                       <td>{indexOfFirst + idx + 1}</td>
                       <td>
                         <div className="student-id-cell">

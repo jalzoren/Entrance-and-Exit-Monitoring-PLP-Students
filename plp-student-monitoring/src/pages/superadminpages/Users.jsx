@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from "react"; // ✅ ONLY ONE React import at the top
+// Users.jsx - Updated version
+import React, { useState, useEffect } from "react";
 import "../../css/Users.css";
-import { FiPlus, FiEdit2, FiTrash2, FiUsers, FiShield, FiUserCheck } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiUsers, FiShield, FiUserCheck, FiArchive } from "react-icons/fi";
 import AddUser from "../../components/AddUser";
 import EditUser from "../../components/EditUser";
 import Swal from 'sweetalert2';
 import { useAuth } from "../../context/AuthContext";
 
 function Users() {
-  const { user } = useAuth(); // Get the authenticated user
+  const { user } = useAuth();
   const [showAddUser, setShowAddUser] = useState(false);
   const [showEditUser, setShowEditUser] = useState(false);
   const [selectedUserEmail, setSelectedUserEmail] = useState(null);
@@ -19,6 +20,10 @@ function Users() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const recordsPerPage = 5;
+  
+  // New state for selection
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [selectAll, setSelectAll] = useState(false);
 
   const fetchUsers = async () => {
     try {
@@ -79,7 +84,6 @@ function Users() {
     fetchUsers();
   }, []);
 
-  // ── Stats for role counts ────────────────────────────────────────────────
   const stats = {
     total: users.length,
     superAdmin: users.filter(u => u.role === "Super Admin").length,
@@ -175,27 +179,24 @@ function Users() {
     });
   };
 
-  const handleDelete = async (email) => {
-    const userToDelete = users.find(user => user.email === email);
-    
+  // Archive single user (replaces delete)
+  const handleArchive = async (email, fullName) => {
     const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: `Are you sure you want to delete ${userToDelete?.full_name}? This action cannot be undone.`,
+      title: 'Archive User?',
+      text: `Are you sure you want to archive ${fullName}? They will be moved to Archived Users.`,
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#d33',
       cancelButtonColor: '#3085d6',
-      confirmButtonText: 'Yes, delete it!',
+      confirmButtonText: 'Yes, archive it!',
       cancelButtonText: 'Cancel'
     });
     
-    if (!result.isConfirmed) {
-      return;
-    }
+    if (!result.isConfirmed) return;
     
     try {
       Swal.fire({
-        title: 'Deleting...',
+        title: 'Archiving...',
         text: 'Please wait',
         allowOutsideClick: false,
         allowEscapeKey: false,
@@ -206,13 +207,13 @@ function Users() {
         }
       });
       
-      const response = await fetch(`http://localhost:5000/api/users/${encodeURIComponent(email)}`, {
-        method: 'DELETE',
+      const response = await fetch(`http://localhost:5000/api/users/archive/${encodeURIComponent(email)}`, {
+        method: 'PUT',
         credentials: 'include'
       });
       
       if (!response.ok) {
-        throw new Error('Failed to delete user');
+        throw new Error('Failed to archive user');
       }
       
       Swal.close();
@@ -220,22 +221,121 @@ function Users() {
       
       Swal.fire({
         icon: 'success',
-        title: 'Deleted!',
-        text: 'User has been deleted successfully.',
+        title: 'Archived!',
+        text: 'User has been archived successfully.',
         timer: 2000,
         showConfirmButton: false
       });
       
     } catch (err) {
-      console.error('Error deleting user:', err);
+      console.error('Error archiving user:', err);
       Swal.close();
       Swal.fire({
         icon: 'error',
         title: 'Error!',
-        text: 'Failed to delete user. Please try again.',
+        text: 'Failed to archive user. Please try again.',
         confirmButtonColor: '#3085d6'
       });
     }
+  };
+
+  // Bulk archive users
+  const handleBulkArchive = async () => {
+    if (selectedUsers.size === 0) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'No Selection',
+        text: 'Please select at least one user to archive.',
+        confirmButtonColor: '#3085d6'
+      });
+      return;
+    }
+    
+    const result = await Swal.fire({
+      title: 'Archive Selected Users?',
+      text: `Are you sure you want to archive ${selectedUsers.size} user(s)? They will be moved to Archived Users.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, archive them!',
+      cancelButtonText: 'Cancel'
+    });
+    
+    if (!result.isConfirmed) return;
+    
+    try {
+      Swal.fire({
+        title: 'Archiving...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+      
+      const response = await fetch('http://localhost:5000/api/users/archive/bulk', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ emails: Array.from(selectedUsers) })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to archive users');
+      }
+      
+      const data = await response.json();
+      
+      Swal.close();
+      setUsers(prevUsers => prevUsers.filter(user => !selectedUsers.has(user.email)));
+      setSelectedUsers(new Set());
+      setSelectAll(false);
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Archived!',
+        text: `${data.count} user(s) have been archived successfully.`,
+        timer: 2000,
+        showConfirmButton: false
+      });
+      
+    } catch (err) {
+      console.error('Error archiving users:', err);
+      Swal.close();
+      Swal.fire({
+        icon: 'error',
+        title: 'Error!',
+        text: 'Failed to archive users. Please try again.',
+        confirmButtonColor: '#3085d6'
+      });
+    }
+  };
+
+  // Handle individual checkbox selection
+  const handleSelectUser = (email) => {
+    const newSelected = new Set(selectedUsers);
+    if (newSelected.has(email)) {
+      newSelected.delete(email);
+    } else {
+      newSelected.add(email);
+    }
+    setSelectedUsers(newSelected);
+    setSelectAll(newSelected.size === filteredUsers.length && filteredUsers.length > 0);
+  };
+
+  // Handle select all
+  const handleSelectAll = () => {
+    if (selectAll) {
+      setSelectedUsers(new Set());
+    } else {
+      const newSelected = new Set(currentUsers.map(user => user.email));
+      setSelectedUsers(newSelected);
+    }
+    setSelectAll(!selectAll);
   };
 
   const filteredUsers = users.filter((user) => {
@@ -254,6 +354,9 @@ function Users() {
   const handlePageChange = (page) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
+      // Clear selections when changing page
+      setSelectedUsers(new Set());
+      setSelectAll(false);
     }
   };
 
@@ -266,7 +369,7 @@ function Users() {
 
       <hr className="header-divider" />
 
-      {/* ── STAT CARDS ── */}
+      {/* STAT CARDS */}
       <div className="stats-container users-stats">
         <div className="stat-card total-users">
           <div className="stat-icon"><FiUsers /></div>
@@ -329,6 +432,24 @@ function Users() {
             <FiPlus className="button-icon" />
             Add User
           </button>
+
+          {/* Bulk Archive Button */}
+          {selectedUsers.size > 0 && (
+            <button
+              className="action-button archive-button"
+              onClick={handleBulkArchive}
+              style={{
+                backgroundColor: '#d33',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <FiArchive className="button-icon" />
+              Archive Selected ({selectedUsers.size})
+            </button>
+          )}
         </div>
 
         <div className="table-container">
@@ -343,6 +464,14 @@ function Users() {
             <table className="user-table">
               <thead>
                 <tr>
+                  <th>
+                    <input
+                      type="checkbox"
+                      checked={selectAll}
+                      onChange={handleSelectAll}
+                      disabled={currentUsers.length === 0}
+                    />
+                  </th>
                   <th>No.</th>
                   <th>Full Name</th>
                   <th>Email</th>
@@ -354,6 +483,13 @@ function Users() {
                 {currentUsers.length > 0 ? (
                   currentUsers.map((user, index) => (
                     <tr key={user.email}>
+                      <td>
+                        <input
+                          type="checkbox"
+                          checked={selectedUsers.has(user.email)}
+                          onChange={() => handleSelectUser(user.email)}
+                        />
+                      </td>
                       <td>{indexOfFirstRecord + index + 1}</td>
                       <td>{user.full_name}</td>
                       <td>{user.email}</td>
@@ -371,18 +507,23 @@ function Users() {
                           <FiEdit2 /> Edit
                         </button>
                         <button
-                          className="delete-btn"
-                          onClick={() => handleDelete(user.email)}
-                          title="Delete User"
+                          className="archive-btn"
+                          onClick={() => handleArchive(user.email, user.full_name)}
+                          title="Archive User"
+                          style={{
+                            backgroundColor: '#d33',
+                            color: 'white',
+                            border: 'none'
+                          }}
                         >
-                          <FiTrash2 /> Delete
+                          <FiArchive /> Archive
                         </button>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="5" className="no-data">
+                    <td colSpan="6" className="no-data">
                       No users found
                     </td>
                   </tr>

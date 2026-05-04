@@ -1,4 +1,3 @@
-// AuthContext.jsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import Swal from 'sweetalert2';
 
@@ -34,6 +33,18 @@ export const AuthProvider = ({ children }) => {
       } else {
         setUser(null);
         setAuthenticated(false);
+        
+        // Show message if user was archived
+        if (data.archived) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Account Archived',
+            text: 'Your account has been archived. Please contact the system administrator.',
+            confirmButtonColor: '#3085d6'
+          }).then(() => {
+            window.location.href = '/login';
+          });
+        }
       }
     } catch (error) {
       console.error('Session check failed:', error);

@@ -1,0 +1,109 @@
+/* SettingsDisplay.css */
+
+.settings-display-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+
+.settings-display-card {
+  background: white;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  border-left: 4px solid #01311d;
+}
+
+.settings-display-card.academic-card {
+  border-left-color: #2980b9;
+}
+
+.settings-display-card.gate-card {
+  border-left-color: #e74c3c;
+}
+
+.settings-display-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #ecf0f1;
+  padding-bottom: 10px;
+}
+
+.settings-display-icon {
+  font-size: 18px;
+  color: #34495e;
+}
+
+.settings-display-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #34495e;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.settings-display-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.settings-display-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 6px 0;
+}
+
+.settings-display-label {
+  font-weight: 500;
+  color: #7f8c8d;
+  min-width: 140px;
+}
+
+.settings-display-value {
+  font-weight: 600;
+  color: #2c3e50;
+  text-align: right;
+}
+
+.settings-display-value.gate-open {
+  color: #27ae60;
+}
+
+.settings-display-value.gate-closed {
+  color: #e74c3c;
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .settings-display-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .settings-display-card {
+    padding: 12px;
+  }
+
+  .settings-display-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .settings-display-label {
+    min-width: auto;
+  }
+
+  .settings-display-value {
+    text-align: left;
+  }
+}

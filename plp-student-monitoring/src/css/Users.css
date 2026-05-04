@@ -741,3 +741,44 @@
     gap: 14px;
   }
 }
+
+/* Add to Users.css */
+.user-table th input[type="checkbox"],
+.user-table td input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.archive-btn {
+  background-color: #d33;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background-color 0.3s;
+}
+
+.archive-btn:hover {
+  background-color: #b71c1c;
+}
+
+.action-button.archive-button {
+  background-color: #d33;
+  color: white;
+}
+
+.action-button.archive-button:hover {
+  background-color: #b71c1c;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}

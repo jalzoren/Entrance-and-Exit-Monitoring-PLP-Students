@@ -80,7 +80,7 @@ router.post("/recognize", async (req, res) => {
       const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
       console.log(`Comparing student ${row.student_id} (${row.face_position}): ${sim.toFixed(3)}`);
 
-      if (sim > 0.75 && sim > maxSimilarity) {
+      if (sim > 0.65 && sim > maxSimilarity) {
         maxSimilarity  = sim;
         matchedStudent = row.student_id;
       }

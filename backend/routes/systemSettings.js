@@ -10,6 +10,13 @@ async function getAllSettings() {
   return rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {});
 }
 
+// ── Helper: Add days to a date string (YYYY-MM-DD)
+function dateAddDays(dateStr, days) {
+  const date = new Date(dateStr + 'T00:00:00Z');
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
 // ── GET /api/settings ─────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
@@ -99,14 +106,48 @@ router.get('/academic-year', async (req, res) => {
     // Promotion happens at the end of 2nd semester for Regular students
     const promotionDue = today > sem2End && settings.semester === '2';
 
+    // Compliance notifications
+    const schoolYearStart = settings.school_year_start;
+    const schoolYearEnd = settings.school_year_end;
+    const currentYear = now.getFullYear();
+
+    // School year typically runs from August of start year to May/June of end year
+    // Check if today is within a few days of school year start (Aug 1)
+    const schoolYearStartDate = new Date(schoolYearStart, 7, 1); // August 1st of start year
+    const schoolYearEndDate = new Date(schoolYearEnd, 5, 30);    // June 30th of end year
+    
+    // Check if today is the school year start or within 7 days after
+    const schoolYearStarted = today >= schoolYearStart + '-08-01' && 
+                             today <= schoolYearStart + '-08-08';
+    
+    // Check if today is the school year end or within 7 days after
+    const schoolYearEnded = today >= schoolYearEnd + '-05-24' && 
+                           today <= schoolYearEnd + '-06-07';
+
+    // Check if today is semester start or within 7 days after
+    const semesterStarted = (currentSemester === '1' && today >= sem1Start && today <= dateAddDays(sem1Start, 7)) ||
+                           (currentSemester === '2' && today >= sem2Start && today <= dateAddDays(sem2Start, 7));
+
+    // Check if today is semester end or within 7 days after
+    const semesterEnded = (currentSemester === 'Break' && (
+      (today >= sem1End && today <= dateAddDays(sem1End, 7)) ||
+      (today >= sem2End && today <= dateAddDays(sem2End, 7))
+    ));
+
     res.json({
       schoolYear:       `${settings.school_year_start}-${settings.school_year_end}`,
       semester:         settings.semester,         // stored/configured
       detectedSemester: currentSemester,           // auto-detected from date
-      sem1: { start: sem1Start, end: sem1End },
-      sem2: { start: sem2Start, end: sem2End },
+      sem1Start:        sem1Start,
+      sem1End:          sem1End,
+      sem2Start:        sem2Start,
+      sem2End:          sem2End,
       promotionDue,
       today,
+      schoolYearStarted,
+      schoolYearEnded,
+      semesterStarted,
+      semesterEnded,
     });
   } catch (err) {
     console.error('[academic-year]', err);
