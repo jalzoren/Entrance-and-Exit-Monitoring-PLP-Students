@@ -24,6 +24,43 @@
   overflow: hidden;
   font-family: 'Montserrat', sans-serif;
   background: var(--color-primary-dark);
+  position: relative;
+}
+
+/* ── Back button ────────────────────────────────── */
+.fr-back-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 10;
+  background: rgba(84, 135, 114, 0.85);
+  color: #fff;
+  border: 1px solid rgba(134, 239, 172, 0.5);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.fr-back-button:hover {
+  background: rgba(84, 135, 114, 1);
+  box-shadow: 0 4px 16px rgba(134, 239, 172, 0.25);
+}
+
+.fr-back-button:active {
+  transform: translateY(1px);
+}
+
+.fr-back-button svg {
+  font-size: 1.1rem;
 }
 
 /* ══ LEFT — Camera panel ════════════════════════════ */

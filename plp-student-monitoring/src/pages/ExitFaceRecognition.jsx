@@ -1,5 +1,6 @@
 // ExitFaceRecognition.jsx
 import { useRef, useEffect, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import "../css/FaceRecognition.css";
 import { useLogContext } from "../context/LogContext.jsx";
 import { useCameraContext } from "../context/CameraContext.jsx";
@@ -7,6 +8,7 @@ import { showEntryExitAlert } from "../components/ShowEntryExitAlerts.jsx";
 import Swal from "sweetalert2";
 import { LuScanQrCode } from "react-icons/lu";
 import { RiInputField } from "react-icons/ri";
+import { FaArrowLeft } from "react-icons/fa";
 import { LuVideo, LuVideoOff } from "react-icons/lu";
 import ManualInputModal from "../components/ManualInputModal.jsx";
 import QRScanModal from "../components/QRScanModal.jsx";
@@ -18,6 +20,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
   const scanIntervalRef = useRef(null);
   const cameraOnRef     = useRef(false);
 
+  const navigate        = useNavigate();
   const { addLog } = useLogContext();
   const {
     updateCameraFrame,
@@ -298,6 +301,10 @@ function FaceRecognition({ mode = 'EXIT' }) {
 
   return (
     <div className="fr-unified-page">
+
+      <button className="fr-back-button" onClick={() => navigate('/')}>
+        <FaArrowLeft /> Back
+      </button>
 
       {/* ══ LEFT — Camera ══════════════════════════ */}
       <div className={camClass}>

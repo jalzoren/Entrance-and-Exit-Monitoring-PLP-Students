@@ -2,6 +2,11 @@
 /* GLOBAL MODAL STYLES - Use for all modals */
 /* ============================================ */
 
+/* 
+   This is a multi-line comment
+   It spans multiple lines
+   Great for describing complex sections
+
 :root {
   --color-bg-main:        #fcfbf4;
   --color-primary:        #548772;
@@ -16,7 +21,6 @@
   --color-divider:        rgba(255, 255, 255, 0.35);
 }
 
-/* ── SHARED MODAL BASE STYLES ─────────────────── */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -38,7 +42,6 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
 }
 
-/* Modal Overlay */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -53,7 +56,6 @@
   animation: fadeIn 0.3s ease;
 }
 
-/* Modal Container */
 .modal-container {
   background: white;
   border-radius: 12px;
@@ -65,7 +67,6 @@
   animation: slideIn 0.3s ease;
 }
 
-/* Modal Header */
 .modal-header {
   background: var(--color-primary-dark, #01311d);
   color: white;
@@ -106,7 +107,6 @@
   opacity: 1;
 }
 
-/* Modal Body */
 .modal-body {
   padding: 24px;
   display: flex;
@@ -197,7 +197,6 @@
 .modal-status.error   { background: #fdecea; color: #b71c1c; }
 .modal-status.info    { background: #e8f0fe; color: #1a237e; }
 
-/* Modal Footer */
 .modal-footer {
   display: flex;
   gap: 0.75rem;
@@ -209,7 +208,6 @@
   bottom: 0;
 }
 
-/* Modal Buttons */
 .modal-btn {
   flex: 1;
   padding: 0.6rem 1rem;
@@ -268,7 +266,6 @@
   transform: translateY(-1px);
 }
 
-/* Modal Form Fields */
 .modal-field {
   display: flex;
   flex-direction: column;
@@ -292,7 +289,6 @@
   margin-left: 2px;
 }
 
-/* Modal Grid Layout */
 .modal-grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -303,7 +299,6 @@
   grid-column: span 2;
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -314,7 +309,6 @@
   to { transform: translateY(0); opacity: 1; }
 }
 
-/* Responsive */
 @media (max-width: 640px) {
   .modal-grid-2 {
     grid-template-columns: 1fr;
@@ -362,3 +356,4 @@
   }
 }
 
+*/
