@@ -13,6 +13,7 @@ import ForgotPass from "./pages/ForgotPass";
 import ForgotPass2 from "./pages/ForgotPass2";
 import EntranceFaceRecognition from "./pages/EntranceFaceRecognition";
 import ExitFaceRecognition from "./pages/ExitFaceRecognition";
+import PLP from "./pages/LandingPage";
 
 // Admin Pages
 import Dashboard from "./pages/adminpages/Dashboard";
@@ -75,8 +76,8 @@ function AppRoutes() {
       <Route path="/exit"     element={<ExitFaceRecognition mode="EXIT"/>} />
 
 
-      {/* Root path - redirect based on role */}
-      <Route path="/" element={<RoleBasedRedirect />} />
+      {/* Root path - landing page */}
+      <Route path="/" element={<PLP />} />
 
       {/* Protected Routes - Single Layout for all authenticated users */}
       <Route element={<DashboardLayout />}>

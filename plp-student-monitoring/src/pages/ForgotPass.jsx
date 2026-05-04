@@ -173,7 +173,6 @@ export default function ForgotPassword() {
             )}
           </form>
 
-         // Replace the footer section with:
         <div className="form-footer">
           <div className="footer-links">
             <button 
