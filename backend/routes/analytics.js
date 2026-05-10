@@ -459,11 +459,13 @@ router.get('/records', async (req, res) => {
         s.first_name,
         s.last_name,
         s.middle_name,
-        s.college_department,
+        d.dept_name AS college_department,
         s.year_level,
         a.method
       FROM entry_exit_logs eel
       LEFT JOIN students s ON s.student_id = eel.student_id
+      LEFT JOIN programs p ON p.id = s.program_id
+      LEFT JOIN departments d ON d.id = p.department_id
       LEFT JOIN authentication a ON a.auth_id = eel.auth_id
       ORDER BY eel.log_time DESC, eel.log_id DESC
     `);
