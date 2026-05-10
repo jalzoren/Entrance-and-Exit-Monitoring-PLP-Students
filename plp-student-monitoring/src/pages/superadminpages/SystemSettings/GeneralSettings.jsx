@@ -5,7 +5,7 @@ import "../../../css/GeneralSettings.css";
 import Swal from 'sweetalert2';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GATE SETTINGS SECTION
+// GATE SETTINGS SECTION 
 // ─────────────────────────────────────────────────────────────────────────────
 
 function GateSettingsSection() {
