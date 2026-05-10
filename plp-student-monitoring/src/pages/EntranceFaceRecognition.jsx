@@ -152,10 +152,18 @@ function FaceRecognition({ mode = 'ENTRY' }) {
               const canvas = document.createElement('canvas');
               canvas.width  = videoRef.current.videoWidth;
               canvas.height = videoRef.current.videoHeight;
-              canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-              updateCameraFrame(canvas.toDataURL('image/jpeg', 0.7));
+              const ctx = canvas.getContext('2d');
+              
+              ctx.drawImage(
+                videoRef.current,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              );
+              updateCameraFrame(canvas.toDataURL('image/jpeg', 0.85));
             }
-          }, 100);
+          }, 250);
         }
       } catch (err) {
         console.error('Camera error:', err);
@@ -193,7 +201,7 @@ function FaceRecognition({ mode = 'ENTRY' }) {
     canvas.width  = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg', 0.7);
+    const imageData = canvas.toDataURL('image/jpeg', 0.92);
 
     try {
       const res    = await fetch('http://localhost:5000/api/recognize', {
@@ -298,7 +306,7 @@ function FaceRecognition({ mode = 'ENTRY' }) {
   // ── Start scan loop when camera turns on ─────────
   useEffect(() => {
     if (!cameraOn) return;
-    scanIntervalRef.current = setInterval(captureAndSend, 2000);
+    scanIntervalRef.current = setInterval(captureAndSend, 700);
     return () => clearInterval(scanIntervalRef.current);
   }, [cameraOn, captureAndSend]);
 

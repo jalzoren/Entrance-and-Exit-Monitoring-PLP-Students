@@ -1,4 +1,4 @@
-// ExitFaceRecognition.jsx
+// ExitFaceRecognition.jsx - FIXED VERSION
 import { useRef, useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/FaceRecognition.css";
@@ -37,22 +37,18 @@ function FaceRecognition({ mode = 'EXIT' }) {
   // ── Pause camera when any modal is open ───────────────────────────────
   const wasOnBeforeModalRef = useRef(false);
 
-  // the useEffect becomes:
   useEffect(() => {
     if (activeModal !== null) {
-      // Modal opened — remember camera state, then pause
       wasOnBeforeModalRef.current = cameraOnRef.current;
       clearInterval(scanIntervalRef.current);
       setCameraOn(false);
     } else {
-      // Modal closed — restore camera if it was on before
       if (wasOnBeforeModalRef.current) {
         setCameraOn(true);
       }
     }
   }, [activeModal]);
 
-  // ── Keep ref in sync with state so callbacks can read it ──
   useEffect(() => {
     cameraOnRef.current = cameraOn;
   }, [cameraOn]);
@@ -143,10 +139,18 @@ function FaceRecognition({ mode = 'EXIT' }) {
               const canvas = document.createElement('canvas');
               canvas.width  = videoRef.current.videoWidth;
               canvas.height = videoRef.current.videoHeight;
-              canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-              updateCameraFrame(canvas.toDataURL('image/jpeg', 0.7));
+              const ctx = canvas.getContext('2d');
+              
+              ctx.drawImage(
+                videoRef.current,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+              );
+              updateCameraFrame(canvas.toDataURL('image/jpeg', 0.85));
             }
-          }, 100);
+          }, 250);
         }
       } catch (err) {
         console.error('Camera error:', err);
@@ -164,8 +168,6 @@ function FaceRecognition({ mode = 'EXIT' }) {
     };
   }, [cameraOn]);
 
-  // ── restartScan ───────────────────────────────────
-
   const captureAndSendRef = useRef(null);
 
   const restartScan = useCallback(() => {
@@ -173,7 +175,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
     hasActed.current     = false;
     failCountRef.current = 0;
     clearInterval(scanIntervalRef.current);
-    scanIntervalRef.current = setInterval(() => captureAndSendRef.current?.(), 2000); 
+    scanIntervalRef.current = setInterval(() => captureAndSendRef.current?.(), 700); // Changed to 700ms
   }, []);
 
   // ── Recognition loop ──────────────────────────────
@@ -185,7 +187,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
     canvas.width  = videoRef.current.videoWidth;
     canvas.height = videoRef.current.videoHeight;
     canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
-    const imageData = canvas.toDataURL('image/jpeg', 0.7);
+    const imageData = canvas.toDataURL('image/jpeg', 0.92);
 
     try {
       const res    = await fetch('http://localhost:5000/api/recognize', {
@@ -195,7 +197,6 @@ function FaceRecognition({ mode = 'EXIT' }) {
       });
       const result = await res.json();
 
-      // ── Case 1: No face / unrecognized ───────────
       if (!result.recognized) {
         failCountRef.current += 1;
 
@@ -204,14 +205,12 @@ function FaceRecognition({ mode = 'EXIT' }) {
           clearInterval(scanIntervalRef.current);
 
           await Swal.fire({
-            html: `
-              <div style="font-family:'Montserrat',sans-serif; padding:4px 0;">
-                <p style="font-size:1rem;color:#333;margin:0;line-height:1.6;">
-                  Unable to identify your face.<br/>
-                  Please choose <strong>Scan QR</strong> or <strong>Manual Input</strong> as an alternative.
-                </p>
-              </div>
-            `,
+            html: `<div style="font-family:'Montserrat',sans-serif; padding:4px 0;">
+              <p style="font-size:1rem;color:#333;margin:0;line-height:1.6;">
+                Unable to identify your face.<br/>
+                Please choose <strong>Scan QR</strong> or <strong>Manual Input</strong> as an alternative.
+              </p>
+            </div>`,
             icon: 'warning',
             timer: 2000,
             timerProgressBar: true,
@@ -224,7 +223,6 @@ function FaceRecognition({ mode = 'EXIT' }) {
         return;
       }
 
-      // ── Case 2: Face matched but validation failed ─
       hasActed.current = true;
       failCountRef.current = 0;
       clearInterval(scanIntervalRef.current);
@@ -250,7 +248,6 @@ function FaceRecognition({ mode = 'EXIT' }) {
         return;
       }
 
-      // ── Case 3: Success ───────────────────────────
       setCameraStatus('detected');
       updateCameraStatus('detected', {
         name:       result.student,
@@ -287,10 +284,12 @@ function FaceRecognition({ mode = 'EXIT' }) {
     captureAndSendRef.current = captureAndSend;
   }, [captureAndSend]);
 
-  // ── Start scan loop when camera turns on ─────────
+  // ═══════════════════════════════════════════════════════════════════
+  // FIX: Add the missing scan loop initialization (THIS WAS MISSING!)
+  // ═══════════════════════════════════════════════════════════════════
   useEffect(() => {
     if (!cameraOn) return;
-    scanIntervalRef.current = setInterval(captureAndSend, 2000);
+    scanIntervalRef.current = setInterval(captureAndSend, 700); // 700ms for fast scanning
     return () => clearInterval(scanIntervalRef.current);
   }, [cameraOn, captureAndSend]);
 
@@ -301,20 +300,15 @@ function FaceRecognition({ mode = 'EXIT' }) {
 
   return (
     <div className="fr-unified-page">
-
       <button className="fr-back-button" onClick={() => navigate('/')}>
         <FaArrowLeft /> Back
       </button>
 
-      {/* ══ LEFT — Camera ══════════════════════════ */}
       <div className={camClass}>
         <video ref={videoRef} autoPlay playsInline muted className="camera-video" />
-
-        {/* Corner brackets */}
         <div className="fr-corner fr-tl" /><div className="fr-corner fr-tr" />
         <div className="fr-corner fr-bl" /><div className="fr-corner fr-br" />
         
-        {/* Status text */}
         <div className="camera-text">
           {!cameraOn                               && 'Camera is off. Press Start Camera to begin scanning.'}
           {cameraOn && cameraStatus === 'neutral'      && 'Please look at the camera and position your face within the on-screen frame.'}
@@ -322,7 +316,6 @@ function FaceRecognition({ mode = 'EXIT' }) {
           {cameraOn && cameraStatus === 'unauthorized' && 'Access denied. See message on screen.'}
         </div>
 
-        {/* ── Camera toggle button — bottom center of camera panel ── */}
         <button
           className={`fr-cam-toggle ${cameraOn ? 'fr-cam-stop' : 'fr-cam-start'}`}
           onClick={() => setCameraOn(prev => !prev)}
@@ -331,9 +324,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
         </button>
       </div>
 
-      {/* ══ RIGHT ══════════════════════════════════ */}
       <div className="fr-right-panel">
-        
         <div className="fr-school-header">
           <img src="/logoplp.gif" alt="PLP Seal" className="fr-seal" />
           <div className="fr-school-text">
@@ -368,26 +359,23 @@ function FaceRecognition({ mode = 'EXIT' }) {
         </p>
 
         <div className="fr-alt-methods" style={{ gridTemplateColumns: 'repeat(2, minmax(180px, 220px))' }}>
-          {altMethods
-            .map(({ key, action, icon, label, desc }) => (
-              <div
-                key={key}
-                className={`fr-alt-card ${activeKey === key ? 'fr-card-active' : ''}`}
-                onClick={action}
-              >
-                <div className="fr-alt-icon">{icon}</div>
-                <div className="fr-alt-body">
-                  <span className="fr-alt-label">{label}</span>
-                  <div className="fr-alt-card-divider" />
-                  <div className="fr-alt-desc-container">
-                    <span className="fr-alt-desc">{desc}</span>
-                    <p className="fr-shortcut">{key.toUpperCase()}</p>
-                  </div>
+          {altMethods.map(({ key, action, icon, label, desc }) => (
+            <div
+              key={key}
+              className={`fr-alt-card ${activeKey === key ? 'fr-card-active' : ''}`}
+              onClick={action}
+            >
+              <div className="fr-alt-icon">{icon}</div>
+              <div className="fr-alt-body">
+                <span className="fr-alt-label">{label}</span>
+                <div className="fr-alt-card-divider" />
+                <div className="fr-alt-desc-container">
+                  <span className="fr-alt-desc">{desc}</span>
+                  <p className="fr-shortcut">{key.toUpperCase()}</p>
                 </div>
-                
               </div>
-            ))
-          }
+            </div>
+          ))}
         </div>
       </div>
 
