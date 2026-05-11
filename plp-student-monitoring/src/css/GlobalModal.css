@@ -2,10 +2,8 @@
 /* GLOBAL MODAL STYLES - Use for all modals */
 /* ============================================ */
 
-/* 
-   This is a multi-line comment
-   It spans multiple lines
-   Great for describing complex sections
+
+
 
 :root {
   --color-bg-main:        #fcfbf4;
@@ -58,7 +56,7 @@
 
 .modal-container {
   background: white;
-  border-radius: 12px;
+  border-radius: 8px;
   width: 90%;
   max-width: 600px;
   max-height: 90vh;
@@ -141,6 +139,69 @@
   margin-top: 0.4rem;
 }
 
+
+.modal-btn {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 4px;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.modal-btn:active:not(:disabled) { transform: scale(0.98); }
+
+.modal-btn.cancel {
+  background: #e53935;
+  color: #fff;
+}
+.modal-btn.cancel:hover:not(:disabled) { background: #c62828; }
+
+.modal-btn.submit {
+  background: var(--color-primary-dark, #01311d);
+  color: #fff;
+}
+.modal-btn.submit:hover:not(:disabled) { background: #025228; }
+
+.modal-btn-cancel {
+  background: #f5f5f5;
+  color: #333;
+  border: 1px solid #ddd;
+}
+
+.modal-btn-cancel:hover {
+  background: #e9ecef;
+  transform: translateY(-1px);
+}
+
+.modal-btn-save {
+  background: var(--color-primary-dark, #01311d);
+  color: white;
+}
+
+.modal-btn-save:hover {
+  background: var(--color-primary, #548772);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(1, 49, 29, 0.2);
+}
+
+.modal-btn-danger {
+  background: #ff2e2e;
+  color: white;
+}
+
+.modal-btn-danger:hover {
+  background: #cc0000;
+  transform: translateY(-1px);
+}
+
+
+
+/*
+
 .modal-input,
 .modal-select {
   width: 100%;
@@ -206,64 +267,6 @@
   background: white;
   position: sticky;
   bottom: 0;
-}
-
-.modal-btn {
-  flex: 1;
-  padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 4px;
-  font-family: 'Montserrat', sans-serif;
-  font-size: 0.88rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.15s, transform 0.1s;
-}
-.modal-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.modal-btn:active:not(:disabled) { transform: scale(0.98); }
-
-.modal-btn.cancel {
-  background: #e53935;
-  color: #fff;
-}
-.modal-btn.cancel:hover:not(:disabled) { background: #c62828; }
-
-.modal-btn.submit {
-  background: var(--color-primary-dark, #01311d);
-  color: #fff;
-}
-.modal-btn.submit:hover:not(:disabled) { background: #025228; }
-
-.modal-btn-cancel {
-  background: #f5f5f5;
-  color: #333;
-  border: 1px solid #ddd;
-}
-
-.modal-btn-cancel:hover {
-  background: #e9ecef;
-  transform: translateY(-1px);
-}
-
-.modal-btn-save {
-  background: var(--color-primary-dark, #01311d);
-  color: white;
-}
-
-.modal-btn-save:hover {
-  background: var(--color-primary, #548772);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(1, 49, 29, 0.2);
-}
-
-.modal-btn-danger {
-  background: #ff2e2e;
-  color: white;
-}
-
-.modal-btn-danger:hover {
-  background: #cc0000;
-  transform: translateY(-1px);
 }
 
 .modal-field {
