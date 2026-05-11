@@ -63,52 +63,86 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
   };
 
   const collegeDataArray = safeArray(collegeData);
-  const processedCollegeData = collegeDataArray.map((dept, idx) => {
-    const presentNow =
-      dept.presentNow      ??
-      dept.presenceNow     ??
-      dept.currentStudents ??
-      dept.student_count   ??
-      0;
 
-    const totalEnrolled =
-      dept.totalEnrolled   ??
-      dept.totalStudents   ??
-      dept.enrolled_count  ??
-      0;
+  // FIXED: Process college data with proper department filtering
+  let processedCollegeDataFinal = [];
 
-    const pctPresent =
-      dept.percentagePresent != null
-        ? parseFloat(dept.percentagePresent)
-        : (totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0);
+  if (filters?.collegeDepartment) {
+    // Filter to ONLY the selected department
+    const filteredDept = collegeDataArray.find(dept => {
+      const deptName = dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || '';
+      return deptName.toLowerCase() === filters.collegeDepartment.toLowerCase();
+    });
 
-    return {
-      id: idx + 1,
-      name: dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || 'Unknown',
-      presentNow,
-      totalEnrolled,
-      percentagePresent: pctPresent,
-      percentageOfCampus: 0,
-    };
-  }).sort((a, b) => b.presentNow - a.presentNow);
+    if (filteredDept) {
+      const presentNow =
+        filteredDept.presentNow      ??
+        filteredDept.presenceNow     ??
+        filteredDept.currentStudents ??
+        filteredDept.student_count   ??
+        0;
 
-  const totalPresentOnCampus = processedCollegeData.reduce((s, d) => s + d.presentNow, 0);
-  const processedCollegeDataFinal = processedCollegeData.map(d => ({
-    ...d,
-    percentageOfCampus: totalPresentOnCampus > 0
-      ? (d.presentNow / totalPresentOnCampus) * 100
-      : 0,
-    percentagePresent: d.totalEnrolled > 0
-      ? (d.presentNow / d.totalEnrolled) * 100
-      : 0,
-  }));
+      const totalEnrolled =
+        filteredDept.totalEnrolled   ??
+        filteredDept.totalStudents   ??
+        filteredDept.enrolled_count  ??
+        0;
 
-  const displayOnCampus = currentOnCampus > 0
-    ? currentOnCampus
-    : totalPresentOnCampus;
+      const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
 
-  const displayTotalEnrolled = processedCollegeDataFinal.reduce((s, d) => s + d.totalEnrolled, 0) || totalStudents;
+      processedCollegeDataFinal = [{
+        id: 1,
+        name: filters.collegeDepartment,
+        presentNow,
+        totalEnrolled,
+        percentagePresent: pctPresent,
+        percentageOfCampus: 100,
+      }];
+    }
+  } else {
+    // No filter - show all departments
+    const processedCollegeData = collegeDataArray.map((dept, idx) => {
+      const presentNow =
+        dept.presentNow      ??
+        dept.presenceNow     ??
+        dept.currentStudents ??
+        dept.student_count   ??
+        0;
 
+      const totalEnrolled =
+        dept.totalEnrolled   ??
+        dept.totalStudents   ??
+        dept.enrolled_count  ??
+        0;
+
+      const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
+
+      return {
+        id: idx + 1,
+        name: dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || 'Unknown',
+        presentNow,
+        totalEnrolled,
+        percentagePresent: pctPresent,
+        percentageOfCampus: 0,
+      };
+    }).sort((a, b) => b.presentNow - a.presentNow);
+
+    const totalPresentOnCampus = processedCollegeData.reduce((s, d) => s + d.presentNow, 0);
+    processedCollegeDataFinal = processedCollegeData.map(d => ({
+      ...d,
+      percentageOfCampus: totalPresentOnCampus > 0
+        ? (d.presentNow / totalPresentOnCampus) * 100
+        : 0,
+    }));
+  }
+
+ // Calculate totals from filtered data
+  const displayOnCampus = processedCollegeDataFinal.reduce((s, d) => s + d.presentNow, 0);
+  const displayTotalEnrolled = processedCollegeDataFinal.reduce((s, d) => s + d.totalEnrolled, 0);
+
+  // Use calculated values or props as fallback
+  const finalOnCampus = displayOnCampus > 0 ? displayOnCampus : currentOnCampus;
+  const finalTotalEnrolled = displayTotalEnrolled > 0 ? displayTotalEnrolled : totalStudents;
   const authDataArray = safeArray(authData);
   const processedAuthData = authDataArray.map((auth, idx) => ({
     id: idx + 1,
@@ -513,11 +547,11 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
 
             <div className="pdf-stats-section">
               <div className="pdf-stats-left">
-                <div className="pdf-green-box">
+              <div className="pdf-green-box">
                   <div className="pdf-big-number">
-                    {displayOnCampus.toLocaleString()}
+                    {finalOnCampus.toLocaleString()}
                     <span style={{ fontSize: '14px', fontWeight: 'normal', opacity: 0.8 }}>
-                      {' '}/ {displayTotalEnrolled.toLocaleString()}
+                      {' '}/ {finalTotalEnrolled.toLocaleString()}
                     </span>
                   </div>
                   <div style={{ fontSize: '13px', fontWeight: 'bold', color: 'white', letterSpacing: '1px', marginTop: '4px' }}>
@@ -529,16 +563,9 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
                     </div>
                   )}
                   <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', marginTop: '6px' }}>
-                    {displayTotalEnrolled > 0
-                      ? `${((displayOnCampus / displayTotalEnrolled) * 100).toFixed(1)}% attendance rate`
+                    {finalTotalEnrolled > 0
+                      ? `${((finalOnCampus / finalTotalEnrolled) * 100).toFixed(1)}% attendance rate`
                       : 'No enrollment data'}
-                  </div>
-                </div>
-                <div className="pdf-green-box-small">
-                  <div style={{ fontSize: '11px', color: 'white' }}>Date Range: {formatDateRange()}</div>
-                  <div style={{ fontSize: '11px', color: 'white' }}>Generated: {generationDate}</div>
-                  <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>
-                    Total Entries: {Number(totalEntries).toLocaleString()}
                   </div>
                 </div>
               </div>
@@ -602,9 +629,10 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
                 </div>
 
                 {/* Progress bars */}
+                {/* Progress bars - only show for non-filtered view or show single bar for filtered */}
                 {processedCollegeDataFinal.length > 0 && (
                   <div className="pdf-chart-grid">
-                    {processedCollegeDataFinal.slice(0, 8).map((college, idx) => (
+                    {processedCollegeDataFinal.slice(0, filters?.collegeDepartment ? 1 : 8).map((college, idx) => (
                       <div key={idx} className="pdf-progress-bar-container">
                         <div className="pdf-progress-label">
                           <span style={{ fontWeight: 'bold', minWidth: '100px', fontSize: '9px' }}>{college.name}</span>

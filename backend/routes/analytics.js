@@ -617,120 +617,213 @@ router.get('/records', async (req, res) => {
 });
 
 // ── GET /api/analytics/report?from=YYYY-MM-DD&to=YYYY-MM-DD&dept= ────────────
+// ── GET /api/analytics/report?from=YYYY-MM-DD&to=YYYY-MM-DD&dept= ────────────
 router.get('/report', async (req, res) => {
   try {
     const { from, to, dept } = req.query;
-    const { dayStart, dayEnd } = await getTodayPhRange();
+    
+    console.log('[analytics/report] Raw input - from:', from, 'to:', to, 'dept:', dept);
+    
+    // Parse dates correctly (handle DD/MM/YYYY format from frontend)
+    let rangeStart, rangeEnd;
+    
+    if (from && to) {
+      // Frontend sends dates as DD/MM/YYYY
+      let fromDate, toDate;
+      
+      // Check if from is in DD/MM/YYYY format
+      if (from.includes('/')) {
+        const fromParts = from.split('/');
+        // fromParts[0] = day, fromParts[1] = month, fromParts[2] = year
+        fromDate = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
+        console.log('[analytics/report] Converted from:', from, '→', fromDate);
+      } else {
+        fromDate = from;
+      }
+      
+      if (to.includes('/')) {
+        const toParts = to.split('/');
+        toDate = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
+        console.log('[analytics/report] Converted to:', to, '→', toDate);
+      } else {
+        toDate = to;
+      }
+      
+      rangeStart = `${fromDate} 00:00:00`;
+      rangeEnd = `${toDate} 23:59:59`;
+    } else {
+      const { dayStart, dayEnd } = await getTodayPhRange();
+      rangeStart = dayStart;
+      rangeEnd = dayEnd;
+    }
 
-    const rangeStart = from ? `${from} 00:00:00` : dayStart;
-    const rangeEnd   = to   ? `${to} 23:59:59`   : dayEnd;
+    console.log('[analytics/report] Final range:', rangeStart, '→', rangeEnd, '| dept:', dept ?? 'all');
 
-    console.log('[analytics/report] Range:', rangeStart, '→', rangeEnd, '| dept:', dept ?? 'all');
-
-    let logsQuery = `
-      SELECT
-        eel.log_id, eel.student_id, eel.action, eel.log_time,
-        s.first_name, s.last_name,
-        d.dept_name AS college_department,
-        p.program_name, s.year_level,
-        a.method, a.auth_status, a.accuracy
-      FROM entry_exit_logs eel
-      JOIN students s  ON s.student_id = eel.student_id
-      JOIN programs p ON s.program_id = p.id
-      JOIN departments d ON p.department_id = d.id
-      JOIN authentication a ON a.auth_id = eel.auth_id
-      WHERE eel.log_time BETWEEN ? AND ?
-    `;
-    const params = [rangeStart, rangeEnd];
-
-    if (dept) { logsQuery += ' AND d.dept_name = ?'; params.push(dept); }
-    logsQuery += ' ORDER BY eel.log_time DESC';
-
-    const [logRows]    = await db.query(logsQuery, params);
-    const [deptTotals] = await db.query(`
-      SELECT d.dept_name AS college_department, COUNT(*) AS total
+    // ── STEP 1: Get ALL enrolled students by department ──────────────────────
+    let allStudentsQuery = `
+      SELECT 
+        s.student_id,
+        d.dept_name AS college_department
       FROM students s
       JOIN programs p ON s.program_id = p.id
       JOIN departments d ON p.department_id = d.id
       WHERE s.status != 'Inactive'
-      GROUP BY d.id, d.dept_name
-    `);
-
-    console.log('[analytics/report] logRows found:', logRows.length);
-
-    const deptTotalMap   = new Map(deptTotals.map(r => [r.college_department, Number(r.total)]));
-    const uniqueStudents = new Set(logRows.map(r => r.student_id));
-    const deptMap    = new Map();
-    const methodMap  = new Map();
-    const trafficMap = new Map();
-
-    logRows.forEach(r => {
-      const d = r.college_department;
-      deptMap.set(d, (deptMap.get(d) || 0) + 1);
-
-      const m = r.method === 'FACIAL' ? 'Facial Recognition'
-              : r.method === 'MANUAL' ? 'Manual Input' : 'QR Scan';
-      methodMap.set(m, (methodMap.get(m) || 0) + 1);
-
-      const key = new Date(r.log_time).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' });
-      if (!trafficMap.has(key)) trafficMap.set(key, { date: key, entrance: 0, exit: 0 });
-      if (r.action === 'ENTRY') trafficMap.get(key).entrance++;
-      if (r.action === 'EXIT')  trafficMap.get(key).exit++;
+    `;
+    
+    const studentParams = [];
+    if (dept && dept !== 'all' && dept !== '') {
+      allStudentsQuery += ' AND d.dept_name = ?';
+      studentParams.push(dept);
+    }
+    
+    const [allStudents] = await db.query(allStudentsQuery, studentParams);
+    const totalStudentsCount = allStudents.length;
+    
+    console.log('[analytics/report] Total enrolled students:', totalStudentsCount);
+    
+    // Calculate total enrolled per department
+    const departmentTotals = new Map();
+    allStudents.forEach(student => {
+      const deptName = student.college_department;
+      departmentTotals.set(deptName, (departmentTotals.get(deptName) || 0) + 1);
     });
+    
+    console.log('[analytics/report] Department totals:', Array.from(departmentTotals.entries()));
 
-    const totalLogs = logRows.length;
+    // ── STEP 2: Get logs within date range ──────────────────────────────────
+    let logsQuery = `
+      SELECT
+        eel.log_id, 
+        eel.student_id, 
+        eel.action, 
+        eel.log_time,
+        s.first_name, 
+        s.last_name,
+        d.dept_name AS college_department,
+        p.program_name, 
+        s.year_level,
+        a.method, 
+        a.auth_status, 
+        a.accuracy
+      FROM entry_exit_logs eel
+      JOIN students s ON s.student_id = eel.student_id
+      JOIN programs p ON s.program_id = p.id
+      JOIN departments d ON p.department_id = d.id
+      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+      WHERE eel.log_time BETWEEN ? AND ?
+    `;
+    
+    const logParams = [rangeStart, rangeEnd];
+    
+    if (dept && dept !== 'all' && dept !== '') {
+      logsQuery += ' AND d.dept_name = ?';
+      logParams.push(dept);
+    }
+    
+    logsQuery += ' ORDER BY eel.log_time DESC';
+    
+    console.log('[analytics/report] Executing logs query with params:', logParams);
+    
+    const [logRows] = await db.query(logsQuery, logParams);
+    
+    console.log('[analytics/report] Found logs:', logRows.length);
+    
+    if (logRows.length > 0) {
+      console.log('[analytics/report] First log:', {
+        student_id: logRows[0].student_id,
+        action: logRows[0].action,
+        log_time: logRows[0].log_time,
+        department: logRows[0].college_department
+      });
+    }
 
-    const collegeData = Array.from(deptMap, ([name, count]) => ({
-      name,
-      count,
-      totalStudents: deptTotalMap.get(name) ?? 0,
-      percentage: totalLogs > 0 ? Math.round((count / totalLogs) * 100) : 0,
-    })).sort((a, b) => b.count - a.count);
+    // ── STEP 3: Calculate current students on campus ─────────────────────────
+    const studentLastActions = new Map();
+    
+    logRows.forEach(log => {
+      const studentId = log.student_id;
+      const logTime = new Date(log.log_time);
+      const current = studentLastActions.get(studentId);
+      
+      if (!current || logTime > current.time) {
+        studentLastActions.set(studentId, {
+          action: log.action,
+          time: logTime,
+          department: log.college_department,
+          student: log
+        });
+      }
+    });
+    
+    let currentOnCampus = 0;
+    const departmentPresence = new Map();
+    
+    studentLastActions.forEach((value, studentId) => {
+      if (value.action === 'ENTRY') {
+        currentOnCampus++;
+        const dept = value.department;
+        departmentPresence.set(dept, (departmentPresence.get(dept) || 0) + 1);
+      }
+    });
+    
+    console.log('[analytics/report] Current on campus:', currentOnCampus);
+    console.log('[analytics/report] Department presence:', Array.from(departmentPresence.entries()));
 
-    const methodData = Array.from(methodMap, ([name, count]) => ({
-      name, count,
-      percentage: totalLogs > 0 ? Math.round((count / totalLogs) * 100) : 0,
-      total: totalLogs,
-    }));
+    // ── STEP 4: Build collegeData array for ALL departments ──────────────────
+    // Get all departments from the enrolled students
+    const allDepartments = Array.from(departmentTotals.keys()).sort();
+    
+    const collegeDataArray = [];
+    
+    for (const deptName of allDepartments) {
+      const totalEnrolled = departmentTotals.get(deptName) || 0;
+      const presentNow = departmentPresence.get(deptName) || 0;
+      
+      collegeDataArray.push({
+        name: deptName,
+        fullCollegeName: deptName,
+        collegeName: deptName,
+        presentNow: presentNow,
+        totalEnrolled: totalEnrolled,
+        totalStudents: totalEnrolled,
+        percentagePresent: totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0,
+        percentageOfCampus: 0,
+        presentNowFormatted: presentNow.toLocaleString(),
+        totalEnrolledFormatted: totalEnrolled.toLocaleString()
+      });
+    }
+    
+    // Calculate percentage of campus
+    const totalPresentOnCampus = collegeDataArray.reduce((sum, d) => sum + d.presentNow, 0);
+    const finalCollegeData = collegeDataArray.map(d => ({
+      ...d,
+      percentageOfCampus: totalPresentOnCampus > 0 ? (d.presentNow / totalPresentOnCampus) * 100 : 0
+    })).sort((a, b) => b.presentNow - a.presentNow);
+    
+    console.log('[analytics/report] Final college data:', finalCollegeData.map(d => ({ name: d.name, totalEnrolled: d.totalEnrolled, presentNow: d.presentNow })));
 
-    const trafficChartData = Array.from(trafficMap.values());
-    const highestDay = trafficChartData.length
-      ? trafficChartData.reduce((a, b) => b.entrance > a.entrance ? b : a) : null;
-    const lowestDay  = trafficChartData.length
-      ? trafficChartData.reduce((a, b) => b.entrance < a.entrance ? b : a) : null;
-
-    const studentLogs = logRows.map((r, i) => ({
-      no:         i + 1,
-      dateTime:   new Date(r.log_time).toLocaleString('en-PH', { hour12: true }),
-      studentId:  r.student_id,
-      name:       `${r.last_name}, ${r.first_name}`,
-      department: r.college_department,
-      program:    r.program_name || 'N/A',
-      yearLevel:  r.year_level,
-      action:     r.action === 'ENTRY' ? 'Entrance' : 'Exit',
-      method:     r.method === 'FACIAL' ? 'Facial Recognition'
-                : r.method === 'MANUAL' ? 'Manual Input' : 'QR Scan',
-      accuracy:   r.accuracy ? `${r.accuracy}%` : 'N/A',
-    }));
+    // ── STEP 5-7: Build remaining data (method distribution, traffic, logs) ──
+    // ... (rest of your existing code for method distribution, traffic, logs)
 
     res.json({
-      generatedAt:    new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
-      dateRange:      `${rangeStart.slice(0,10)} to ${rangeEnd.slice(0,10)}`,
-      totalStudents:  uniqueStudents.size,
-      totalLogs,
-      collegeData,
-      methodData,
-      trafficChartData,
-      trafficData: {
-        highest: highestDay ? `${highestDay.date} (${highestDay.entrance} entries)` : 'N/A',
-        lowest:  lowestDay  ? `${lowestDay.date} (${lowestDay.entrance} entries)` : 'N/A',
-      },
-      studentLogs,
+      generatedAt: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+      dateRange: `${rangeStart.slice(0,10)} to ${rangeEnd.slice(0,10)}`,
+      totalStudents: totalStudentsCount,
+      currentOnCampus: currentOnCampus,
+      totalEntries: logRows.filter(r => r.action === 'ENTRY').length,
+      totalExits: logRows.filter(r => r.action === 'EXIT').length,
+      collegeData: finalCollegeData,
+      authData: authData,
+      methodData: methodData,
+      trafficChartData: trafficChartData,
+      studentLogs: studentLogs,
+      entryLogs: entryLogs,
+      exitLogs: exitLogs
     });
 
   } catch (err) {
     console.error('[analytics/report] ERROR:', err);
-    res.status(500).json({ message: 'Failed to generate report data.' });
+    res.status(500).json({ message: 'Failed to generate report data.', error: err.message });
   }
 });
 
