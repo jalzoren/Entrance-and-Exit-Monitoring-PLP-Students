@@ -90,6 +90,18 @@ const AnalyticsService = {
     if (!res.ok) throw new Error('visitor-stats failed');
     return res.json();
   },
+
+  // ── NEW: Fetch visitor logs for table display ──
+  async fetchVisitorLogs() {
+    try {
+      const res = await fetch('/api/analytics/visitor-logs');
+      if (!res.ok) throw new Error(`visitor-logs: HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[AnalyticsService.fetchVisitorLogs] FAILED:', err.message);
+      return [];
+    }
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,6 +115,7 @@ function Analytics() {
   const [collegeData, setCollegeData] = useState([]);
   const [authData, setAuthData] = useState([]);
   const [visitorData, setVisitorData] = useState([]);
+  const [visitorLogs, setVisitorLogs] = useState([]); // ── NEW: Visitor logs state
   const [timeRange, setTimeRange] = useState('7days');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -126,12 +139,13 @@ function Analytics() {
     setIsLoading(true);
     setError(null);
     try {
-      const [metricsData, trafficRaw, deptData, authRaw, visitorStats] = await Promise.all([
+      const [metricsData, trafficRaw, deptData, authRaw, visitorStats, visitorLogsRaw] = await Promise.all([
         AnalyticsService.fetchMetrics(),
         AnalyticsService.fetchTraffic(days),
         AnalyticsService.fetchDepartments(),
         AnalyticsService.fetchAuthMethods(),
         AnalyticsService.fetchVisitorStats(),
+        AnalyticsService.fetchVisitorLogs(), // ── NEW: Fetch visitor logs
       ]);
 
       // Format metrics
@@ -181,6 +195,9 @@ function Analytics() {
         { name: 'ENTRY', value: entries },
         { name: 'EXIT', value: exits }
       ]);
+
+      // ── NEW: Format visitor logs
+      setVisitorLogs(visitorLogsRaw || []);
 
     } catch (err) {
       console.error('[Analytics] loadAll error:', err);
@@ -244,6 +261,7 @@ function Analytics() {
         authData: authData,
         trafficData: trafficData,
         visitorData: visitorData,
+        visitorLogs: visitorLogs, // ── NEW: Pass visitor logs
         metrics: metrics,
       });
       setShowPdfPreview(true);
@@ -527,6 +545,56 @@ function Analytics() {
                 <p className="no-data-msg">No department data available. Students need to be on campus.</p>
               )}
             </section>
+
+            {/* ── CHART 5: Visitor Logs Table ── */}
+            <section className="chart-section">
+              <div className="section-header">
+                <h2>Visitor Activity Logs</h2>
+                <button className="info-btn" title="Detailed visitor entry and exit records">ℹ</button>
+              </div>
+              <div className="table-container">
+                <table className="analytics-table">
+                  <thead>
+                    <tr>
+                      <th>No.</th>
+                      <th>Date & Time</th>
+                      <th>Visitor Name</th>
+                      <th>Action</th>
+                      <th>Purpose</th>
+                      <th>Person to Visit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visitorLogs && visitorLogs.length > 0 ? (
+                      visitorLogs.map((visitor, i) => (
+                        <tr key={i}>
+                          <td>{i + 1}</td>
+                          <td>{visitor.dateTime || visitor.timestamp || '-'}</td>
+                          <td>{visitor.name || visitor.visitor_name || 'Unknown'}</td>
+                          <td>
+                            <span style={{
+                              color: (visitor.action || '').toUpperCase() === 'ENTRY' ? '#2E7D32' : '#D99201',
+                              fontWeight: 'bold'
+                            }}>
+                              {visitor.action || visitor.type || 'N/A'}
+                            </span>
+                          </td>
+                          <td>{visitor.purpose || '-'}</td>
+                          <td>{visitor.personToVisit || visitor.department || '-'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                          No visitor logs available
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+
           </>
         )}
       </div>
@@ -572,6 +640,7 @@ function Analytics() {
                 padding: '10px 20px', backgroundColor: '#f5f5f5',
                 border: 'none', borderRadius: '6px', cursor: 'pointer',
               }}>Close</button>
+           {/** 
               <button
                 onClick={handleViewHtmlReport}
                 title="View HTML report in new window"
@@ -600,6 +669,8 @@ function Analytics() {
                   border: 'none', borderRadius: '6px', cursor: 'pointer',
                 }}
               >Download HTML</button>
+
+              */}
               <button onClick={handleDownloadPDF} style={{
                 padding: '10px 20px', backgroundColor: '#548772', color: 'white',
                 border: 'none', borderRadius: '6px', cursor: 'pointer',
