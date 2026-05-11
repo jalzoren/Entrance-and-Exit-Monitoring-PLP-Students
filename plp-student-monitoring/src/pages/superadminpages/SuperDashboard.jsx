@@ -14,14 +14,92 @@ import {
   CartesianGrid,
 } from "recharts";
 import "../../css/Dashboard.css";
-import { 
+import {
   FaBook, FaQuestionCircle, FaBolt, FaHeadset,
-  FaPlusCircle, FaChartBar, FaDownload, FaCog,
-  FaVideo, FaEnvelope, FaCheckCircle, FaClock,
-  FaCode, FaCalendar, FaCircle, FaSync, FaTachometerAlt,
-  FaInfoCircle, FaExclamationTriangle, FaBell
+  FaChartBar, FaCog, FaEnvelope, FaCheckCircle,
+  FaClock, FaCode, FaCalendar, FaCircle, FaSync,
+  FaTachometerAlt, FaBell, FaUsers, FaClipboardList,
+  FaUserPlus, FaUserEdit, FaUserMinus, FaGraduationCap,
+  FaBuilding, FaLayerGroup, FaExclamationCircle,
+  FaInfoCircle, FaSchool, FaDoorOpen,
+  FaEllipsisH,
 } from "react-icons/fa";
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMPLE DATA
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ACTIVITY_ICONS = {
+  user_add:       { icon: <FaUserPlus />,     color: "#2ecc71", label: "User Added" },
+  user_edit:      { icon: <FaUserEdit />,     color: "#3498db", label: "User Edited" },
+  user_archive:   { icon: <FaUserMinus />,    color: "#e74c3c", label: "User Archived" },
+  student_add:    { icon: <FaGraduationCap />,color: "#27ae60", label: "Student Added" },
+  student_edit:   { icon: <FaUserEdit />,     color: "#2980b9", label: "Student Edited" },
+  student_archive:{ icon: <FaGraduationCap />,color: "#c0392b", label: "Student Archived" },
+  dept_add:       { icon: <FaBuilding />,     color: "#8e44ad", label: "Dept. Added" },
+  dept_edit:      { icon: <FaBuilding />,     color: "#6c3483", label: "Dept. Edited" },
+  dept_archive:   { icon: <FaBuilding />,     color: "#922b21", label: "Dept. Archived" },
+  program_add:    { icon: <FaLayerGroup />,   color: "#e67e22", label: "Program Added" },
+  program_edit:   { icon: <FaLayerGroup />,   color: "#d35400", label: "Program Edited" },
+  program_archive:{ icon: <FaLayerGroup />,   color: "#a04000", label: "Program Archived" },
+  settings:       { icon: <FaCog />,          color: "#7f8c8d", label: "Settings Changed" },
+};
+
+const SAMPLE_ACTIVITIES = [
+  {
+    id: 1,
+    type: "user_add",
+    message: "Super Admin added User:",
+    subject: "Juan Dela Cruz",
+    time: "2 mins ago",
+  },
+  {
+    id: 2,
+    type: "settings",
+    message: "System Settings Updated:",
+    subject: "Gate Settings",
+    time: "1 hr ago",
+  },
+  {
+    id: 3,
+    type: "student_archive",
+    message: "Archived 300 4th year graduated students",
+    subject: "",
+    time: "3 hrs ago",
+  },
+  {
+    id: 4,
+    type: "student_add",
+    message: "New student enrolled:",
+    subject: "Maria Santos",
+    time: "5 hrs ago",
+  },
+  {
+    id: 5,
+    type: "dept_add",
+    message: "Department added:",
+    subject: "College of Architecture",
+    time: "Yesterday",
+  },
+  {
+    id: 6,
+    type: "program_edit",
+    message: "Program updated:",
+    subject: "BS Information Technology",
+    time: "Yesterday",
+  },
+  {
+    id: 7,
+    type: "user_edit",
+    message: "User profile edited:",
+    subject: "Admin Reyes",
+    time: "2 days ago",
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SERVICES
+// ─────────────────────────────────────────────────────────────────────────────
 
 class TimeService {
   static async fetchServerTime() {
@@ -30,7 +108,6 @@ class TimeService {
     return new Date(data.serverTime);
   }
 
-  /** Format a Date into the display shape the header needs. */
   static format(date) {
     const day = date
       .toLocaleDateString("en-PH", { weekday: "long" })
@@ -50,23 +127,35 @@ class TimeService {
   }
 }
 
-/** Handles all dashboard metric/chart data concerns. */
 class DashboardService {
-  // ── METRICS ──────────────────────────────────────────────────────────────
   static async fetchMetrics() {
     try {
-      const res = await fetch("/api/dashboard/metrics");
+      const res = await fetch("http://localhost:5000/api/analytics/metrics");
       if (!res.ok) throw new Error("no metrics");
-      return await res.json();
+      const json = await res.json();
+      // Accept direct payload or envelope
+      return json.data ?? json.metrics ?? json;
     } catch {
-      // SAMPLE FALLBACK — replace with real data once backend is ready
-      return { onCampus: 1_000, totalEntries: 1_000, authSuccessRate: 80 };
+      return {
+        onCampus: 1000,
+        totalEntries: 1000,
+        authSuccessRate: 80,
+        totalUsers: 10,
+        totalSuperAdmins: 1,
+        totalEEMSAdmins: 2,
+        totalEAMSAdmins: 3,
+        totalStudents: 3000,
+        totalDepartments: 7,
+        totalPrograms: 12,
+        archivedUsers: 0,
+        archivedStudents: 0,
+        archivedDepartments: 0,
+        archivedPrograms: 0,
+      };
     }
   }
 
-  // ── TRAFFIC CHART ─────────────────────────────────────────────────────────
   static async fetchTraffic(days = 7) {
-    // prettier-ignore
     const sampleAll = [
       { day: "MON", entries: 150,  exits: 140  },
       { day: "TUE", entries: 180,  exits: 170  },
@@ -79,9 +168,7 @@ class DashboardService {
     return sampleAll.slice(0, days);
   }
 
-  // ── COLLEGE DISTRIBUTION ─────────────────────────────────────────────────
-static async fetchColleges() {
-    // Sample data — each object needs `name` and `value` for Recharts <Pie>
+  static async fetchColleges() {
     return [
       { name: "College of Computer Studies", value: 2000 },
       { name: "College of Arts and Sciences", value: 1000 },
@@ -90,113 +177,286 @@ static async fetchColleges() {
       { name: "College of International Hospitality Management", value: 2000 },
       { name: "College of Education", value: 3000 },
       { name: "College of Engineering", value: 2500 },
-     
     ];
   }
 
-  // ── COMPUTED SUMMARIES ────────────────────────────────────────────────────
-  /** Returns { totalEntries, totalExits, peakDay, peakEntries } for the footer. */
   static trafficSummary(data) {
     if (!data || data.length === 0) return null;
     const totalEntries = data.reduce((s, d) => s + (d.entries ?? 0), 0);
     const totalExits   = data.reduce((s, d) => s + (d.exits   ?? 0), 0);
     const peak         = data.reduce((a, b) => (b.entries > a.entries ? b : a));
-    return {
-      totalEntries,
-      totalExits,
-      peakDay: peak.day,
-      peakEntries: peak.entries,
-    };
+    return { totalEntries, totalExits, peakDay: peak.day, peakEntries: peak.entries };
   }
 
-  /** Build the date-range label shown above the area chart (e.g. "Jan 25 – 31, 2026"). */
   static trafficDateRange(days) {
     const end   = new Date();
     const start = new Date();
     start.setDate(end.getDate() - (days - 1));
-    const fmt = (d) =>
-      d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    const fmt = (d) => d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
     return `${fmt(start)} – ${fmt(end)}, ${end.getFullYear()}`;
   }
+
+  static async fetchNotifications() {
+    try {
+      const res = await fetch("http://localhost:5000/api/notifications");
+      if (!res.ok) throw new Error("Failed to fetch notifications");
+      const json = await res.json();
+      return json.data ?? json.notifications ?? json;
+    } catch (err) {
+      console.error('[DashboardService] fetchNotifications failed:', err.message);
+      return [];
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function NotificationsPanel({ notifications }) {
+  const unreadCount = notifications.filter((n) => n.unread).length;
+  const iconMap = {
+    exclamation: <FaExclamationCircle />,
+    calendar: <FaCalendar />,
+    check: <FaCheckCircle />,
+    info: <FaInfoCircle />,
+    envelope: <FaEnvelope />,
+  };
+
+  return (
+    <div className="panel-card notif-panel">
+      {/* Header */}
+      <div className="panel-header">
+        <div className="panel-title-group">
+          <span className="panel-icon-wrap notif-icon-wrap">
+            <FaBell />
+          </span>
+          <h3 className="panel-title">Notifications</h3>
+          {unreadCount > 0 && (
+            <span className="unread-badge">{unreadCount}</span>
+          )}
+        </div>
+      </div>
+
+      {/* List */}
+      <ul className="notif-list">
+        {notifications.length === 0 ? (
+          <li className="notif-empty-item">No notifications available.</li>
+        ) : (
+          notifications.map((n) => (
+            <li key={n.id} className={`notif-item ${n.unread ? "unread" : ""}`}>
+              <span
+                className={`notif-type-bar type-${n.type}`}
+                aria-hidden="true"
+              />
+              <span className={`notif-dot-icon type-${n.type}`}>
+                {iconMap[n.icon] ?? <FaBell />}
+              </span>
+              <div className="notif-body">
+                <p className="notif-title">{n.title}</p>
+                <p className="notif-detail">{n.detail}</p>
+                <span className="notif-time">{n.time}</span>
+              </div>
+              {n.unread && <span className="notif-unread-dot" aria-label="Unread" />}
+            </li>
+          ))
+        )}
+      </ul>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RECENT ACTIVITY PANEL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function RecentActivityPanel({ activities }) {
+  return (
+    <div className="panel-card activity-panel">
+      {/* Header */}
+      <div className="panel-header">
+        <div className="panel-title-group">
+          <span className="panel-icon-wrap activity-icon-wrap">
+            <FaClipboardList />
+          </span>
+          <h3 className="panel-title">Recent Activity</h3>
+        </div>
+      </div>
+
+      {/* List */}
+      <ul className="activity-list">
+        {activities.map((a, idx) => {
+          const meta = ACTIVITY_ICONS[a.type] || ACTIVITY_ICONS.settings;
+          return (
+            <li key={a.id} className="activity-item">
+              {/* Timeline line */}
+              <div className="activity-timeline">
+                <span
+                  className="activity-dot"
+                  style={{ background: meta.color }}
+                >
+                  {meta.icon}
+                </span>
+                {idx < activities.length - 1 && (
+                  <span className="activity-line" />
+                )}
+              </div>
+              <div className="activity-body">
+                <p className="activity-message">
+                  {a.message}{" "}
+                  {a.subject && (
+                    <strong className="activity-subject">{a.subject}</strong>
+                  )}
+                </p>
+                <div className="activity-meta">
+                  <span
+                    className="activity-type-chip"
+                    style={{ borderColor: meta.color, color: meta.color }}
+                  >
+                    {meta.label}
+                  </span>
+                  <span className="activity-time">
+                    <FaClock /> {a.time}
+                  </span>
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// QUICK ACTIONS (updated)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function QuickActionsSection() {
+  const actions = [
+    {
+      variant: "primary",
+      icon: <FaUsers />,
+      title: "Manage Users",
+      desc: "Add, edit & archive users",
+      onClick: () => console.log("Manage Users"),
+    },
+    {
+      variant: "success",
+      icon: <FaChartBar />,
+      title: "Generate Reports",
+      desc: "Export analytics & summaries",
+      onClick: () => console.log("Generate Reports"),
+    },
+    {
+      variant: "warning",
+      icon: <FaCog />,
+      title: "System Settings",
+      desc: "Configure gate & academic year settings",
+      onClick: () => console.log("System Settings"),
+    },
+    {
+      variant: "info",
+      icon: <FaDoorOpen />,
+      title: "Entry–Exit Records",
+      desc: "View all campus logs",
+      onClick: () => console.log("Entry-Exit Records"),
+    },
+  ];
+
+  return (
+    <section className="quick-actions-section">
+      <div className="section-header-wrapper">
+        <h3>
+          <FaBolt /> Quick Actions
+        </h3>
+        <span className="section-badge">{actions.length} available</span>
+      </div>
+
+      <div className="actions-grid">
+        {actions.map((a) => (
+          <button
+            key={a.title}
+            className={`action-card ${a.variant}`}
+            onClick={a.onClick}
+          >
+            <span className="action-icon">{a.icon}</span>
+            <div className="action-content">
+              <span className="action-title">{a.title}</span>
+              <span className="action-desc">{a.desc}</span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ROOT COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
+
 function SuperDashboard() {
-  const [serverTime,   setServerTime]   = useState(null);
-  const [metrics,      setMetrics]      = useState(null);
-  const [trafficData,  setTrafficData]  = useState(null);
-  const [collegeData,  setCollegeData]  = useState(null);
-  const [trafficDays,  setTrafficDays]  = useState(7);
-  const [chartKey, setChartKey] = useState(0); // Add key for forcing re-renders
+  const [serverTime,      setServerTime]      = useState(null);
+  const [metrics,         setMetrics]         = useState(null);
+  const [trafficData,     setTrafficData]     = useState(null);
+  const [collegeData,     setCollegeData]     = useState(null);
+  const [notifications,   setNotifications]   = useState([]);
+  const [trafficDays,     setTrafficDays]     = useState(7);
+  const [chartKey,        setChartKey]        = useState(0);
 
-  // ── Clock effect ────────────────────────────────────────────────────────
+  // Clock
   useEffect(() => {
-    let baseTime;
-    let tickInterval;
-    let syncInterval;
-
+    let baseTime, tickInterval, syncInterval;
     const syncClock = async () => {
       try {
         baseTime = await TimeService.fetchServerTime();
-        setServerTime(new Date(baseTime));
-        clearInterval(tickInterval);
-        tickInterval = setInterval(() => {
-          baseTime = new Date(baseTime.getTime() + 1000);
-          setServerTime(new Date(baseTime));
-        }, 1000);
       } catch {
-        // If server is unreachable, fall back to local time
         baseTime = new Date();
-        setServerTime(new Date(baseTime));
-        tickInterval = setInterval(() => {
-          baseTime = new Date(baseTime.getTime() + 1000);
-          setServerTime(new Date(baseTime));
-        }, 1000);
       }
+      setServerTime(new Date(baseTime));
+      clearInterval(tickInterval);
+      tickInterval = setInterval(() => {
+        baseTime = new Date(baseTime.getTime() + 1000);
+        setServerTime(new Date(baseTime));
+      }, 1000);
     };
-
     syncClock();
     syncInterval = setInterval(syncClock, 60_000);
-
-    // CLEANUP: always clear intervals when component unmounts
-    return () => {
-      clearInterval(tickInterval);
-      clearInterval(syncInterval);
-    };
+    return () => { clearInterval(tickInterval); clearInterval(syncInterval); };
   }, []);
 
-  // ── Data loading effect ─────────────────────────────────────────────────
+  // Data
   useEffect(() => {
-    DashboardService.fetchMetrics().then(setMetrics);
+    DashboardService.fetchMetrics().then((m) => { console.log('[SuperDashboard] metrics →', m); setMetrics(m); });
     DashboardService.fetchColleges().then(setCollegeData);
+    DashboardService.fetchNotifications().then((n) => { console.log('[SuperDashboard] notifications →', n); setNotifications(n); });
   }, []);
 
-  // Re-fetch traffic whenever the user changes the day-range dropdown
   useEffect(() => {
     DashboardService.fetchTraffic(trafficDays).then(setTrafficData);
-    // Force chart re-render when data changes
-    setChartKey(prev => prev + 1);
+    setChartKey((p) => p + 1);
   }, [trafficDays]);
 
-  // ── Derived values (memoised so they don't recalculate on every render) ─
-  const formatted    = serverTime ? TimeService.format(serverTime) : null;
-  const summary      = useMemo(() => DashboardService.trafficSummary(trafficData), [trafficData]);
-  const dateRangeLabel = useMemo(() => DashboardService.trafficDateRange(trafficDays), [trafficDays]);
-
-  // Handle window resize to force chart re-render
+  // Resize → force chart re-render
   useEffect(() => {
-    const handleResize = () => {
-      setChartKey(prev => prev + 1);
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    const onResize = () => setChartKey((p) => p + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  // Don't render anything until the clock is ready (avoids flash)
+  const formatted     = serverTime ? TimeService.format(serverTime) : null;
+  const summary       = useMemo(() => DashboardService.trafficSummary(trafficData), [trafficData]);
+  const dateRangeLabel = useMemo(() => DashboardService.trafficDateRange(trafficDays), [trafficDays]);
+
   if (!formatted) return null;
+
+  const formatNumber = (v) => {
+    if (v === null || v === undefined) return "—";
+    const n = Number(v);
+    if (!Number.isFinite(n)) return String(v);
+    return n.toLocaleString();
+  };
 
   return (
     <div className="dashboard-wrapper">
@@ -211,7 +471,6 @@ function SuperDashboard() {
               <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>
             </div>
           </div>
-
           <div className="date-and-time">
             <div className="date-section">
               <span className="day">{formatted.day}</span>
@@ -221,222 +480,176 @@ function SuperDashboard() {
           </div>
         </header>
 
-        {/* ── METRIC CARDS ── */}
+        {/* ── METRIC CARDS (4 per row) ── */}
         <section className="metrics-row">
           <MetricCard
-            title="Currently On Campus"
-            value={metrics?.onCampus ?? "—"}
-            subtitle="STUDENTS"
-            tooltip="Shows the total number of students currently inside the campus based on active entry records without a corresponding exit."
+            title="Total Users"
+            value={formatNumber(metrics?.totalUsers)}
+            tooltip="Shows the total number of user accounts (admins) registered in the system."
           />
           <MetricCard
-            title="Today's Total Entries"
-            value={metrics?.totalEntries ?? "—"}
-            subtitle="ENTRIES"
-            tooltip="Counts all successful student entry events recorded for the current day."
+            title="Total Super Admin"
+            value={formatNumber(metrics?.totalSuperAdmins)}
+            tooltip="Shows the total number of super admins registered in the system."
           />
           <MetricCard
-            title="Auth Success Rate"
-            value={metrics?.authSuccessRate ? `${metrics.authSuccessRate}%` : "—"}
-            subtitle="FACIAL RECOGNITION"
-            tooltip="Percentage of successful identity verifications during entry using facial recognition."
+            title="Total EEMS Admin"
+            value={formatNumber(metrics?.totalEEMSAdmins)}
+            tooltip="Shows the total number of EEMS Admins registered in the system."
+          />
+          <MetricCard
+            title="Total EAMS Admin"
+            value={formatNumber(metrics?.totalEAMSAdmins)}
+            tooltip="Shows the total number of EAMS Admins registered in the system."
           />
         </section>
 
-        {/* ── CHARTS ── */}
-        <section className="charts-grid">
-          {/* Chart 1 — Daily Traffic Trend (Area Chart) */}
-          <div className="chart-card">
-            <div className="chart-card-header">
-              <h3>Daily Traffic Trend</h3>
-              <div className="chart-controls">
-                <select
-                  value={trafficDays}
-                  onChange={(e) => setTrafficDays(Number(e.target.value))}
-                >
-                  <option value={7}>7 DAYS</option>
-                  <option value={30}>30 DAYS</option>
-                </select>
-                <InfoIcon tooltip="Displays the number of student entries and exits per day within the selected time range." />
-              </div>
+        <section className="metrics-row">
+          <MetricCard
+            title="Total Programs"
+            value={formatNumber(metrics?.totalPrograms)}
+            tooltip="Shows the total number of programs."
+          />
+          <MetricCard
+            title="Total Departments"
+            value={formatNumber(metrics?.totalDepartments)}
+            tooltip="Shows the total number of departments."
+          />
+          <MetricCard
+            title="Total Students"
+            value={formatNumber(metrics?.totalStudents)}
+            tooltip="Shows the total number of active students currently registered in the system."
+          />
+        </section>
+
+        <section className="metrics-row">
+          <MetricCard
+            title="Archived Users"
+            value={formatNumber(metrics?.archivedUsers)}
+            tooltip="Shows the number of archived user accounts."
+          />
+          <MetricCard
+            title="Archived Students"
+            value={formatNumber(metrics?.archivedStudents)}
+            tooltip="Shows the number of archived students."
+          />
+          <MetricCard
+            title="Archived Departments"
+            value={formatNumber(metrics?.archivedDepartments)}
+            tooltip="Shows the number of archived departments."
+          />
+          <MetricCard
+            title="Archived Programs"
+            value={formatNumber(metrics?.archivedPrograms)}
+            tooltip="Shows the number of archived programs."
+          />
+        </section>
+
+        {/* ── NOTIFICATIONS + RECENT ACTIVITY ── */}
+        <section className="info-panels-row">
+          <NotificationsPanel
+            notifications={notifications}
+          />
+          <RecentActivityPanel
+            activities={SAMPLE_ACTIVITIES}
+          />
+        </section>
+
+        {/* ── QUICK ACTIONS ── */}
+        <QuickActionsSection />
+
+        {/* ── QUICK GUIDE ── */}
+        <section className="quick-guide-section">
+          <h3><FaBook /> Quick Guide &amp; FAQs</h3>
+          <div className="guide-grid">
+            <div className="guide-card">
+              <div className="guide-icon"><FaBook /></div>
+              <h4>Getting Started</h4>
+              <ul>
+                <li><FaCircle /> Monitor real-time entries/exits</li>
+                <li><FaCircle /> View daily traffic trends</li>
+                <li><FaCircle /> Check college distribution</li>
+                <li><FaCircle /> Generate reports weekly</li>
+              </ul>
             </div>
-
-            {dateRangeLabel && (
-              <div className="chart-date-range">{dateRangeLabel}</div>
-            )}
-
-            <div className="chart-area-wrap" style={{ minHeight: '300px', width: '100%' }}>
-              <TrafficAreaChart 
-                key={`traffic-${chartKey}`} 
-                data={trafficData} 
-              />
+            <div className="guide-card">
+              <div className="guide-icon"><FaQuestionCircle /></div>
+              <h4>Frequently Asked</h4>
+              <ul>
+                <li><FaCircle /> How to add new students?</li>
+                <li><FaCircle /> What if facial recognition fails?</li>
+                <li><FaCircle /> How to export reports?</li>
+                <li><FaCircle /> Who to contact for support?</li>
+              </ul>
             </div>
-
-            {summary && (
-              <div className="chart-summary">
-                <span>Weekly Total: <strong>{summary.totalEntries.toLocaleString()} entries</strong></span>
-                <span className="summary-separator">·</span>
-                <span><strong>{summary.totalExits.toLocaleString()} exits</strong></span>
-                <span className="summary-separator">·</span>
-                <span>Peak: <strong>{summary.peakDay} ({summary.peakEntries.toLocaleString()} entries)</strong></span>
-              </div>
-            )}
-          </div>
-
-          {/* Chart 2 — College Department Distribution (Pie Chart) */}
-          <div className="chart-card">
-            <div className="chart-card-header">
-              <h3>College Department Distribution</h3>
-              <InfoIcon tooltip="Shows the proportion of student traffic by college or department currently on campus today." />
+            <div className="guide-card">
+              <div className="guide-icon"><FaBolt /></div>
+              <h4>Quick Tips</h4>
+              <ul>
+                <li><FaCircle /> Use filters to narrow logs</li>
+                <li><FaCircle /> Hover over cards for details</li>
+                <li><FaCircle /> Click charts to zoom</li>
+                <li><FaCircle /> Export data as CSV</li>
+              </ul>
             </div>
-            <div className="chart-area-wrap" style={{ minHeight: '300px', width: '100%' }}>
-              <CollegePieChart 
-                key={`pie-${chartKey}`} 
-                data={collegeData} 
-              />
+            <div className="guide-card">
+              <div className="guide-icon"><FaHeadset /></div>
+              <h4>Contact Support</h4>
+              <ul>
+                <li><FaCircle /> IT Helpdesk: ext. 1234</li>
+                <li><FaCircle /> Email: support@plp.edu</li>
+                <li><FaCircle /> Hours: 8AM - 5PM</li>
+                <li><FaCircle /> Emergency: 0917-123-4567</li>
+              </ul>
             </div>
           </div>
         </section>
 
+        {/* ── FOOTER ── */}
+        <footer className="dashboard-footer">
+          <div className="footer-left">
+            <span className="system-status">
+              <span className="status-dot green" />
+              <FaCheckCircle /> System Online
+            </span>
+            <span className="separator">|</span>
+            <span><FaClock /> Last Sync: {formatted.time}</span>
+            <span className="separator">|</span>
+            <span><FaTachometerAlt /> API: 45ms</span>
+          </div>
+          <div className="footer-right">
+            <span><FaCalendar /> 2026 PLP Entrance Exit Monitoring System</span>
+            <span className="separator">|</span>
+            <span><FaCode /> v1.1.0</span>
+            <span className="separator">|</span>
+            <span><FaSync /> Build: 03.01</span>
+          </div>
+        </footer>
 
-        
-{/* ── QUICK ACTIONS ── */}
-<section className="quick-actions-section">
-  <div className="section-header-wrapper">
-    <h3><FaBolt /> Quick Actions</h3>
-    <span className="section-badge">4 available</span>
-  </div>
-  
-  <div className="actions-grid">
-    <button className="action-card primary">
-      <span className="action-icon"><FaPlusCircle /></span>
-      <div className="action-content">
-        <span className="action-title">Register New Student</span>
-        <span className="action-desc">Add student record</span>
-      </div>
-    </button>
-    
-    <button className="action-card success">
-      <span className="action-icon"><FaChartBar /></span>
-      <div className="action-content">
-        <span className="action-title">Generate Report</span>
-        <span className="action-desc">Export analytics</span>
-      </div>
-    </button>
-    
-    <button className="action-card warning">
-      <span className="action-icon"><FaDownload /></span>
-      <div className="action-content">
-        <span className="action-title">Export Data</span>
-        <span className="action-desc">CSV, PDF, Excel</span>
-      </div>
-    </button>
-  
-  
-    
-    <button className="action-card">
-      <span className="action-icon"><FaEnvelope /></span>
-      <div className="action-content">
-        <span className="action-title">Contact Support</span>
-        <span className="action-desc">24/7 assistance</span>
-      </div>
-    </button>
-  </div>
-
- 
-</section>
-
-<section className="quick-guide-section">
-  <h3><FaBook /> Quick Guide & FAQs</h3>
-  <div className="guide-grid">
-    <div className="guide-card">
-      <div className="guide-icon"><FaBook /></div>
-      <h4>Getting Started</h4>
-      <ul>
-        <li><FaCircle /> Monitor real-time entries/exits</li>
-        <li><FaCircle /> View daily traffic trends</li>
-        <li><FaCircle /> Check college distribution</li>
-        <li><FaCircle /> Generate reports weekly</li>
-      </ul>
-    </div>
-    
-    <div className="guide-card">
-      <div className="guide-icon"><FaQuestionCircle /></div>
-      <h4>Frequently Asked</h4>
-      <ul>
-        <li><FaCircle /> How to add new students?</li>
-        <li><FaCircle /> What if facial recognition fails?</li>
-        <li><FaCircle /> How to export reports?</li>
-        <li><FaCircle /> Who to contact for support?</li>
-      </ul>
-    </div>
-    
-    <div className="guide-card">
-      <div className="guide-icon"><FaBolt /></div>
-      <h4>Quick Tips</h4>
-      <ul>
-        <li><FaCircle /> Use filters to narrow logs</li>
-        <li><FaCircle /> Hover over cards for details</li>
-        <li><FaCircle /> Click charts to zoom</li>
-        <li><FaCircle /> Export data as CSV</li>
-      </ul>
-    </div>
-    
-    <div className="guide-card">
-      <div className="guide-icon"><FaHeadset /></div>
-      <h4>Contact Support</h4>
-      <ul>
-        <li><FaCircle /> IT Helpdesk: ext. 1234</li>
-        <li><FaCircle /> Email: support@plp.edu</li>
-        <li><FaCircle /> Hours: 8AM - 5PM</li>
-        <li><FaCircle /> Emergency: 0917-123-4567</li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-
-{/* ── FOOTER WITH SYSTEM STATUS ── */}
-<footer className="dashboard-footer">
-  <div className="footer-left">
-    <span className="system-status">
-      <span className="status-dot green"></span>
-      <FaCheckCircle /> System Online
-    </span>
-    <span className="separator">|</span>
-    <span><FaClock /> Last Sync: {formatted.time}</span>
-    <span className="separator">|</span>
-    <span><FaTachometerAlt /> API: 45ms</span>
-  </div>
-  <div className="footer-right">
-    <span><FaCalendar /> 2026 PLP Entrance Exit Monitoring System</span>
-    <span className="separator">|</span>
-    <span><FaCode /> v1.1.0</span>
-    <span className="separator">|</span>
-    <span><FaSync /> Build: 03.01</span>
-  </div>
-</footer>
       </div>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SHARED SUB-COMPONENTS (unchanged)
+// ─────────────────────────────────────────────────────────────────────────────
+
 function InfoIcon({ tooltip }) {
-  const [visible, setVisible]   = useState(false);
-  const [coords,  setCoords]    = useState({ top: 0, left: 0 });
-  const iconRef                 = useRef(null);
+  const [visible, setVisible] = useState(false);
+  const [coords,  setCoords]  = useState({ top: 0, left: 0 });
+  const iconRef               = useRef(null);
 
   const handleMouseEnter = useCallback(() => {
     if (iconRef.current) {
       const rect = iconRef.current.getBoundingClientRect();
       setCoords({
-        top:  rect.top + window.scrollY - 8,
+        top:  rect.top  + window.scrollY - 8,
         left: rect.left + window.scrollX + rect.width / 2,
       });
     }
     setVisible(true);
   }, []);
-
   const handleMouseLeave = useCallback(() => setVisible(false), []);
 
   const tooltipPortal = visible
@@ -488,19 +701,9 @@ function MetricCard({ title, value, subtitle, tooltip }) {
   );
 }
 
-const TRAFFIC_COLORS = {
-  entries: "#58761B",
-  exits:   "#D99201",
-};
-
+const TRAFFIC_COLORS = { entries: "#58761B", exits: "#D99201" };
 const PIE_COLORS = [
-  "#5e5e5e",
-  "#54325f",
-  "#da719e",
-  "#ffeb36",
-  "#d11100",
-  "#0023be",
-  "#ff8800",
+  "#5e5e5e","#54325f","#da719e","#ffeb36","#d11100","#0023be","#ff8800",
 ];
 
 function TrafficTooltip({ active, payload }) {
@@ -519,98 +722,46 @@ function TrafficAreaChart({ data }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  if (!data || data.length === 0) {
-    return <p className="chart-placeholder">No traffic data</p>;
-  }
+  useEffect(() => {
+    const update = () => {
+      if (containerRef.current)
+        setDimensions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  if (!data || data.length === 0) return <p className="chart-placeholder">No traffic data</p>;
 
   const formatted = data.map((d) => ({
     date: d.date || d.day,
-    entries: d.entries ?? d.entry ?? d.entrances ?? 0,
-    exits: d.exits ?? d.exit ?? d.exiting ?? 0,
+    entries: d.entries ?? 0,
+    exits:   d.exits   ?? 0,
   }));
 
-  // Update dimensions on resize
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight
-        });
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    
-    return () => window.removeEventListener('resize', updateDimensions);
-  }, []);
-
   return (
-    <div 
-      ref={containerRef} 
-      className="chart-container" 
-      style={{ width: '100%', height: '100%', minHeight: '280px' }}
-    >
+    <div ref={containerRef} className="chart-container" style={{ width: "100%", height: "100%", minHeight: "280px" }}>
       {dimensions.width > 0 && (
         <ResponsiveContainer width="100%" height="100%">
-          <ReAreaChart 
-            data={formatted} 
-            margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
-          >
+          <ReAreaChart data={formatted} margin={{ top: 20, right: 30, left: 20, bottom: 40 }}>
             <defs>
               <linearGradient id="gEntries" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.8}/>
+                <stop offset="5%"  stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.8}/>
                 <stop offset="95%" stopColor={TRAFFIC_COLORS.entries} stopOpacity={0.1}/>
               </linearGradient>
               <linearGradient id="gExits" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.8}/>
+                <stop offset="5%"  stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.8}/>
                 <stop offset="95%" stopColor={TRAFFIC_COLORS.exits} stopOpacity={0.1}/>
               </linearGradient>
             </defs>
-            
             <CartesianGrid strokeDasharray="3 3" stroke="#e9ecef" />
-            <XAxis 
-              dataKey="date" 
-              tick={{ fontSize: 11 }}
-              interval="preserveStartEnd"
-              angle={-45}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis 
-              tick={{ fontSize: 11 }}
-              width={45}
-            />
+            <XAxis dataKey="date" tick={{ fontSize: 11 }} angle={-45} textAnchor="end" height={60} />
+            <YAxis tick={{ fontSize: 11 }} width={45} />
             <ReTooltip content={<TrafficTooltip />} />
-            <ReLegend 
-              verticalAlign="bottom" 
-              height={36}
-              wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }}
-            />
-            
-            <Area
-              type="monotone"
-              dataKey="entries"
-              name="Entries"
-              stroke={TRAFFIC_COLORS.entries}
-              strokeWidth={2}
-              fill="url(#gEntries)"
-              fillOpacity={0.6}
-              dot={{ r: 3, fill: TRAFFIC_COLORS.entries }}
-              activeDot={{ r: 5 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="exits"
-              name="Exits"
-              stroke={TRAFFIC_COLORS.exits}
-              strokeWidth={2}
-              fill="url(#gExits)"
-              fillOpacity={0.6}
-              dot={{ r: 3, fill: TRAFFIC_COLORS.exits }}
-              activeDot={{ r: 5 }}
-            />
+            <ReLegend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }} />
+            <Area type="monotone" dataKey="entries" name="Entries" stroke={TRAFFIC_COLORS.entries} strokeWidth={2} fill="url(#gEntries)" fillOpacity={0.6} dot={{ r: 3 }} activeDot={{ r: 5 }} />
+            <Area type="monotone" dataKey="exits"   name="Exits"   stroke={TRAFFIC_COLORS.exits}   strokeWidth={2} fill="url(#gExits)"   fillOpacity={0.6} dot={{ r: 3 }} activeDot={{ r: 5 }} />
           </ReAreaChart>
         </ResponsiveContainer>
       )}
@@ -622,87 +773,49 @@ function CollegePieChart({ data }) {
   const containerRef = useRef(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
 
-  if (!data || data.length === 0) {
-    return <p className="chart-placeholder">No distribution data</p>;
-  }
-
-  const total = data.reduce((s, d) => s + d.value, 0);
-
-  // Update dimensions on resize
   useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        setDimensions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight
-        });
-      }
+    const update = () => {
+      if (containerRef.current)
+        setDimensions({ width: containerRef.current.clientWidth, height: containerRef.current.clientHeight });
     };
-
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
-    
-    return () => window.removeEventListener('resize', updateDimensions);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, []);
+
+  if (!data || data.length === 0) return <p className="chart-placeholder">No distribution data</p>;
+  const total = data.reduce((s, d) => s + d.value, 0);
 
   const CustomLegend = () => (
     <ul className="pie-legend">
-      {data.map((entry, i) => {
-        const pct = ((entry.value / total) * 100).toFixed(0);
-        return (
-          <li key={entry.name}>
-            <span 
-              className="swatch" 
-              style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} 
-            />
-            <span className="legend-text">
-              {entry.name} ({pct}%)
-            </span>
-          </li>
-        );
-      })}
+      {data.map((entry, i) => (
+        <li key={entry.name}>
+          <span className="swatch" style={{ backgroundColor: PIE_COLORS[i % PIE_COLORS.length] }} />
+          <span className="legend-text">{entry.name} ({((entry.value / total) * 100).toFixed(0)}%)</span>
+        </li>
+      ))}
     </ul>
   );
 
   return (
     <>
-    <div ref={containerRef} className="pie-wrap">
-      <div className="pie-chart-wrapper" style={{ width: '100%', height: '250px' }}>
-        {dimensions.width > 0 && (
-          <ResponsiveContainer width="100%" height="100%">
-            <RePieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-              <Pie
-                data={data}
-                cx="50%"
-                cy="50%"
-                innerRadius={dimensions.width < 400 ? 30 : 40}
-                outerRadius={dimensions.width < 400 ? 60 : 80}
-                paddingAngle={2}
-                dataKey="value"
-                label={false}
-              >
-                {data.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                    stroke="#fff"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <ReTooltip 
-                formatter={(value, name) => [
-                  `${value.toLocaleString()} (${((value/total)*100).toFixed(1)}%)`, 
-                  name
-                ]}
-              />
-            </RePieChart>
-          </ResponsiveContainer>
-        )}
+      <div ref={containerRef} className="pie-wrap">
+        <div className="pie-chart-wrapper" style={{ width: "100%", height: "250px" }}>
+          {dimensions.width > 0 && (
+            <ResponsiveContainer width="100%" height="100%">
+              <RePieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Pie data={data} cx="50%" cy="50%" innerRadius={dimensions.width < 400 ? 30 : 40} outerRadius={dimensions.width < 400 ? 60 : 80} paddingAngle={2} dataKey="value" label={false}>
+                  {data.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} stroke="#fff" strokeWidth={2} />
+                  ))}
+                </Pie>
+                <ReTooltip formatter={(v, n) => [`${v.toLocaleString()} (${((v / total) * 100).toFixed(1)}%)`, n]} />
+              </RePieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+        <CustomLegend />
       </div>
-      <CustomLegend />
-    </div>
-    
     </>
   );
 }

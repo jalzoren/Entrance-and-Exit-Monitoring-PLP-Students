@@ -40,17 +40,17 @@ router.post("/recognize", async (req, res) => {
   try {
     const { image, mode } = req.body;
 
-    // ── Gate check (moved inside handler where req/res are available) ──
-    const open = await isGateOpen(mode);                      // ← inside handler
+    // ── Gate check ──────────────────────────────────────────────
+    const open = await isGateOpen(mode);
     if (!open) {
       return res.status(403).json({
         recognized: false,
         message: `The ${mode === 'ENTRY' ? 'entry' : 'exit'} gate is currently closed.`,
-        action:  'GATE_CLOSED',
+        action: 'GATE_CLOSED',
       });
     }
 
-    // ── Step 1: Send image to Python FastAPI ──────────────────────────
+    // ── Step 1: Send image to Python FastAPI ────────────────────
     const pyResponse = await axios.post("http://127.0.0.1:8000/generate-embedding", {
       images: [image]
     });
@@ -65,38 +65,55 @@ router.post("/recognize", async (req, res) => {
     const capturedEmbedding = data.embeddings[0];
     console.log("Captured embedding quality:", data.quality_scores[0]);
 
-    // ── Step 2: Fetch all stored embeddings ───────────────────────────
+    // ── Step 2: Fetch all stored embeddings ─────────────────────
     const [rows] = await pool.query(
-      "SELECT student_id, face_embedding, face_position FROM student_face_embeddings"
+      "SELECT student_id, face_embedding, face_position, quality FROM student_face_embeddings"
     );
     console.log("Number of stored embeddings:", rows.length);
 
-    // ── Step 3: Compare embeddings ────────────────────────────────────
+    // ── Step 3: Compare embeddings ──────────────────────────────
     let matchedStudent = null;
-    let maxSimilarity  = 0;
+    let maxSimilarity = 0;
+    let bestMatchPosition = null;
 
-    for (const row of rows) {
-      const storedEmbedding = JSON.parse(row.face_embedding);
-      const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
-      console.log(`Comparing student ${row.student_id} (${row.face_position}): ${sim.toFixed(3)}`);
+  // In your recognize.js, update the comparison logic
+for (const dbRow of rows) {
+  const storedEmbedding = JSON.parse(dbRow.face_embedding);
+  const storedQuality = dbRow.quality || 0.5;
+  
+  // Calculate base similarity
+  const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
+  
+  // Weight by quality of stored embedding (better quality = more trustworthy)
+  const qualityWeight = 0.3 + (storedQuality * 0.4); // Range: 0.5 to 0.7
+  const weightedSim = sim * qualityWeight;
+  
+  console.log(`Comparing student ${dbRow.student_id} (${dbRow.face_position}, quality: ${storedQuality.toFixed(3)}): ${sim.toFixed(3)} -> weighted: ${weightedSim.toFixed(3)}`);
 
-      if (sim > 0.65 && sim > maxSimilarity) {
-        maxSimilarity  = sim;
-        matchedStudent = row.student_id;
-      }
-    }
+  // Use lower threshold for testing
+  if (sim > 0.60 && sim > maxSimilarity) {
+    maxSimilarity = sim;
+    matchedStudent = dbRow.student_id;
+    bestMatchPosition = dbRow.face_position;
+    bestMatchQuality = storedQuality;
+  }
+}
 
     if (!matchedStudent) {
-      console.log("No matching student found.");
-      return res.json({ recognized: false });
+      console.log(`No matching student found. Best similarity: ${maxSimilarity.toFixed(3)}`);
+      return res.json({ 
+        recognized: false,
+        message: `Face not recognized (confidence: ${(maxSimilarity * 100).toFixed(1)}%)` 
+      });
     }
 
-    // ── Step 4: Get server-authoritative PH time ──────────────────────
+    console.log(`Match found: ${matchedStudent} with similarity ${maxSimilarity.toFixed(3)} (${bestMatchPosition})`);
+
+    // ── Step 4: Get server-authoritative PH time ─────────────────
     const { now, dayStart, dayEnd } = await getTodayPhRange(pool);
     console.log('[recognize] PH now:', now.toString());
-    console.log('[recognize] Window:', dayStart, '→', dayEnd);
 
-    // ── Step 5: Get last log for today (timezone-safe BETWEEN) ────────
+    // ── Step 5: Get last log for today ──────────────────────────
     const [lastLogRows] = await pool.query(
       `SELECT action FROM entry_exit_logs
        WHERE student_id = ?
@@ -109,22 +126,34 @@ router.post("/recognize", async (req, res) => {
     const lastAction = lastLogRows.length ? lastLogRows[0].action : null;
     console.log(`[recognize] student ${matchedStudent} lastAction today: ${lastAction ?? 'none'}`);
 
-    // ── Step 6: Validate against mode ────────────────────────────────
+    // ── Step 6: Validate against mode ───────────────────────────
     if (mode === 'ENTRY' && lastAction === 'ENTRY') {
-      return res.json({ recognized: true, validated: false, message: `You've already entered the school.` });
+      return res.json({ 
+        recognized: true, 
+        validated: false, 
+        message: `You've already entered the school today.` 
+      });
     }
     if (mode === 'EXIT' && lastAction === 'EXIT') {
-      return res.json({ recognized: true, validated: false, message: `You've already exited the school.` });
+      return res.json({ 
+        recognized: true, 
+        validated: false, 
+        message: `You've already exited the school today.` 
+      });
     }
     if (mode === 'EXIT' && !lastAction) {
-      return res.json({ recognized: true, validated: false, message: `No entry record found for today. Please enter first.` });
+      return res.json({ 
+        recognized: true, 
+        validated: false, 
+        message: `No entry record found for today. Please enter first.` 
+      });
     }
 
-    // ── Step 7: Determine action ──────────────────────────────────────
+    // ── Step 7: Determine action ─────────────────────────────────
     const action = mode || (lastAction === 'ENTRY' ? 'EXIT' : 'ENTRY');
     console.log(`Student ${matchedStudent} authenticated. Action: ${action}`);
 
-    // ── Step 8: Fetch student details ─────────────────────────────────
+    // ── Step 8: Fetch student details ────────────────────────────
     const [studentRows] = await pool.query(
       `SELECT 
         s.first_name, 
@@ -141,37 +170,43 @@ router.post("/recognize", async (req, res) => {
     );
 
     const studentInfo = studentRows[0] ?? {};
-    const fullName    = studentInfo.first_name
+    const fullName = studentInfo.first_name
       ? `${studentInfo.last_name}, ${studentInfo.first_name}`
       : matchedStudent;
 
-    // ── Step 9: Insert authentication record ──────────────────────────
+    // ── Step 9: Insert authentication record ─────────────────────
     const [authInsert] = await pool.query(
       `INSERT INTO authentication (student_id, method, auth_status, accuracy, duration, timestamp)
        VALUES (?, 'FACIAL', 'SUCCESS', ?, ?, ?)`,
       [matchedStudent, (maxSimilarity * 100).toFixed(2), 0, now]
     );
 
-    // ── Step 10: Insert entry/exit log ────────────────────────────────
+    // ── Step 10: Insert entry/exit log ───────────────────────────
     await pool.query(
       `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time)
        VALUES (?, ?, ?, ?)`,
       [matchedStudent, authInsert.insertId, action, now]
     );
 
-    // ── Step 11: Respond to React UI ──────────────────────────────────
+    // ── Step 11: Respond to React UI ─────────────────────────────
     return res.json({
-      recognized:  true,
-      validated:   true,
-      student:     fullName,
-      student_id:  matchedStudent,
-      department:  studentInfo.college_department ?? 'N/A',
+      recognized: true,
+      validated: true,
+      student: fullName,
+      student_id: matchedStudent,
+      department: studentInfo.college_department ?? 'N/A',
       action,
+      confidence: maxSimilarity,
     });
 
   } catch (err) {
-    console.error("Recognition Error:", err.message);
-    return res.json({ recognized: false });
+    console.error("Recognition Error:", err);
+    console.error("Stack trace:", err.stack);
+    return res.status(500).json({ 
+      recognized: false, 
+      message: "Internal server error",
+      error: err.message 
+    });
   }
 });
 

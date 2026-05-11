@@ -18,6 +18,7 @@ const programRoutes = require('./routes/programs');
 const analyticsRoute = require('./routes/analytics');
 const { router: timeRouter } = require('./src/time');
 const settingsRoute = require('./routes/systemSettings');
+const notificationsRoute = require('./routes/notifications');
 
 const PORT = process.env.PORT || 5000;
 
@@ -36,6 +37,7 @@ app.use('/api/manualentry', manualEntryRoute);
 app.use('/api/qrscan', qrScanRoute);
 app.use('/api/visitor', visitorRoute);
 app.use('/api/visitor-exit', visitorExitRoute);
+app.use('/api/notifications', notificationsRoute);
 
 // Start server
 app.listen(PORT, () => {
