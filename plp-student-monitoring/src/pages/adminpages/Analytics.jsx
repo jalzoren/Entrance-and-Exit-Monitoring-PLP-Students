@@ -8,33 +8,24 @@ import '../../css/Analytics.css';
 import GenerateReportFilter from '../../components/GenerateReportFilter';
 import GenerateReportPdf from '../../components/GenerateReportPdf';
 import { reportToXml, xmlToReport, downloadXml, downloadHtml, xmlToHtml, openXmlReportWindow } from '../../utils/xmlReportUtils';
-import * as timeUtils from '../../utils/timeUtils';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AUTH_COLORS = ['#01311d', '#d99201', '#4a90d9'];
+const VISITOR_COLORS = ['#4a90d9', '#d99201'];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// API SERVICE  (all data comes from the database via analytics.js routes)
+// API SERVICE (all data comes from the database via analytics.js routes)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const AnalyticsService = {
-  /**
-   * GET /api/analytics/metrics
-   * Returns: { onCampus, totalEntries, totalStudents, authSuccessRate, peakHour }
-   */
   async fetchMetrics() {
     try {
       const res = await fetch('/api/analytics/metrics');
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('[AnalyticsService.fetchMetrics] HTTP Error:', res.status, text.substring(0, 200));
-        throw new Error(`metrics: HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`metrics: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[AnalyticsService.fetchMetrics] Success:', data);
       return data;
     } catch (err) {
       console.error('[AnalyticsService.fetchMetrics] FAILED:', err.message);
@@ -42,20 +33,11 @@ const AnalyticsService = {
     }
   },
 
-  /**
-   * GET /api/analytics/traffic?days=7|30|365
-   * Returns: [{ date, entrance, exit }, ...]
-   */
   async fetchTraffic(days = 7) {
     try {
       const res = await fetch(`/api/analytics/traffic?days=${days}`);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('[AnalyticsService.fetchTraffic] HTTP Error:', res.status, text.substring(0, 200));
-        throw new Error(`traffic: HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`traffic: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[AnalyticsService.fetchTraffic] Success:', data.length, 'entries');
       return data;
     } catch (err) {
       console.error('[AnalyticsService.fetchTraffic] FAILED:', err.message);
@@ -63,20 +45,11 @@ const AnalyticsService = {
     }
   },
 
-  /**
-   * GET /api/analytics/departments
-   * Returns: [{ fullCollegeName, collegeName, presenceNow, totalStudents, percentage }, ...]
-   */
   async fetchDepartments() {
     try {
       const res = await fetch('/api/analytics/departments');
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('[AnalyticsService.fetchDepartments] HTTP Error:', res.status, text.substring(0, 200));
-        throw new Error(`departments: HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`departments: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[AnalyticsService.fetchDepartments] Success:', data.length, 'departments');
       return data;
     } catch (err) {
       console.error('[AnalyticsService.fetchDepartments] FAILED:', err.message);
@@ -84,20 +57,11 @@ const AnalyticsService = {
     }
   },
 
-  /**
-   * GET /api/analytics/auth-methods
-   * Returns: [{ id, method, attempts, success, successRate }, ...]
-   */
   async fetchAuthMethods() {
     try {
       const res = await fetch('/api/analytics/auth-methods');
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('[AnalyticsService.fetchAuthMethods] HTTP Error:', res.status, text.substring(0, 200));
-        throw new Error(`auth-methods: HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`auth-methods: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[AnalyticsService.fetchAuthMethods] Success:', data.length, 'methods');
       return data;
     } catch (err) {
       console.error('[AnalyticsService.fetchAuthMethods] FAILED:', err.message);
@@ -105,24 +69,15 @@ const AnalyticsService = {
     }
   },
 
-  /**
-   * GET /api/analytics/report?from=YYYY-MM-DD&to=YYYY-MM-DD&dept=
-   * Full structured dataset for PDF report generation.
-   */
   async fetchReport(filters = {}) {
     try {
       const params = new URLSearchParams();
       if (filters.from) params.set('from', filters.from);
-      if (filters.to)   params.set('to',   filters.to);
+      if (filters.to) params.set('to', filters.to);
       if (filters.dept) params.set('dept', filters.dept);
       const res = await fetch(`/api/analytics/report?${params}`);
-      if (!res.ok) {
-        const text = await res.text();
-        console.error('[AnalyticsService.fetchReport] HTTP Error:', res.status, text.substring(0, 200));
-        throw new Error(`report: HTTP ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`report: HTTP ${res.status}`);
       const data = await res.json();
-      console.log('[AnalyticsService.fetchReport] Success');
       return data;
     } catch (err) {
       console.error('[AnalyticsService.fetchReport] FAILED:', err.message);
@@ -143,20 +98,20 @@ const AnalyticsService = {
 
 function Analytics() {
   // ── State ────────────────────────────────────────────────────────────────
-  const [metrics,      setMetrics]      = useState({ totalStudents: 0, currentStudentsInside: 0 });
-  const [trafficData,  setTrafficData]  = useState([]);
-  const [collegeData,  setCollegeData]  = useState([]);
-  const [authData,     setAuthData]     = useState([]);
-  const [timeRange,    setTimeRange]    = useState('7days');
-  const [isLoading,    setIsLoading]    = useState(true);
-  const [error,        setError]        = useState(null);
+  const [metrics, setMetrics] = useState({ totalStudents: 0, currentStudentsInside: 0 });
+  const [trafficData, setTrafficData] = useState([]);
+  const [collegeData, setCollegeData] = useState([]);
+  const [authData, setAuthData] = useState([]);
   const [visitorData, setVisitorData] = useState([]);
+  const [timeRange, setTimeRange] = useState('7days');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Report / PDF state
-  const [showFilterPopup,  setShowFilterPopup]  = useState(false);
-  const [showPdfPreview,   setShowPdfPreview]   = useState(false);
+  const [showFilterPopup, setShowFilterPopup] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
   const [filteredReportData, setFilteredReportData] = useState(null);
-  const [appliedFilters,   setAppliedFilters]   = useState({});
+  const [appliedFilters, setAppliedFilters] = useState({});
   const pdfRef = useRef(null);
 
   // Pagination for college table
@@ -179,14 +134,54 @@ function Analytics() {
         AnalyticsService.fetchVisitorStats(),
       ]);
 
+      // Format metrics
       setMetrics({
-        totalStudents:        metricsData.totalStudents        ?? 0,
-        currentStudentsInside: metricsData.onCampus            ?? 0,
+        totalStudents: metricsData.totalStudents ?? 0,
+        currentStudentsInside: metricsData.onCampus ?? 0,
       });
-      setTrafficData(trafficRaw);
-      setCollegeData(deptData);
-      setAuthData(authRaw);
-      setVisitorData(visitorStats);
+
+      // Format traffic data - ensure we have entrance/exit fields
+      const formattedTraffic = trafficRaw.map(item => ({
+        date: item.date,
+        entrance: item.entrance ?? item.entries ?? item.entrances ?? 0,
+        exit: item.exit ?? item.exits ?? 0,
+      }));
+      setTrafficData(formattedTraffic);
+
+      // Format department data
+      const formattedDepts = deptData.map(dept => ({
+        fullCollegeName: dept.fullCollegeName || dept.collegeName || dept.department_name || 'Unknown',
+        collegeName: dept.collegeName || dept.fullCollegeName || dept.department_name || 'Unknown',
+        presenceNow: dept.presenceNow ?? dept.currentStudents ?? dept.presentNow ?? 0,
+        totalStudents: dept.totalStudents ?? dept.enrolled ?? dept.total_enrolled ?? 0,
+        percentage: dept.percentage || ((dept.presenceNow / (dept.totalStudents || 1)) * 100).toFixed(1) || '0',
+      }));
+      setCollegeData(formattedDepts);
+
+      // Format auth data
+      const formattedAuth = authRaw.map(auth => ({
+        id: auth.id,
+        method: auth.method || auth.authentication_method || 'Unknown',
+        attempts: auth.attempts ?? auth.total_attempts ?? 0,
+        success: auth.success ?? auth.successful ?? 0,
+        successRate: auth.successRate ?? auth.success_rate ?? 0,
+      }));
+      setAuthData(formattedAuth);
+
+      // Format visitor data for pie chart
+      let entries = 0, exits = 0;
+      if (visitorStats && Array.isArray(visitorStats)) {
+        entries = visitorStats.filter(v => (v.action || '').toLowerCase() === 'entry').length;
+        exits = visitorStats.filter(v => (v.action || '').toLowerCase() === 'exit').length;
+      } else if (visitorStats && typeof visitorStats === 'object') {
+        entries = visitorStats.entries ?? visitorStats.entry ?? 0;
+        exits = visitorStats.exits ?? visitorStats.exit ?? 0;
+      }
+      setVisitorData([
+        { name: 'ENTRY', value: entries },
+        { name: 'EXIT', value: exits }
+      ]);
+
     } catch (err) {
       console.error('[Analytics] loadAll error:', err);
       setError('Failed to load analytics data. Please check your server connection.');
@@ -207,35 +202,21 @@ function Analytics() {
     const nonZero = trafficData.filter(d => d.entrance > 0);
     if (nonZero.length === 0) return null;
     const highest = nonZero.reduce((a, b) => b.entrance > a.entrance ? b : a);
-    const lowest  = nonZero.reduce((a, b) => b.entrance < a.entrance ? b : a);
+    const lowest = nonZero.reduce((a, b) => b.entrance < a.entrance ? b : a);
     return { highest, lowest };
   }, [trafficData]);
 
-  const visitorChartData = useMemo(() => {
-    if (!visitorData || visitorData.length === 0) return [];
-  
-    const entry = visitorData.filter(v => v.action?.toLowerCase() === "entry").length;
-    const exit  = visitorData.filter(v => v.action?.toLowerCase() === "exit").length;
-  
-    return [
-      { name: "ENTRY", value: entry },
-      { name: "EXIT", value: exit }
-    ];
-  }, [visitorData]);
-
   // ── Pagination ───────────────────────────────────────────────────────────
-  const indexOfFirst      = (currentPage - 1) * recordsPerPage;
+  const indexOfFirst = (currentPage - 1) * recordsPerPage;
   const currentCollegeData = collegeData.slice(indexOfFirst, indexOfFirst + recordsPerPage);
-  const totalPages        = Math.ceil(collegeData.length / recordsPerPage);
+  const totalPages = Math.ceil(collegeData.length / recordsPerPage);
 
   // ── Report generation ────────────────────────────────────────────────────
   const handleApplyFilters = async (filters) => {
     setAppliedFilters(filters);
     try {
-      // Convert UI filter shape to query params
       const reportParams = {};
       if (filters.dateRange?.from) {
-        // from might be "DD/MM/YYYY" — convert to "YYYY-MM-DD"
         const parts = filters.dateRange.from.split('/');
         if (parts.length === 3) reportParams.from = `${parts[2]}-${parts[1]}-${parts[0]}`;
         else reportParams.from = filters.dateRange.from;
@@ -249,22 +230,21 @@ function Analytics() {
 
       const reportData = await AnalyticsService.fetchReport(reportParams);
 
-      // ── XML round-trip ──────────────────────────────────────────────────
-      // 1. Convert JSON response to XML (satisfies XML requirement)
-      // 2. Parse XML back to a clean object (single source of truth for PDF)
-      const xmlString  = reportToXml(reportData, reportParams);
+      const xmlString = reportToXml(reportData, reportParams);
       const parsedData = xmlToReport(xmlString);
-
-      // Optionally expose the XML for download / debugging
-      console.log('[Analytics] Generated XML report:\n', xmlString);
 
       setFilteredReportData({
         ...parsedData,
-        // Keep the XML string so GenerateReportPdf can attach it if needed
         _xml: xmlString,
         dateRange: filters.dateRange?.from && filters.dateRange?.to
           ? `${filters.dateRange.from} - ${filters.dateRange.to}`
           : parsedData.dateRange,
+        // Ensure all required data is passed
+        collegeData: collegeData,
+        authData: authData,
+        trafficData: trafficData,
+        visitorData: visitorData,
+        metrics: metrics,
       });
       setShowPdfPreview(true);
     } catch (err) {
@@ -325,7 +305,7 @@ function Analytics() {
           onClick={() => setCurrentPage(1)}>1</button>
       );
       let start = Math.max(2, currentPage - 1);
-      let end   = Math.min(totalPages - 1, currentPage + 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
       if (currentPage <= 2) end = Math.min(totalPages - 1, 4);
       if (currentPage >= totalPages - 1) start = Math.max(2, totalPages - 3);
       if (start > 2) pages.push(<span key="e1" className="ellipsis">...</span>);
@@ -401,40 +381,42 @@ function Analytics() {
               <div className="section-header">
                 <h2>Daily Traffic Trend (Entries and Exits)</h2>
                 <div className="time-range-selector">
-                  {[['7days','7 Days'],['30days','30 Days'],['1year','1 Year']].map(([v,l]) => (
+                  {[['7days', '7 Days'], ['30days', '30 Days'], ['1year', '1 Year']].map(([v, l]) => (
                     <button key={v}
                       className={`range-btn ${timeRange === v ? 'active' : ''}`}
                       onClick={() => setTimeRange(v)}>{l}</button>
                   ))}
                 </div>
               </div>
-              <TrafficChart data={trafficData} />
-              {insights && (
-                <div className="traffic-insights-container">
-                  <div className="insights">
-                    <h4>Insights:</h4>
-                    <ul>
-                      <li><strong>Highest traffic:</strong> {insights.highest.date} ({insights.highest.entrance.toLocaleString()} entries)</li>
-                      <li><strong>Lowest traffic:</strong>  {insights.lowest.date}  ({insights.lowest.entrance.toLocaleString()} entries)</li>
-                      <li><strong>Peak Hour Today:</strong>  {insights.peakHour?.date || 'N/A'}  ({insights.peakHour?.entrance.toLocaleString() || '0'} entries)</li>
-                    </ul>
-                  </div>
-                  <div className="traffic-legend">
-                    <h4>Legend:</h4>
-                    <div className="legend-items">
-                      <div className="legend-item-traffic">
-                        <span className="legend-color entrance"></span>
-                        <span className="legend-label">Entrance</span>
+              {trafficData && trafficData.length > 0 ? (
+                <>
+                  <TrafficChart data={trafficData} />
+                  {insights && (
+                    <div className="traffic-insights-container">
+                      <div className="insights">
+                        <h4>Insights:</h4>
+                        <ul>
+                          <li><strong>Highest traffic:</strong> {insights.highest?.date} ({insights.highest?.entrance?.toLocaleString() || 0} entries)</li>
+                          <li><strong>Lowest traffic:</strong> {insights.lowest?.date} ({insights.lowest?.entrance?.toLocaleString() || 0} entries)</li>
+                        </ul>
                       </div>
-                      <div className="legend-item-traffic">
-                        <span className="legend-color exit"></span>
-                        <span className="legend-label">Exit</span>
+                      <div className="traffic-legend">
+                        <h4>Legend:</h4>
+                        <div className="legend-items">
+                          <div className="legend-item-traffic">
+                            <span className="legend-color entrance"></span>
+                            <span className="legend-label">Entrance</span>
+                          </div>
+                          <div className="legend-item-traffic">
+                            <span className="legend-color exit"></span>
+                            <span className="legend-label">Exit</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              )}
-              {(!trafficData || trafficData.length === 0) && (
+                  )}
+                </>
+              ) : (
                 <p className="no-data-msg">No traffic data available for this period.</p>
               )}
             </section>
@@ -452,15 +434,20 @@ function Analytics() {
                     <div className="table-container small-table">
                       <table className="analytics-table small-table">
                         <thead>
-                          <tr><th>No.</th><th>Method</th><th>Attempts</th><th>Success</th></tr>
+                          <tr>
+                            <th>No.</th>
+                            <th>Method</th>
+                            <th>Attempts</th>
+                            <th>Success Rate</th>
+                          </tr>
                         </thead>
                         <tbody>
                           {authData.map((auth, i) => (
                             <tr key={auth.id}>
                               <td>{i + 1}</td>
                               <td>{auth.method}</td>
-                              <td>{auth.attempts.toLocaleString()}</td>
-                              <td>{auth.successRate}</td>
+                              <td>{auth.attempts?.toLocaleString() || 0}</td>
+                              <td>{auth.successRate}%</td>
                             </tr>
                           ))}
                         </tbody>
@@ -472,21 +459,18 @@ function Analytics() {
                 )}
               </section>
 
-              {/* ── CHART 3: Visitor Entry and Exit ── */} 
+              {/* ── CHART 3: Visitor Entry and Exit ── */}
               <section className="chart-section">
                 <div className="section-header">
                   <h2>Visitor Entry and Exit</h2>
                 </div>
-
-                {visitorData.length > 0 ? (
+                {visitorData.length > 0 && visitorData.some(v => v.value > 0) ? (
                   <VisitorChart data={visitorData} />
                 ) : (
                   <p className="no-data-msg">No visitor data available.</p>
                 )}
               </section>
             </div>
-
-            
 
             {/* ── CHART 4: Department Distribution ── */}
             <section className="chart-section">
@@ -500,7 +484,7 @@ function Analytics() {
                   <div className="campus-summary">
                     <p>
                       <strong>Total students by department:</strong>{' '}
-                      {collegeData.reduce((s, d) => s + d.presenceNow, 0).toLocaleString()} students currently on campus
+                      {collegeData.reduce((s, d) => s + (d.presenceNow || 0), 0).toLocaleString()} students currently on campus
                     </p>
                   </div>
                   <div className="table-container">
@@ -519,9 +503,9 @@ function Analytics() {
                           <tr key={college.fullCollegeName}>
                             <td>{indexOfFirst + i + 1}</td>
                             <td title={college.fullCollegeName}>{college.fullCollegeName}</td>
-                            <td>{college.presenceNow.toLocaleString()}</td>
-                            <td>{college.totalStudents.toLocaleString()}</td>
-                            <td>{college.percentage}%</td>
+                            <td>{(college.presenceNow || 0).toLocaleString()}</td>
+                            <td>{(college.totalStudents || 0).toLocaleString()}</td>
+                            <td>{college.percentage || '0'}%</td>
                           </tr>
                         ))}
                       </tbody>
@@ -543,8 +527,6 @@ function Analytics() {
                 <p className="no-data-msg">No department data available. Students need to be on campus.</p>
               )}
             </section>
-
-            
           </>
         )}
       </div>
@@ -567,14 +549,16 @@ function Analytics() {
           <div className="pdf-preview-modal" onClick={e => e.stopPropagation()} style={{
             borderRadius: '12px', width: '90%', maxWidth: '1000px',
             maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            backgroundColor: '#fff'
           }}>
             <div className="pdf-preview-header" style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '16px 20px', borderBottom: '1px solid #e0e0e0',
+              backgroundColor: '#01311d'
             }}>
               <h2 style={{ margin: 0, fontSize: '20px', color: '#fff' }}>Report Preview</h2>
               <button onClick={handleClosePdfPreview} style={{
-                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#666',
+                background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#fff',
               }}>×</button>
             </div>
             <div className="pdf-preview-content" style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
@@ -599,7 +583,7 @@ function Analytics() {
               {filteredReportData?._xml && (
                 <button
                   onClick={() => {
-                    const date = new Date().toISOString().slice(0,10);
+                    const date = new Date().toISOString().slice(0, 10);
                     downloadXml(filteredReportData._xml, `eems-report-${date}.xml`);
                   }}
                   style={{
@@ -633,32 +617,67 @@ function Analytics() {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function TrafficChart({ data }) {
-  if (!data || data.length === 0) return null;
+  if (!data || data.length === 0) {
+    return <p className="no-data-msg">No traffic data available</p>;
+  }
+
+  // Ensure data has the required fields
+  const chartData = data.map(item => ({
+    date: item.date,
+    entrance: item.entrance || 0,
+    exit: item.exit || 0,
+  }));
+
   return (
-    <div className="chart-container">
+    <div className="chart-container" style={{ width: '100%', height: '400px' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
+        <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
           <defs>
             <linearGradient id="entranceGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor="#58761B" stopOpacity={0.3}/>
-              <stop offset="95%" stopColor="#58761B" stopOpacity={0}/>
+              <stop offset="5%" stopColor="#58761B" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#58761B" stopOpacity={0} />
             </linearGradient>
             <linearGradient id="exitGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%"  stopColor="#D99201" stopOpacity={0.3}/>
-              <stop offset="95%" stopColor="#D99201" stopOpacity={0}/>
+              <stop offset="5%" stopColor="#D99201" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#D99201" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-          <XAxis dataKey="date" stroke="#666" tick={{ fontSize: 11 }} angle={-30} textAnchor="end" height={50} interval="preserveStartEnd" />
+          <XAxis 
+            dataKey="date" 
+            stroke="#666" 
+            tick={{ fontSize: 11 }} 
+            angle={-30} 
+            textAnchor="end" 
+            height={60} 
+            interval="preserveStartEnd" 
+          />
           <YAxis stroke="#666" tick={{ fontSize: 12 }} allowDecimals={false} />
-          <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #01311d', borderRadius: '4px', fontSize: '12px' }} />
+          <Tooltip 
+            contentStyle={{ backgroundColor: 'white', border: '1px solid #01311d', borderRadius: '4px', fontSize: '12px' }} 
+            formatter={(value) => [value.toLocaleString(), '']}
+          />
           <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '5px' }} />
-          <Area type="monotone" dataKey="entrance" name="Entrances"
-            stroke="#58761B" strokeWidth={2} fill="url(#entranceGradient)"
-            dot={{ fill: '#58761B', r: 3 }} activeDot={{ r: 5 }} />
-          <Area type="monotone" dataKey="exit" name="Exits"
-            stroke="#D99201" strokeWidth={2} fill="url(#exitGradient)"
-            dot={{ fill: '#D99201', r: 3 }} activeDot={{ r: 5 }} />
+          <Area 
+            type="monotone" 
+            dataKey="entrance" 
+            name="Entrances"
+            stroke="#58761B" 
+            strokeWidth={2} 
+            fill="url(#entranceGradient)"
+            dot={{ fill: '#58761B', r: 3 }} 
+            activeDot={{ r: 5 }} 
+          />
+          <Area 
+            type="monotone" 
+            dataKey="exit" 
+            name="Exits"
+            stroke="#D99201" 
+            strokeWidth={2} 
+            fill="url(#exitGradient)"
+            dot={{ fill: '#D99201', r: 3 }} 
+            activeDot={{ r: 5 }} 
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -666,17 +685,33 @@ function TrafficChart({ data }) {
 }
 
 function CollegeDistributionChart({ data }) {
-  // Use full department name for chart
-  const chartData = [...data].sort((a, b) => b.presenceNow - a.presenceNow);
+  if (!data || data.length === 0) {
+    return <p className="no-data-msg">No department data available</p>;
+  }
+
+  const chartData = [...data]
+    .sort((a, b) => (b.presenceNow || 0) - (a.presenceNow || 0))
+    .slice(0, 10); // Show top 10 departments for better visibility
+
   return (
-    <div className="chart-container college-chart">
+    <div className="chart-container college-chart" style={{ width: '100%', height: '400px' }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} layout="vertical" margin={{ top: 10, right: 30, left: 160, bottom: 10 }}>
+        <BarChart 
+          data={chartData} 
+          layout="vertical" 
+          margin={{ top: 10, right: 30, left: 160, bottom: 10 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
           <XAxis type="number" stroke="#666" tick={{ fontSize: 11 }} allowDecimals={false} />
-          <YAxis type="category" dataKey="fullCollegeName" stroke="#666" width={150} tick={{ fontSize: 11 }} />
+          <YAxis 
+            type="category" 
+            dataKey="fullCollegeName" 
+            stroke="#666" 
+            width={150} 
+            tick={{ fontSize: 11 }} 
+          />
           <Tooltip
-            formatter={(v, n) => [v.toLocaleString(), n]}
+            formatter={(value) => [value?.toLocaleString() || 0, 'Present Now']}
             contentStyle={{ backgroundColor: 'white', border: '1px solid #01311d', borderRadius: '4px', fontSize: '11px' }}
           />
           <Legend wrapperStyle={{ fontSize: '11px' }} />
@@ -688,21 +723,41 @@ function CollegeDistributionChart({ data }) {
 }
 
 function AuthenticationChart({ data }) {
-  const pieData = data.map(d => ({ name: d.method, value: d.attempts }));
+  if (!data || data.length === 0) {
+    return <p className="no-data-msg">No authentication data available</p>;
+  }
+
+  const pieData = data.map(d => ({ 
+    name: d.method || 'Unknown', 
+    value: d.attempts || 0 
+  })).filter(d => d.value > 0);
+
+  if (pieData.length === 0) {
+    return <p className="no-data-msg">No authentication attempts recorded</p>;
+  }
+
   return (
-    <div className="chart-container pie-chart">
+    <div className="chart-container pie-chart" style={{ width: '100%', height: '350px' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
           <Pie
-            data={pieData} cx="50%" cy="50%"
-            labelLine outerRadius={100} dataKey="value" fontSize={12}
+            data={pieData}
+            cx="50%"
+            cy="50%"
+            labelLine
+            outerRadius={100}
+            dataKey="value"
+            fontSize={12}
             label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
           >
             {pieData.map((_, i) => (
               <Cell key={i} fill={AUTH_COLORS[i % AUTH_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip contentStyle={{ backgroundColor: 'white', border: '1px solid #01311d', borderRadius: '4px', fontSize: '12px' }} />
+          <Tooltip 
+            contentStyle={{ backgroundColor: 'white', border: '1px solid #01311d', borderRadius: '4px', fontSize: '12px' }}
+            formatter={(value) => [value?.toLocaleString(), 'Attempts']}
+          />
           <Legend wrapperStyle={{ fontSize: '12px' }} />
         </PieChart>
       </ResponsiveContainer>
@@ -711,26 +766,35 @@ function AuthenticationChart({ data }) {
 }
 
 function VisitorChart({ data }) {
-  const COLORS = ['#4a90d9', '#d99201'];
+  if (!data || data.length === 0) {
+    return <p className="no-data-msg">No visitor data available</p>;
+  }
+
+  const pieData = data.filter(d => d.value > 0);
+
+  if (pieData.length === 0) {
+    return <p className="no-data-msg">No visitor activity recorded</p>;
+  }
 
   return (
-    <div className="chart-container pie-chart">
+    <div className="chart-container pie-chart" style={{ width: '100%', height: '350px' }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
-            data={data}
+            data={pieData}
             cx="50%"
             cy="50%"
             outerRadius={100}
             dataKey="value"
-            label
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
           >
-            {data.map((_, i) => (
-              <Cell key={i} fill={COLORS[i % COLORS.length]} />
+            {pieData.map((_, i) => (
+              <Cell key={i} fill={VISITOR_COLORS[i % VISITOR_COLORS.length]} />
             ))}
           </Pie>
-
-          <Tooltip />
+          <Tooltip 
+            formatter={(value) => [value?.toLocaleString(), 'Count']}
+          />
           <Legend />
         </PieChart>
       </ResponsiveContainer>

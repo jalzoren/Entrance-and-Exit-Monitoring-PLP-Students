@@ -762,4 +762,123 @@ router.get('/visitor-stats', async (req, res) => {
   }
 });
 
+
+// ── GET /api/analytics/logs ───────────────────────────────────────────────
+// Fetches entry and exit logs with filters
+// Query params: from, to, dept, actionType, yearLevel, enrollmentStatus
+router.get('/logs', async (req, res) => {
+  try {
+    const { from, to, dept, actionType, yearLevel, enrollmentStatus } = req.query;
+    
+    console.log('[analytics/logs] Fetching logs with filters:', { from, to, dept, actionType, yearLevel, enrollmentStatus });
+    
+    // Build the query using entry_exit_logs table (matching your records endpoint)
+    let query = `
+      SELECT 
+        eel.log_id as id,
+        eel.student_id,
+        eel.action,
+        eel.log_time as dateTime,
+        s.first_name,
+        s.last_name,
+        s.middle_name,
+        s.year_level,
+        s.enrollment_status,
+        d.dept_name as department,
+        a.method,
+        a.auth_status,
+        a.accuracy
+      FROM entry_exit_logs eel
+      LEFT JOIN students s ON s.student_id = eel.student_id
+      LEFT JOIN programs p ON p.id = s.program_id
+      LEFT JOIN departments d ON d.id = p.department_id
+      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    // Apply date range filter
+    if (from && to) {
+      query += ` AND DATE(eel.log_time) BETWEEN ? AND ?`;
+      params.push(from, to);
+    }
+    
+    // Apply department filter
+    if (dept && dept !== 'all') {
+      query += ` AND d.dept_name = ?`;
+      params.push(dept);
+    }
+    
+    // Apply action type filter
+    if (actionType && actionType !== 'both') {
+      query += ` AND eel.action = ?`;
+      params.push(actionType.toUpperCase());
+    }
+    
+    // Apply year level filter
+    if (yearLevel && yearLevel !== 'all') {
+      query += ` AND s.year_level = ?`;
+      params.push(yearLevel);
+    }
+    
+    // Apply enrollment status filter
+    if (enrollmentStatus && enrollmentStatus !== 'all') {
+      query += ` AND s.enrollment_status = ?`;
+      params.push(enrollmentStatus);
+    }
+    
+    query += ` ORDER BY eel.log_time DESC LIMIT 5000`;
+    
+    console.log('[analytics/logs] Executing query with params:', params);
+    
+    const [logs] = await db.query(query, params);
+    
+    console.log(`[analytics/logs] Found ${logs.length} total logs`);
+    
+    // Format the logs to match what your frontend expects
+    const formattedLogs = logs.map(log => ({
+      id: log.id,
+      studentId: log.student_id,
+      name: formatStudentName(log),
+      department: log.department || 'Not Specified',
+      yearLevel: formatYearLevel(log.year_level),
+      enrollmentStatus: log.enrollment_status || 'Not Specified',
+      action: log.action,
+      method: formatMethod(log.method),
+      dateTime: log.dateTime,
+      timestamp: log.dateTime,
+      authStatus: log.auth_status,
+      accuracy: log.accuracy
+    }));
+    
+    // Separate entry and exit logs
+    const entryLogs = formattedLogs.filter(log => 
+      log.action === 'ENTRY' || log.action === 'ENTRANCE'
+    );
+    const exitLogs = formattedLogs.filter(log => 
+      log.action === 'EXIT'
+    );
+    
+    console.log(`[analytics/logs] Entry logs: ${entryLogs.length}, Exit logs: ${exitLogs.length}`);
+    
+    res.json({
+      success: true,
+      entryLogs,
+      exitLogs,
+      total: formattedLogs.length,
+      filters: { from, to, dept, actionType, yearLevel, enrollmentStatus }
+    });
+    
+  } catch (error) {
+    console.error('[analytics/logs] ERROR:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to fetch logs',
+      message: error.message,
+      entryLogs: [],
+      exitLogs: []
+    });
+  }
+});
 module.exports = router;
