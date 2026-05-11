@@ -180,7 +180,6 @@
 
 /* Section Spacing */
 .pdf-section-spacing {
-  margin: 25px 0;
   page-break-inside: avoid;
 }
 
@@ -192,12 +191,22 @@
   padding-bottom: 8px;
   border-bottom: 2px solid #548772;
 }
-
-/* Tables - Horizontal Scroll */
 .pdf-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 10px;
+  min-width: 800px; /* Forces minimum width */
+}
+
+/* For full width tables that need even more space */
+.pdf-table-full {
+  min-width: 1000px;
+}
+
+/* Ensure container allows scrolling */
+.pdf-section-spacing {
+  overflow-x: auto;
+  width: 100%;
 }
 
 .pdf-table th {
@@ -395,7 +404,6 @@
 
 /* Header Section */
 .pdf-header {
-  padding: 30px 30px 20px 30px;
 }
 /* Logos Row */
 .pdf-logos-row {

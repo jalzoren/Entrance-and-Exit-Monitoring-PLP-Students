@@ -635,7 +635,6 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
         {/* PAGE 4: ENTRY LOGS */}
         {finalEntryLogs.length > 0 && (
           <div className="pdf-page">
-            <div style={{ borderTop: '1px solid #01311d', margin: '10px 0' }}></div>
 
             <div className="pdf-section-spacing">
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
