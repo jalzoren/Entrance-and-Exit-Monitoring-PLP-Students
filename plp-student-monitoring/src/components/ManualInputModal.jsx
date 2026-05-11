@@ -3,6 +3,7 @@ import { useState } from "react";
 import '../componentscss/ManualInputModal.css';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { useLogContext } from '../context/LogContext';
+import Swal from 'sweetalert2';
 
 function ManualInputModal({ onClose, mode = 'ENTRY' }) {
   const [studentId, setStudentId] = useState('');
@@ -55,6 +56,18 @@ function ManualInputModal({ onClose, mode = 'ENTRY' }) {
       const data = await res.json();
       console.log('API Response:', data);
       console.log('Year level from API (NUMBER):', data.year_level);
+
+      if (data.gateWarning && data.gateWarningMessage) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Outside Gate Hours',
+        text: data.gateWarningMessage,
+        timer: 3000,
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+      });
+    }
       
       if (!res.ok) throw new Error(data.message || 'Entry failed.');
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { LuCircleCheckBig } from "react-icons/lu";
+import Swal from 'sweetalert2';
 
 function FaceScan({ mode = 'ENTRY' }) {
   const navigate   = useNavigate();
@@ -85,6 +86,18 @@ function FaceScan({ mode = 'ENTRY' }) {
         });
 
         const data = await res.json();
+
+        if (data.gateWarning && data.gateWarningMessage) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Outside Gate Hours',
+          text: data.gateWarningMessage,
+          timer: 3000,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+        });
+      }
 
         if (res.ok && data.recognized) {
           clearInterval(intervalRef.current);
