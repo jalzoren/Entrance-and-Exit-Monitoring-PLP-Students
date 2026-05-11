@@ -4,6 +4,7 @@ import jsQR from "jsqr";
 import '../componentscss/QRScanModal.css';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { useLogContext } from '../context/LogContext';
+import Swal from 'sweetalert2';
 
 function QRScanModal({ onClose, mode = 'ENTRY' }) {
   const videoRef   = useRef(null);
@@ -47,6 +48,18 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
 
       const data = await res.json();
       console.log('📱 Server response:', data);
+
+      if (data.gateWarning && data.gateWarningMessage) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Outside Gate Hours',
+          text: data.gateWarningMessage,
+          timer: 3000,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+        });
+      }
       
       if (!res.ok) throw new Error(data.message || 'QR scan failed.');
 

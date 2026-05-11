@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../src/db');
+const { getGateStatus } = require('../src/gateUtils');
 const { getTodayPhRange } = require('../src/time');
 
 router.post('/', async (req, res) => {
@@ -21,7 +22,14 @@ router.post('/', async (req, res) => {
 
   try {
     // Query to get student by ID
-    const query = 'SELECT * FROM students WHERE student_id = ?';
+    const query = `SELECT 
+        s.student_id, s.last_name, s.first_name, s.year_level, s.status,
+        p.program_name, p.program_code,
+        d.dept_name, d.dept_code
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      WHERE s.student_id = ?`;
     const [rows] = await db.query(query, [student_id.trim()]);
     
     if (rows.length === 0) {
@@ -34,6 +42,14 @@ router.post('/', async (req, res) => {
     // Get the year_level directly from database (this is the number: 1, 2, 3, 4, 5, 6)
     const yearLevelNumber = student.year_level;
     
+    const gateStatus = await getGateStatus(mode);
+    if (!gateStatus.open) {
+      return res.status(403).json({
+        message: gateStatus.message,
+        action: 'GATE_CLOSED',
+      });
+    }
+
     console.log('Student found in database:');
     console.log('  - Student ID:', student.student_id);
     console.log('  - Name:', fullName);
@@ -89,9 +105,9 @@ router.post('/', async (req, res) => {
 
     // Insert entry/exit log
     await db.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time)
-       VALUES (?, ?, ?, ?)`,
-      [student_id.trim(), authResult.insertId, mode, now]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_violation)
+      VALUES (?, ?, ?, ?, ?)`,
+      [student_id.trim(), authResult.insertId, mode, now, gateStatus.warning ? 1 : 0]
     );
     console.log('Entry/Exit log record inserted');
 
@@ -102,11 +118,12 @@ router.post('/', async (req, res) => {
       action: mode,
       student: fullName,
       student_id: student.student_id,
-      department: student.college_department || "Not Specified",
-      year_level: yearLevelNumber,  // This is the NUMBER from database (1,2,3,4,5,6)
+      department: student.dept_name || "Not Specified",
+      year_level: yearLevelNumber,
       course: student.program_name || "Not Specified",
-      gender: "Not Specified",
-      status: student.status || "Not Specified"
+      status: student.status || "Not Specified",
+      gateWarning: gateStatus.warning || false,
+      gateWarningMessage: gateStatus.warning ? gateStatus.message : undefined,
     };
     
     console.log('Sending response with year_level:', yearLevelNumber);
