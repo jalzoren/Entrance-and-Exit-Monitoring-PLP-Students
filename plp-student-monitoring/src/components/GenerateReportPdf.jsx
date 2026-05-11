@@ -495,7 +495,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
             <div className="pdf-title-row">
               <h1 className="pdf-main-title">SUMMARY REPORT</h1>
               <p className="pdf-subtitle">
-                Overview of student entrance and exit activity
+                This summary report provides an overview of student entrance and exit activity within the selected date range. It presents key attendance metrics, authentication method distribution, traffic trends and detailed logs to support administrative monitoring and data-driven decision-making.
                 {filters?.collegeDepartment ? ` — ${filters.collegeDepartment}` : ''}.
               </p>
             </div>
@@ -509,18 +509,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
 
             <div style={{ borderTop: '1px solid #d0d0d0', margin: '8px 0 12px 0' }}></div>
 
-            {/* Summary stat cards */}
-            <div style={{ display: 'flex', gap: '16px', marginBottom: '16px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, padding: '12px', background: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
-                <strong style={{ fontSize: '24px', color: '#01311d' }}>{displayTotalEnrolled.toLocaleString()}</strong>
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '11px' }}>Total Enrolled</p>
-              </div>
-              <div style={{ flex: 1, padding: '12px', background: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
-                <strong style={{ fontSize: '24px', color: '#d99201' }}>{displayOnCampus.toLocaleString()}</strong>
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '11px' }}>Currently on Campus</p>
-              </div>
-             
-            </div>
+           
 
             <div className="pdf-stats-section">
               <div className="pdf-stats-left">
@@ -545,7 +534,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
                       : 'No enrollment data'}
                   </div>
                 </div>
-                <div className="pdf-green-box-small" style={{ marginTop: '10px' }}>
+                <div className="pdf-green-box-small">
                   <div style={{ fontSize: '11px', color: 'white' }}>Date Range: {formatDateRange()}</div>
                   <div style={{ fontSize: '11px', color: 'white' }}>Generated: {generationDate}</div>
                   <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.8)', marginTop: '4px' }}>
@@ -642,82 +631,6 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
         </div>
 
       
-
-        {/* PAGE 3: AUTH SUCCESS RATE & METHOD DISTRIBUTION */}
-        <div className="pdf-page">
-          <div style={{ borderTop: '1px solid #01311d', margin: '10px 0' }}></div>
-
-          <div className="pdf-section-spacing">
-            <h3 className="pdf-section-title">Success Rate by Authentication Method</h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table className="pdf-table pdf-table-left">
-                <thead>
-                  <tr>
-                    <th style={{ ...thGreen, textAlign: 'left' }}>No.</th>
-                    <th style={{ ...thGreen, textAlign: 'left' }}>Method</th>
-                    <th style={{ ...thGreen, textAlign: 'right' }}>Attempts</th>
-                    <th style={{ ...thGreen, textAlign: 'right' }}>Success Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {processedAuthData.length > 0 ? (
-                    processedAuthData.map(item => (
-                      <tr key={item.id}>
-                        <td style={{ padding: '6px' }}>{item.id}</td>
-                        <td style={{ padding: '6px' }}>{item.method}</td>
-                        <td style={{ padding: '6px', textAlign: 'right' }}>{item.attempts.toLocaleString()}</td>
-                        <td style={{ padding: '6px', textAlign: 'right' }}>
-                          <span style={{
-                            color: item.successRate >= 80 ? '#2ecc71' : item.successRate >= 50 ? '#f39c12' : '#e74c3c',
-                            fontWeight: 'bold'
-                          }}>
-                            {item.successRate}%
-                          </span>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" style={{ textAlign: 'center', padding: '20px', color: '#999' }}>
-                        No authentication data available
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div className="pdf-section-spacing">
-            <h3 className="pdf-section-title">Chart 2: Distribution of Students by Method of Entry</h3>
-            {methodDistributionData.length > 0 ? (
-              <div className="pdf-method-grid">
-                {methodDistributionData.map((method, idx) => (
-                  <div key={idx} className="pdf-method-bar">
-                    <div className="pdf-method-label">
-                      <span style={{ fontWeight: 'bold' }}>{method.method}</span>
-                      <span>{method.successRate}% ({method.attempts.toLocaleString()})</span>
-                    </div>
-                    <div className="pdf-method-bar-bg">
-                      <div style={{
-                        width: `${Math.min(method.successRate, 100)}%`,
-                        height: '100%',
-                        backgroundColor: idx === 0 ? '#2E7D32' : '#D99201',
-                        borderRadius: '5px'
-                      }}></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{ color: '#999', fontSize: '12px', textAlign: 'center', padding: '20px' }}>
-                No method data available
-              </p>
-            )}
-          </div>
-
-          <footer page={p3} />
-        </div>
 
         {/* PAGE 4: ENTRY LOGS */}
         {finalEntryLogs.length > 0 && (

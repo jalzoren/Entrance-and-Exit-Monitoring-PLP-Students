@@ -111,25 +111,26 @@
   gap: 30px;
   margin: 20px 0;
   flex-wrap: wrap;
+  flex-direction: column;
 }
 
 .pdf-stats-left {
-  flex: 0.8;
-  min-width: 200px;
+ flex: 0 0 35%;
+    display: flex;
+    flex-direction: row;
+    gap: 15px;
 }
 
 .pdf-green-box {
   padding: 20px;
   border-radius: 12px;
   text-align: center;
-  margin-bottom: 15px;
 }
 
 .pdf-big-number {
   font-size: 32px;
   font-weight: bold;
   color: white;
-  margin-bottom: 10px;
 }
 
 .pdf-green-box-small {
@@ -525,18 +526,12 @@
     justify-content: center;
 }
 
-.pdf-stats-left {
-  flex: 0 0 35%;
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
+
 
 /* Green Boxes */
 .pdf-green-box {
   background-color: rgba(1, 49, 29, 0.85);
   border-radius: 10px;
-  padding: 20px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -544,7 +539,6 @@
 .pdf-green-box-small {
   background-color: rgba(1, 49, 29, 0.85);
   border-radius: 10px;
-  padding: 15px;
   text-align: center;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   display: flex;
