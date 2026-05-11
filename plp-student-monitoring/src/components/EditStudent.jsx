@@ -255,43 +255,34 @@ function EditStudent({ student, onClose }) {
   };
 
   const handleRegisterFace = async () => {
-    try {
-      const validImages = photoPreviews.filter(Boolean);
-      await axios.post("http://localhost:5000/api/register-face", {
-        student_id: student.student_id,
-        images: validImages,
-      });
-      await Swal.fire({
-        title: "Face Registered!",
-        html: `<p><strong>${student.first_name} ${student.last_name}</strong>'s face has been successfully registered.</p>`,
-        icon: "success",
-        confirmButtonText: "Done",
-        customClass: {
-          popup: "swal-popup",
-          title: "swal-title",
-          htmlContainer: "swal-text",
-          confirmButton: "swal-btn-primary",
-        },
-        buttonsStyling: false,
-      });
-      onClose();
-    } catch (err) {
-      console.error(err);
-      Swal.fire({
-        title: "Face Registration Failed",
-        text: err.response?.data?.message || "Something went wrong. Please try again.",
-        icon: "error",
-        confirmButtonText: "Try Again",
-        customClass: {
-          popup: "swal-popup",
-          title: "swal-title",
-          htmlContainer: "swal-text",
-          confirmButton: "swal-btn-primary",
-        },
-        buttonsStyling: false,
-      });
-    }
-  };
+  try {
+    const validImages = photoPreviews.filter(Boolean);
+    
+    // For existing student, only send student_id and images
+    // No need to send first_name, last_name, program, etc. if they already exist
+    await axios.post("http://localhost:5000/api/register", {
+      student_id: student.student_id,
+      images: validImages,
+      // Don't send other fields - let backend use existing data
+    });
+    
+    await Swal.fire({
+      title: "Face Registered!",
+      html: `<p><strong>${student.first_name} ${student.last_name}</strong>'s face has been successfully registered.</p>`,
+      icon: "success",
+      confirmButtonText: "Done",
+    });
+    onClose();
+  } catch (err) {
+    console.error(err);
+    Swal.fire({
+      title: "Face Registration Failed",
+      text: err.response?.data?.message || "Something went wrong. Please try again.",
+      icon: "error",
+      confirmButtonText: "Try Again",
+    });
+  }
+};
 
   const handleClose = () => {
     Swal.fire({

@@ -21,6 +21,7 @@ import RegisterStudentCam from './RegisterStudentCam';
 
 function RegisterStudent({ onClose, onSuccess }) {
   const [currentStep, setCurrentStep] = useState(1);
+  const [faceRegistrationChoice, setFaceRegistrationChoice] = useState(null); // null | "now" | "later"
   const [uploadedPhotos, setUploadedPhotos] = useState(0);
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
@@ -193,7 +194,81 @@ function RegisterStudent({ onClose, onSuccess }) {
 
   const handleNext = () => {
     if (validateStep1()) {
-      setCurrentStep(2);
+      // Show face registration choice modal
+      setFaceRegistrationChoice(null);
+      showFaceRegistrationChoice();
+    }
+  };
+
+  const showFaceRegistrationChoice = () => {
+    Swal.fire({
+      title: "Face Registration",
+      html: `<div style="text-align: center;">
+        <p style="margin-bottom: 20px; font-size: 16px;">Would you like to register the student's face now?</p>
+        <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Students can still use QR/Manual entry without facial recognition.</p>
+      </div>`,
+      icon: undefined,
+      showCancelButton: true,
+      confirmButtonText: 'Register Face Now',
+      cancelButtonText: 'Register Later',
+      confirmButtonColor: '#548772',
+      cancelButtonColor: '#d99201',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Register face now - proceed to camera
+        setFaceRegistrationChoice("now");
+        setCurrentStep(2);
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        // Register face later - skip to registration
+        setFaceRegistrationChoice("later");
+        // Proceed directly to registration without camera
+        handleRegisterWithoutFace();
+      }
+    });
+  };
+
+  const handleRegisterWithoutFace = async () => {
+    try {
+      setIsScanning(true);
+      
+      const response = await axios.post("/api/register", {
+        student_id: studentId.trim(),
+        first_name: firstName.trim().toUpperCase(),
+        last_name: lastName.trim().toUpperCase(),
+        middle_name: middleName.trim().toUpperCase() || null,
+        extension_name: extension.trim() || null,
+        college_department: autoDept,
+        program: program,
+        year_level: yearLevel,
+        status: status,
+        email: emailId.trim().toLowerCase(),
+        images: [] // No images
+      });
+
+      if (response.status === 200) {
+        Swal.fire({
+          icon: 'success',
+          title: 'Success!',
+          html: `<p><strong>${firstName} ${lastName}</strong> has been registered successfully.</p>
+                 <p style="font-size: 13px; margin-top: 10px; color: #666;">Face registration can be added later through the student management panel.</p>`,
+          confirmButtonColor: '#548772',
+        }).then(() => {
+          setIsScanning(false);
+          onSuccess();
+          onClose();
+        });
+      }
+    } catch (error) {
+      setIsScanning(false);
+      const msg = error.response?.data?.message || error.message || "Registration failed";
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: msg,
+        confirmButtonColor: '#d99201',
+      });
     }
   };
 
@@ -467,16 +542,16 @@ function RegisterStudent({ onClose, onSuccess }) {
 
         <div className={`stepper-line ${currentStep === 2 ? 'line-filled' : ''}`} />
 
-        <div className={`stepper-step ${currentStep === 2 ? 'step-active' : 'step-pending'}`}>
-          <div className="step-circle"><span>2</span></div>
+        <div className={`stepper-step ${currentStep === 2 ? 'step-active' : 'step-pending'} ${faceRegistrationChoice === "later" ? 'step-skipped' : ''}`}>
+          <div className="step-circle">{faceRegistrationChoice === "later" ? <span style={{fontSize: '18px'}}>-</span> : <span>2</span>}</div>
           <div className="step-label">
             <span className="step-title">Step 2</span>
-            <span className="step-subtitle">Face Registration</span>
+            <span className="step-subtitle">Face Registration {faceRegistrationChoice === "later" ? "(Skipped)" : ""}</span>
           </div>
         </div>
       </div>
 
-      {currentStep === 1 ? (
+      {currentStep === 1 && !faceRegistrationChoice ? (
         <div className="register-form">
           <div className="form-note">* Required fields</div>
           
@@ -687,7 +762,7 @@ function RegisterStudent({ onClose, onSuccess }) {
             <button className="btn next" onClick={handleNext}>Next</button>
           </div>
         </div>
-      ) : (
+      ) : faceRegistrationChoice === "later" ? null : (
         <div className="photo-upload-section">
           <div className="photo-header">
             <h3>Capture Image</h3>

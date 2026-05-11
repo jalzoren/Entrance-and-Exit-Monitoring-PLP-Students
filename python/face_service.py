@@ -140,13 +140,13 @@ FOREHEAD_ID    = 10
 
 app = FastAPI()
 
-recognizer    = None
-face_detector = None
+recognizer = None
+scrfd_session = None
 
 
 @app.on_event("startup")
 async def load_models():
-    global recognizer, face_detector
+    global recognizer, scrfd_session
 
     try:
         print("Loading ArcFace model...")
@@ -161,13 +161,12 @@ async def load_models():
             providers=["CPUExecutionProvider"],
         )
 
-        print("Loading Haar cascade face detector...")
-        face_detector = cv2.CascadeClassifier(
-            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        print("Loading SCRFD detector...")
+
+        scrfd_session = ort.InferenceSession(
+            "models/scrfd.onnx",
+            providers=["CPUExecutionProvider"]
         )
-        if face_detector.empty():
-            face_detector = None
-            print("Face detector XML not found or corrupted")
 
         print("Models loaded successfully")
     except Exception as e:
@@ -425,38 +424,269 @@ def base64_to_image(b64: str) -> np.ndarray:
     return img
 
 
+# In your FastAPI backend, replace the preprocess_face function:
+
 def preprocess_face(face: np.ndarray) -> np.ndarray:
+    """
+    Proper face preprocessing that preserves color information.
+    """
+    # Resize to ArcFace expected input
     face = cv2.resize(face, (112, 112))
-    face = cv2.equalizeHist(cv2.cvtColor(face, cv2.COLOR_BGR2GRAY))
-    face = cv2.cvtColor(face, cv2.COLOR_GRAY2RGB).astype(np.float32)
-    face = (face - 127.5) / 128.0
-    return np.expand_dims(np.transpose(face, (2, 0, 1)), axis=0)
+    
+    # Convert BGR to RGB (OpenCV loads as BGR)
+    rgb = cv2.cvtColor(face, cv2.COLOR_BGR2RGB)
+    
+    # Apply CLAHE on L-channel only (preserves color)
+    lab = cv2.cvtColor(rgb, cv2.COLOR_RGB2LAB)
+    l, a, b = cv2.split(lab)
+    
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    l_eq = clahe.apply(l)
+    
+    lab_eq = cv2.merge([l_eq, a, b])
+    face_eq = cv2.cvtColor(lab_eq, cv2.COLOR_LAB2RGB)
+    
+    # Normalize to [-1, 1] range (ArcFace expects this)
+    face_normalized = (face_eq.astype(np.float32) - 127.5) / 127.5
+    
+    # Convert to NCHW format (batch, channels, height, width)
+    face_transposed = np.transpose(face_normalized, (2, 0, 1))
+    
+    return np.expand_dims(face_transposed, axis=0)
 
 
 def calculate_face_quality(face: np.ndarray) -> float:
-    gray           = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
-    blur_score     = min(cv2.Laplacian(gray, cv2.CV_64F).var() / 500, 1)
-    brightness     = np.mean(gray) / 255
-    brightness_score = 1 - abs(brightness - 0.5) * 2
-    contrast_score = min(np.std(gray) / 128, 1)
-    return blur_score * 0.5 + brightness_score * 0.25 + contrast_score * 0.25
+    """
+    Calculate face quality with more lenient thresholds
+    """
+    gray = cv2.cvtColor(face, cv2.COLOR_BGR2GRAY)
+    
+    # More lenient blur score
+    laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    # Normalize: 0-1000 range maps to 0-1, with 200 being "good enough"
+    blur_score = min(laplacian_var / 400, 1.0)  # Was 500, now 400
+    
+    # Brightness score - more forgiving
+    brightness = np.mean(gray) / 255
+    # Allow brightness from 0.2 to 0.8 (was 0.3-0.7)
+    brightness_score = 1 - max(0, abs(brightness - 0.5) - 0.2) * 2
+    brightness_score = max(0.3, min(1.0, brightness_score))  # Cap at 0.3 minimum
+    
+    # Contrast score - more lenient
+    contrast = np.std(gray)
+    contrast_score = min(contrast / 60, 1.0)  # Was 128, now 60
+    
+    # Weighted combination with higher tolerance
+    quality = (blur_score * 0.4 + 
+               brightness_score * 0.3 + 
+               contrast_score * 0.3)
+    
+    # Add a small boost to ensure minimum scores
+    quality = min(1.0, quality + 0.1)  # Add 0.1 boost
+    
+    return quality
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SCRFD anchor generation & bbox decoding
+# ─────────────────────────────────────────────────────────────────────────────
+
+# SCRFD-2.5G / 10G anchor config:
+# 2 anchors per location, 3 strides.  All anchors are ratio=1 (square).
+_SCRFD_STRIDES      = [8, 16, 32]
+_SCRFD_NUM_ANCHORS  = 2          # anchors per spatial location
+_SCRFD_INPUT_SIZE   = 640        # model was exported at 640×640
+
+
+def _generate_anchors(stride: int, feat_h: int, feat_w: int) -> np.ndarray:
+    """
+    Build (feat_h * feat_w * num_anchors, 2) array of anchor (cx, cy) centres
+    for a single stride level.  SCRFD uses a single square anchor per slot
+    (ratio=1, scale=1) so the centre is just the grid point.
+    """
+    num_anchors = _SCRFD_NUM_ANCHORS
+    cx = (np.arange(feat_w, dtype=np.float32) + 0.5) * stride   # (feat_w,)
+    cy = (np.arange(feat_h, dtype=np.float32) + 0.5) * stride   # (feat_h,)
+    # meshgrid → flatten row-major (matches SCRFD's output ordering)
+    grid_cx, grid_cy = np.meshgrid(cx, cy)                       # (feat_h, feat_w)
+    centers = np.stack([grid_cx.ravel(), grid_cy.ravel()], axis=1)  # (N, 2)
+    # Repeat each centre for the num_anchors slots
+    centers = np.repeat(centers, num_anchors, axis=0)            # (N*num_anchors, 2)
+    return centers                                                # (feat_h*feat_w*num_anchors, 2)
+
+
+def _decode_boxes(anchors: np.ndarray, deltas: np.ndarray, stride: int) -> np.ndarray:
+    """
+    SCRFD box regression is distance-based (similar to FCOS / RetinaFace):
+        x1 = cx - delta[0] * stride
+        y1 = cy - delta[1] * stride
+        x2 = cx + delta[2] * stride
+        y2 = cy + delta[3] * stride
+
+    anchors : (N, 2)  — cx, cy
+    deltas  : (N, 4)  — l, t, r, b (non-negative distances)
+    Returns : (N, 4)  — x1, y1, x2, y2  in 640-space
+    """
+    cx = anchors[:, 0]; cy = anchors[:, 1]
+    x1 = cx - deltas[:, 0] * stride
+    y1 = cy - deltas[:, 1] * stride
+    x2 = cx + deltas[:, 2] * stride
+    y2 = cy + deltas[:, 3] * stride
+    return np.stack([x1, y1, x2, y2], axis=1)
+
+
+def _nms(boxes: np.ndarray, scores: np.ndarray, iou_thresh: float = 0.4) -> np.ndarray:
+    """
+    Vectorised NMS.  Returns indices of kept boxes sorted by score desc.
+    Pure NumPy — no cv2.dnn or extra libs required.
+    """
+    if len(boxes) == 0:
+        return np.array([], dtype=np.int32)
+
+    x1 = boxes[:, 0]; y1 = boxes[:, 1]
+    x2 = boxes[:, 2]; y2 = boxes[:, 3]
+    areas = np.maximum(0.0, x2 - x1) * np.maximum(0.0, y2 - y1)
+    order = scores.argsort()[::-1]
+    keep  = []
+
+    while order.size > 0:
+        i = order[0]
+        keep.append(int(i))
+        if order.size == 1:
+            break
+        rest = order[1:]
+        ix1  = np.maximum(x1[i], x1[rest])
+        iy1  = np.maximum(y1[i], y1[rest])
+        ix2  = np.minimum(x2[i], x2[rest])
+        iy2  = np.minimum(y2[i], y2[rest])
+        inter = np.maximum(0.0, ix2 - ix1) * np.maximum(0.0, iy2 - iy1)
+        iou   = inter / np.maximum(areas[i] + areas[rest] - inter, 1e-6)
+        order = rest[iou < iou_thresh]
+
+    return np.array(keep, dtype=np.int32)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pre-build anchor tables for the fixed 640×640 input (done once at import)
+# ─────────────────────────────────────────────────────────────────────────────
+
+_ANCHOR_CACHE: dict[int, np.ndarray] = {}
+
+def _get_anchors(stride: int) -> np.ndarray:
+    if stride not in _ANCHOR_CACHE:
+        feat = _SCRFD_INPUT_SIZE // stride          # 80, 40, or 20
+        _ANCHOR_CACHE[stride] = _generate_anchors(stride, feat, feat)
+    return _ANCHOR_CACHE[stride]
+
+# Warm up at module load — zero cost at request time
+for _s in _SCRFD_STRIDES:
+    _get_anchors(_s)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# detect_faces  — full replacement
+# ─────────────────────────────────────────────────────────────────────────────
 
 def detect_faces(img: np.ndarray, min_face_size: int) -> list:
-    if face_detector is None or face_detector.empty():
-        raise HTTPException(500, "Face detector not loaded")
+    """
+    Run SCRFD on `img` (any resolution) and return a list of dicts:
+        [{"face": np.ndarray(112,112,3 BGR), "quality": float}, ...]
 
-    gray       = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    detections = face_detector.detectMultiScale(
-        gray, scaleFactor=1.3, minNeighbors=5, minSize=(min_face_size, min_face_size)
-    )
-    faces = []
-    for (x, y, w, h) in detections:
-        face = img[y:y+h, x:x+w]
-        if face.size == 0:
+    Pipeline
+    ────────
+    1.  Letterbox-resize to 640×640  (preserves AR, pads with 0)
+    2.  Run SCRFD
+    3.  Per stride: generate anchors → decode boxes → filter by score
+    4.  Concatenate all strides, NMS
+    5.  Map boxes back to original image space
+    6.  Crop, quality-score, return
+    """
+    if scrfd_session is None:
+        raise HTTPException(500, "SCRFD detector not loaded")
+
+    orig_h, orig_w = img.shape[:2]
+
+    # ── 1. Letterbox to 640×640 ───────────────────────────────────────────────
+    scale   = min(_SCRFD_INPUT_SIZE / orig_w, _SCRFD_INPUT_SIZE / orig_h)
+    new_w   = int(round(orig_w * scale))
+    new_h   = int(round(orig_h * scale))
+    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    canvas  = np.zeros((_SCRFD_INPUT_SIZE, _SCRFD_INPUT_SIZE, 3), dtype=np.uint8)
+    pad_top  = (_SCRFD_INPUT_SIZE - new_h) // 2
+    pad_left = (_SCRFD_INPUT_SIZE - new_w) // 2
+    canvas[pad_top:pad_top + new_h, pad_left:pad_left + new_w] = resized
+
+    # ── 2. Preprocess + infer ─────────────────────────────────────────────────
+    blob = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32)
+    blob = (blob - 127.5) / 128.0
+    blob = np.transpose(blob, (2, 0, 1))[np.newaxis]          # (1,3,640,640)
+
+    input_name = scrfd_session.get_inputs()[0].name
+    outputs    = scrfd_session.run(None, {input_name: blob})
+    # outputs layout (9 tensors):
+    #   [0,1,2] → scores  (N_i, 1)  per stride 8,16,32
+    #   [3,4,5] → boxes   (N_i, 4)  per stride 8,16,32
+    #   [6,7,8] → kpoints (N_i,10)  per stride 8,16,32  (ignored here)
+
+    # ── 3 & 4. Decode per stride, collect, NMS ───────────────────────────────
+    all_boxes  = []
+    all_scores = []
+
+    for idx, stride in enumerate(_SCRFD_STRIDES):
+        raw_scores = outputs[idx].reshape(-1)          # (N_i,)
+        raw_boxes  = outputs[idx + 3].reshape(-1, 4)   # (N_i, 4)
+
+        keep_mask  = raw_scores >= 0.5
+        if not keep_mask.any():
             continue
-        face = cv2.resize(face, (112, 112))
-        faces.append({"face": face, "quality": calculate_face_quality(face)})
+
+        scores  = raw_scores[keep_mask]
+        deltas  = raw_boxes[keep_mask]
+        anchors = _get_anchors(stride)[keep_mask]      # pre-built, sliced
+
+        boxes = _decode_boxes(anchors, deltas, stride) # (M, 4) in 640-space
+        all_boxes.append(boxes)
+        all_scores.append(scores)
+
+    if not all_boxes:
+        print("DETECTED FACES: 0")
+        return []
+
+    boxes  = np.concatenate(all_boxes,  axis=0)
+    scores = np.concatenate(all_scores, axis=0)
+
+    keep = _nms(boxes, scores, iou_thresh=0.4)
+    boxes  = boxes[keep]
+    scores = scores[keep]
+
+    # ── 5. Map from 640-space back to original image ──────────────────────────
+    # Undo letterbox: remove padding offset, divide by scale
+    boxes[:, 0] = (boxes[:, 0] - pad_left) / scale   # x1
+    boxes[:, 1] = (boxes[:, 1] - pad_top)  / scale   # y1
+    boxes[:, 2] = (boxes[:, 2] - pad_left) / scale   # x2
+    boxes[:, 3] = (boxes[:, 3] - pad_top)  / scale   # y2
+
+    # Clamp to original image bounds
+    boxes[:, 0::2] = np.clip(boxes[:, 0::2], 0, orig_w)
+    boxes[:, 1::2] = np.clip(boxes[:, 1::2], 0, orig_h)
+
+    # ── 6. Crop + quality-score ───────────────────────────────────────────────
+    faces = []
+    for box in boxes.astype(np.int32):
+        x1, y1, x2, y2 = box
+        if x2 <= x1 or y2 <= y1:
+            continue
+        face_h = y2 - y1
+        if face_h < min_face_size:
+            continue
+        crop = img[y1:y2, x1:x2]
+        if crop.size == 0:
+            continue
+        crop_112 = cv2.resize(crop, (112, 112), interpolation=cv2.INTER_LINEAR)
+        faces.append({"face": crop_112, "quality": calculate_face_quality(crop_112)})
+
+    print(f"DETECTED FACES: {len(faces)}")
     return faces
 
 
@@ -645,52 +875,255 @@ async def generate_embedding(data: ImageRequest):
     return await loop.run_in_executor(_executor, _generate_embedding_sync, data)
 
 
+
+def detect_faces_with_landmarks(img: np.ndarray, min_face_size: int) -> list:
+    """
+    Detect faces AND get landmarks for alignment.
+    Returns list of dicts with 'face', 'quality', 'landmarks', 'bbox'
+    """
+    if scrfd_session is None:
+        raise HTTPException(500, "SCRFD detector not loaded")
+
+    orig_h, orig_w = img.shape[:2]
+
+    # ── 1. Letterbox to 640×640 ───────────────────────────────────────────────
+    scale = min(_SCRFD_INPUT_SIZE / orig_w, _SCRFD_INPUT_SIZE / orig_h)
+    new_w = int(round(orig_w * scale))
+    new_h = int(round(orig_h * scale))
+    resized = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
+
+    canvas = np.zeros((_SCRFD_INPUT_SIZE, _SCRFD_INPUT_SIZE, 3), dtype=np.uint8)
+    pad_top = (_SCRFD_INPUT_SIZE - new_h) // 2
+    pad_left = (_SCRFD_INPUT_SIZE - new_w) // 2
+    canvas[pad_top:pad_top + new_h, pad_left:pad_left + new_w] = resized
+
+    # ── 2. Preprocess + infer ─────────────────────────────────────────────────
+    blob = cv2.cvtColor(canvas, cv2.COLOR_BGR2RGB).astype(np.float32)
+    blob = (blob - 127.5) / 128.0
+    blob = np.transpose(blob, (2, 0, 1))[np.newaxis]
+
+    input_name = scrfd_session.get_inputs()[0].name
+    outputs = scrfd_session.run(None, {input_name: blob})
+
+    # ── 3. Decode per stride, collect, NMS ───────────────────────────────────
+    all_boxes = []
+    all_scores = []
+
+    for idx, stride in enumerate(_SCRFD_STRIDES):
+        raw_scores = outputs[idx].reshape(-1)
+        raw_boxes = outputs[idx + 3].reshape(-1, 4)
+
+        keep_mask = raw_scores >= 0.5
+        if not keep_mask.any():
+            continue
+
+        scores = raw_scores[keep_mask]
+        deltas = raw_boxes[keep_mask]
+        anchors = _get_anchors(stride)[keep_mask]
+
+        boxes = _decode_boxes(anchors, deltas, stride)
+        all_boxes.append(boxes)
+        all_scores.append(scores)
+
+    if not all_boxes:
+        print("DETECTED FACES: 0")
+        return []
+
+    boxes = np.concatenate(all_boxes, axis=0)
+    scores = np.concatenate(all_scores, axis=0)
+
+    keep = _nms(boxes, scores, iou_thresh=0.4)
+    boxes = boxes[keep]
+    scores = scores[keep]
+
+    # ── 4. Map back to original image space ──────────────────────────────────
+    boxes[:, 0] = (boxes[:, 0] - pad_left) / scale
+    boxes[:, 1] = (boxes[:, 1] - pad_top) / scale
+    boxes[:, 2] = (boxes[:, 2] - pad_left) / scale
+    boxes[:, 3] = (boxes[:, 3] - pad_top) / scale
+
+    boxes[:, 0::2] = np.clip(boxes[:, 0::2], 0, orig_w)
+    boxes[:, 1::2] = np.clip(boxes[:, 1::2], 0, orig_h)
+
+    # ── 5. For each face, get landmarks using MediaPipe ──────────────────────
+    faces = []
+    
+    for box in boxes.astype(np.int32):
+        x1, y1, x2, y2 = box
+        if x2 <= x1 or y2 <= y1:
+            continue
+            
+        face_h = y2 - y1
+        if face_h < min_face_size:
+            continue
+            
+        # Crop face
+        crop = img[y1:y2, x1:x2]
+        if crop.size == 0:
+            continue
+        
+        # Get landmarks for this face using MediaPipe
+        # First, resize crop to expected size
+        crop_for_landmarks = cv2.resize(crop, (320, int(320 * crop.shape[0] / crop.shape[1])))
+        rgb_crop = cv2.cvtColor(crop_for_landmarks, cv2.COLOR_BGR2RGB)
+        landmarks_result = _face_mesh.process(rgb_crop)
+        
+        face_landmarks = None
+        if landmarks_result.multi_face_landmarks:
+            face_landmarks = landmarks_result.multi_face_landmarks[0].landmark
+        
+        crop_112 = cv2.resize(crop, (112, 112), interpolation=cv2.INTER_LINEAR)
+        
+        faces.append({
+            "face": crop_112,
+            "quality": calculate_face_quality(crop_112),
+            "bbox": [x1, y1, x2, y2],
+            "landmarks": face_landmarks
+        })
+
+    print(f"DETECTED FACES: {len(faces)}")
+    if len(faces) > 1:
+        print(f"  WARNING: Multiple faces ({len(faces)}) detected, selecting largest")
+        # Sort by face area (width * height) and take the largest
+        faces.sort(key=lambda x: (x['bbox'][2] - x['bbox'][0]) * (x['bbox'][3] - x['bbox'][1]), reverse=True)
+        faces = [faces[0]]
+    
+    print(f"DETECTED FACES: {len(faces)}")
+    return faces
+
+def align_face_by_landmarks(face_img: np.ndarray, landmarks, original_bbox: list) -> np.ndarray:
+    """
+    Align face using eye landmarks for better recognition.
+    Now works with the cropped face image.
+    """
+    if landmarks is None:
+        return face_img
+    
+    h, w = face_img.shape[:2]
+    
+    # Get eye coordinates (relative to the cropped face)
+    # These landmark indices are for the full image, but we're using them on the crop
+    left_eye_idx = 33
+    right_eye_idx = 263
+    
+    # Scale landmarks to crop dimensions (they're from the resized crop)
+    left_eye_x = landmarks[left_eye_idx].x * w
+    left_eye_y = landmarks[left_eye_idx].y * h
+    right_eye_x = landmarks[right_eye_idx].x * w
+    right_eye_y = landmarks[right_eye_idx].y * h
+    
+    left_eye = np.array([left_eye_x, left_eye_y])
+    right_eye = np.array([right_eye_x, right_eye_y])
+    
+    # Calculate angle between eyes
+    dy = right_eye[1] - left_eye[1]
+    dx = right_eye[0] - left_eye[0]
+    angle = np.degrees(np.arctan2(dy, dx))
+    
+    # Calculate eye center
+    eye_center = ((left_eye + right_eye) / 2).astype(int)
+    
+    # Only rotate if angle is significant
+    if abs(angle) > 3:
+        # Get rotation matrix
+        rotation_matrix = cv2.getRotationMatrix2D(tuple(eye_center), angle, scale=1.0)
+        
+        # Apply rotation
+        aligned = cv2.warpAffine(face_img, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR)
+        return aligned
+    
+    return face_img
+
+
 def _generate_embedding_sync(data: ImageRequest) -> dict:
     embeddings = []
-    qualities  = []
+    qualities = []
     total_faces = 0
+    
+    print(f"\n{'='*60}")
+    print(f"Processing {len(data.images)} images")
+    print(f"{'='*60}")
 
-    for img_str in data.images:
+    for idx, img_str in enumerate(data.images):
         try:
-            img   = base64_to_image(img_str)
-            faces = detect_faces(img, data.min_face_size)
+            print(f"\n--- Processing image {idx + 1}/{len(data.images)} ---")
+            
+            img = base64_to_image(img_str)
+            print(f"  ✓ Image decoded, shape: {img.shape}")
+            
+            # Use face detection with landmarks
+            faces = detect_faces_with_landmarks(img, data.min_face_size)
+            print(f"  → Faces detected: {len(faces)}")
 
             if not faces:
+                print(f"  ✗ No face detected in image {idx + 1}")
                 continue
 
-            total_faces += len(faces)
-            best_face    = max(faces, key=lambda x: x["quality"])
-            emb          = get_embedding(best_face["face"])
-
+            # IMPORTANT: Take ONLY the FIRST face (largest/closest)
+            # Sort by face area and take the largest
+            if len(faces) > 1:
+                print(f"  ⚠ Multiple faces ({len(faces)}) detected, selecting largest")
+                faces.sort(key=lambda x: (x['bbox'][2] - x['bbox'][0]) * (x['bbox'][3] - x['bbox'][1]), reverse=True)
+            
+            best_face = faces[0]
+            quality = best_face["quality"]
+            print(f"  → Selected face quality: {quality:.3f}")
+            
+            # Apply face alignment
+            if best_face.get("landmarks") is not None:
+                aligned_face = align_face_by_landmarks(
+                    best_face["face"], 
+                    best_face["landmarks"],
+                    best_face["bbox"]
+                )
+                print(f"  → Face alignment applied")
+            else:
+                aligned_face = best_face["face"]
+                print(f"  ⚠ No landmarks available")
+            
+            # Generate embedding
+            emb = get_embedding(aligned_face)
+            
+            if emb is None or len(emb) != 512:
+                print(f"  ✗ Invalid embedding: {len(emb) if emb else 0}")
+                continue
+            
             embeddings.append(emb.tolist())
-            qualities.append(best_face["quality"])
+            qualities.append(quality)
+            total_faces += 1
+            print(f"  ✓ Success (quality: {quality:.3f})")
 
         except Exception as e:
-            print("IMAGE ERROR:", e)
+            print(f"  ✗ ERROR: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    print(f"\n{'='*60}")
+    print(f"SUMMARY: Expected {len(data.images)}, Got {len(embeddings)} embeddings")
+    print(f"Qualities: {[f'{q:.3f}' for q in qualities]}")
+    print(f"{'='*60}\n")
+
+    # For registration (5 images), require all 5
+    if len(data.images) == 5 and len(embeddings) != 5:
+        print(f"ERROR: Registration requires 5 embeddings, got {len(embeddings)}")
+        return EmbeddingResponse(
+            embeddings=[], 
+            faces_detected=total_faces, 
+            quality_scores=[], 
+            success=False
+        ).dict()
 
     if not embeddings:
         return EmbeddingResponse(
             embeddings=[], faces_detected=0, quality_scores=[], success=False
         ).dict()
 
-    # Face consistency check
-    if len(embeddings) > 1:
-        sims = [
-            cosine(np.array(embeddings[i]), np.array(embeddings[j]))
-            for i in range(len(embeddings))
-            for j in range(i + 1, len(embeddings))
-        ]
-        avg_sim = sum(sims) / len(sims)
-        if avg_sim < 0.45:
-            raise HTTPException(400, "Different faces detected in images")
-
     return {
-        "embeddings":     embeddings,
+        "embeddings": embeddings,
         "faces_detected": total_faces,
         "quality_scores": qualities,
-        "success":        True,
+        "success": True,
     }
-
 
 @app.post("/calculate-similarity")
 async def similarity(data: SimilarityRequest):
@@ -705,9 +1138,42 @@ async def similarity(data: SimilarityRequest):
 async def health():
     return {
         "recognizer_loaded": recognizer is not None,
-        "detector_loaded":   face_detector is not None,
+        "detector_loaded": scrfd_session is not None,
         "status":            "healthy",
     }
+
+@app.post("/debug-face")
+async def debug_face(data: ImageRequest):
+    """Debug endpoint to analyze face quality and similarity"""
+    results = []
+    
+    for img_str in data.images:
+        try:
+            img = base64_to_image(img_str)
+            faces = detect_faces_with_landmarks(img, 40)
+            
+            for face_data in faces:
+                aligned = align_face_by_landmarks(
+                    face_data["face"],
+                    face_data.get("landmarks"),
+                    face_data["bbox"]
+                )
+                
+                emb = get_embedding(aligned)
+                
+                results.append({
+                    "quality": face_data["quality"],
+                    "aligned": face_data.get("landmarks") is not None,
+                    "embedding_preview": emb[:5].tolist(),  # First 5 values
+                    "bbox": face_data["bbox"]
+                })
+        except Exception as e:
+            results.append({"error": str(e)})
+    
+    return {"results": results, "count": len(results)}
+
+
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

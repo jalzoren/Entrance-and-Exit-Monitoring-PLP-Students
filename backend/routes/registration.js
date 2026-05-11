@@ -15,7 +15,6 @@ FACE VALIDATION
 
 router.post("/validate-face", async (req, res) => {
   try {
-
     const { images } = req.body;
 
     if (!images || images.length !== 5) {
@@ -24,7 +23,7 @@ router.post("/validate-face", async (req, res) => {
       });
     }
 
-    console.log("Images received:", images.length);
+    console.log("Validating faces for registration...");
 
     const response = await axios.post(
       "http://127.0.0.1:8000/generate-embedding",
@@ -33,37 +32,58 @@ router.post("/validate-face", async (req, res) => {
 
     console.log("Python response:", response.data);
 
-    const embeddings =
-      response.data.embeddings ||
-      (response.data.embedding ? [response.data.embedding] : null);
-
+    // Check if we have embeddings
     if (
       !response.data ||
       response.data.success !== true ||
-      !embeddings ||
-      embeddings.length === 0
+      !response.data.embeddings ||
+      response.data.embeddings.length === 0
     ) {
       return res.status(400).json({
         error: "Face not detected properly. Please retake photos."
       });
     }
 
+    // Check if we have all 5 embeddings
+    if (response.data.embeddings.length !== 5) {
+      return res.status(400).json({
+        error: `Only ${response.data.embeddings.length} out of 5 faces were detected. Please retake all photos.`
+      });
+    }
+
+    // UPDATED: Lower quality threshold for initial registration
+    const qualityScores = response.data.quality_scores || [];
+    const MIN_QUALITY = 0.30;  // Lowered from 0.55 to 0.30
+    
+    console.log(`Quality scores: ${qualityScores.map(q => q.toFixed(3)).join(", ")}`);
+    
+    const lowQualityIndices = qualityScores
+      .map((q, idx) => q < MIN_QUALITY ? idx : -1)
+      .filter(idx => idx !== -1);
+    
+    if (lowQualityIndices.length > 0) {
+      const positions = ["center", "left", "right", "up", "down"];
+      const failedPoses = lowQualityIndices.map(i => positions[i]).join(", ");
+      
+      // Only warn, don't block registration
+      console.warn(`⚠️ Low quality for poses: ${failedPoses} (${qualityScores.map(q => q.toFixed(3)).join(", ")})`);
+      console.warn(`⚠️ Continuing with registration but recognition may be affected`);
+    }
+
     res.json({
       message: "Face validated successfully",
-      embeddings_detected: embeddings.length
+      embeddings_detected: response.data.embeddings.length,
+      quality_scores: qualityScores,
+      warning: "Face quality is lower than recommended. Please ensure good lighting for best recognition."
     });
 
   } catch (error) {
-
     console.error("VALIDATION ERROR:", error);
-
     res.status(500).json({
-      error: "Face validation failed"
+      error: "Face validation failed: " + (error.response?.data?.detail || error.message)
     });
-
   }
 });
-
 /* --------------------------------------------------
 VALIDATE FRAME
 -------------------------------------------------- */
@@ -110,15 +130,21 @@ router.post("/validate-frame", async (req, res) => {
 
 
 /* --------------------------------------------------
-REGISTER STUDENT
+REGISTER STUDENT with Quality Check
+-------------------------------------------------- */
+
+/* --------------------------------------------------
+REGISTER STUDENT with Quality Check
+-------------------------------------------------- */
+
+/* --------------------------------------------------
+REGISTER STUDENT or ADD FACE TO EXISTING STUDENT
 -------------------------------------------------- */
 
 router.post("/register", async (req, res) => {
-
   let connection;
 
   try {
-
     connection = await db.getConnection();
     await connection.beginTransaction();
 
@@ -136,133 +162,272 @@ router.post("/register", async (req, res) => {
       images
     } = req.body;
 
-    if (!student_id || !images || images.length !== 5) {
-      throw new Error("Missing required student data or images");
+    if (!student_id) {
+      throw new Error("Missing required student data");
     }
 
-    console.log("Registering student:", student_id);
-
-    /* -----------------------------
-       SAVE STUDENT INFO
-    ----------------------------- */
-
-    await connection.query(
-      `INSERT INTO students
-      (student_id, email, first_name, last_name, middle_name, extension_name,
-        program_id, year_level, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        student_id,
-        email?.trim().toLowerCase() ?? null,   
-        first_name?.trim().toUpperCase(),
-        last_name?.trim().toUpperCase(),
-        middle_name?.trim().toUpperCase() || null,
-        extension_name?.trim() || null,
-        parseInt(program),
-        year_level,
-        status
-      ]
+    // Check if student already exists
+    const [existingStudents] = await connection.query(
+      "SELECT * FROM students WHERE student_id = ?",
+      [student_id]
     );
+    
+    const studentExists = existingStudents.length > 0;
+    
+    console.log("=".repeat(60));
+    console.log("REGISTRATION REQUEST");
+    console.log("Student ID:", student_id);
+    console.log("Student exists:", studentExists);
+    console.log("Has face images:", images && images.length === 5);
+    console.log("=".repeat(60));
 
-    console.log("Student info saved");
-
-    /* -----------------------------
-       CALL PYTHON API
-    ----------------------------- */
-
-    const response = await axios.post(
-      "http://127.0.0.1:8000/generate-embedding",
-      { images }
-    );
-
-    console.log("Python response:", response.data);
-
-    const embeddings =
-      response.data.embeddings ||
-      (response.data.embedding ? [response.data.embedding] : null);
-
-    console.log("Total embeddings received:", embeddings ? embeddings.length : 0);
+    const hasFaceImages = images && Array.isArray(images) && images.length === 5;
 
     /* -----------------------------
-       VALIDATE EMBEDDINGS
+       CASE 1: STUDENT DOES NOT EXIST - Insert new student
     ----------------------------- */
-
-    if (!response.data.success) {
-      throw new Error("Face detection failed");
-    }
-
-    if (!embeddings || embeddings.length !== 5) {
-      throw new Error("Expected 5 face embeddings");
-    }
-
-    /* -----------------------------
-       FACE POSITIONS
-    ----------------------------- */
-
-    const positions = [
-      "center",
-      "left",
-      "right",
-      "up",
-      "down"
-    ];
-
-    /* -----------------------------
-       SAVE ALL EMBEDDINGS
-    ----------------------------- */
-
-    for (let i = 0; i < embeddings.length; i++) {
-
-      const emb = embeddings[i];
-
-      if (!emb || emb.length !== 512) {
-        throw new Error("Invalid embedding size");
+    if (!studentExists) {
+      console.log("New student - inserting record...");
+      
+      // Validate required fields for new student
+      if (!first_name || !last_name) {
+        throw new Error("First name and last name are required for new student registration");
       }
-
+      
+      // Validate program_id (required - NOT NULL in database)
+      let programId = null;
+      if (program) {
+        if (typeof program === 'object' && program.id) {
+          programId = parseInt(program.id);
+        } else if (typeof program === 'string' || typeof program === 'number') {
+          programId = parseInt(program);
+        }
+      }
+      
+      if (!programId || isNaN(programId) || programId <= 0) {
+        console.error("Invalid program ID received:", program);
+        throw new Error("Valid program selection is required");
+      }
+      
+      // Validate year_level (required - NOT NULL in database)
+      let yearLevelNum = null;
+      if (year_level) {
+        yearLevelNum = parseInt(year_level);
+      }
+      
+      if (!yearLevelNum || isNaN(yearLevelNum) || yearLevelNum < 1 || yearLevelNum > 4) {
+        console.error("Invalid year level received:", year_level);
+        throw new Error("Valid year level (1-4) is required");
+      }
+      
+      // Sanitize string fields
+      const sanitizedEmail = email?.trim().toLowerCase() || null;
+      const sanitizedFirstName = first_name?.trim().toUpperCase();
+      const sanitizedLastName = last_name?.trim().toUpperCase();
+      const sanitizedMiddleName = middle_name?.trim().toUpperCase() || null;
+      const sanitizedExtensionName = extension_name?.trim() || null;
+      const sanitizedStatus = status?.trim() || "Regular";
+      
+      // Validate required fields
+      if (!sanitizedFirstName) {
+        throw new Error("First name is required");
+      }
+      if (!sanitizedLastName) {
+        throw new Error("Last name is required");
+      }
+      
+      console.log("Inserting new student:", student_id);
+      
+      // Insert new student
       await connection.query(
-        `INSERT INTO student_face_embeddings
-         (student_id, face_position, face_embedding)
-         VALUES (?, ?, ?)`,
+        `INSERT INTO students
+        (student_id, email, first_name, last_name, middle_name, extension_name,
+          program_id, year_level, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           student_id,
-          positions[i],
-          JSON.stringify(emb)
+          sanitizedEmail,   
+          sanitizedFirstName,
+          sanitizedLastName,
+          sanitizedMiddleName,
+          sanitizedExtensionName,
+          programId,
+          yearLevelNum,
+          sanitizedStatus
         ]
       );
-
+      
+      console.log("✓ New student inserted");
+    } else {
+      /* -----------------------------
+         CASE 2: STUDENT EXISTS - Skip student insert, just update if needed
+      ----------------------------- */
+      console.log("Student already exists - will only add face embeddings");
+      
+      // Optionally update student info if provided (for editing)
+      const student = existingStudents[0];
+      const updates = [];
+      const updateValues = [];
+      
+      if (first_name && first_name !== student.first_name) {
+        updates.push("first_name = ?");
+        updateValues.push(first_name.trim().toUpperCase());
+      }
+      if (last_name && last_name !== student.last_name) {
+        updates.push("last_name = ?");
+        updateValues.push(last_name.trim().toUpperCase());
+      }
+      if (middle_name !== undefined && middle_name !== student.middle_name) {
+        updates.push("middle_name = ?");
+        updateValues.push(middle_name.trim().toUpperCase() || null);
+      }
+      if (extension_name !== undefined && extension_name !== student.extension_name) {
+        updates.push("extension_name = ?");
+        updateValues.push(extension_name.trim() || null);
+      }
+      if (program && parseInt(program) !== student.program_id) {
+        updates.push("program_id = ?");
+        updateValues.push(parseInt(program));
+      }
+      if (year_level && parseInt(year_level) !== student.year_level) {
+        updates.push("year_level = ?");
+        updateValues.push(parseInt(year_level));
+      }
+      if (status && status !== student.status) {
+        updates.push("status = ?");
+        updateValues.push(status.trim());
+      }
+      if (email && email !== student.email) {
+        updates.push("email = ?");
+        updateValues.push(email.trim().toLowerCase());
+      }
+      
+      if (updates.length > 0) {
+        updateValues.push(student_id);
+        await connection.query(
+          `UPDATE students SET ${updates.join(", ")} WHERE student_id = ?`,
+          updateValues
+        );
+        console.log("✓ Student information updated");
+      }
     }
 
-    console.log("All 5 face embeddings saved");
+    /* -----------------------------
+       FACE EMBEDDINGS (for both cases)
+    ----------------------------- */
+    if (hasFaceImages) {
+      console.log("Processing face images...");
+      
+      // Delete existing face embeddings for this student (if any)
+      const [existingEmbeddings] = await connection.query(
+        "SELECT COUNT(*) as count FROM student_face_embeddings WHERE student_id = ?",
+        [student_id]
+      );
+      
+      if (existingEmbeddings[0].count > 0) {
+        console.log(`Found ${existingEmbeddings[0].count} existing embeddings, deleting...`);
+        await connection.query(
+          "DELETE FROM student_face_embeddings WHERE student_id = ?",
+          [student_id]
+        );
+      }
+
+      /* CALL PYTHON API */
+      const response = await axios.post(
+        "http://127.0.0.1:8000/generate-embedding",
+        { images },
+        { timeout: 30000 }
+      );
+
+      console.log("Python response success:", response.data.success);
+      console.log("Embeddings count:", response.data.embeddings?.length);
+
+      const embeddings = response.data.embeddings;
+      const qualityScores = response.data.quality_scores || [];
+
+      /* VALIDATE EMBEDDINGS */
+      if (!response.data.success) {
+        throw new Error("Face detection failed: " + (response.data.message || "Unknown error"));
+      }
+
+      if (!embeddings || embeddings.length !== 5) {
+        throw new Error(`Expected 5 face embeddings, got ${embeddings?.length || 0}. Please ensure all 5 pose photos are clear.`);
+      }
+
+      // Check minimum quality
+      const MIN_QUALITY = 0.75;
+      const lowQualityIndices = qualityScores
+        .map((q, idx) => q < MIN_QUALITY ? idx : -1)
+        .filter(idx => idx !== -1);
+      
+      if (lowQualityIndices.length > 0) {
+        const positions = ["center", "left", "right", "up", "down"];
+        const failedPoses = lowQualityIndices.map(i => positions[i]).join(", ");
+        console.warn(`⚠️ Low quality for poses: ${failedPoses}`);
+        console.warn(`Scores: ${qualityScores.map(q => q.toFixed(3)).join(", ")}`);
+      }
+
+      /* FACE POSITIONS */
+      const positions = ["center", "left", "right", "up", "down"];
+
+      /* SAVE ALL EMBEDDINGS */
+      for (let i = 0; i < embeddings.length; i++) {
+        const emb = embeddings[i];
+        const quality = qualityScores[i] || 0;
+
+        if (!emb || emb.length !== 512) {
+          console.error(`Invalid embedding size for pose ${positions[i]}: ${emb?.length || 0}`);
+          continue;
+        }
+
+        await connection.query(
+          `INSERT INTO student_face_embeddings
+           (student_id, face_position, face_embedding, quality)
+           VALUES (?, ?, ?, ?)`,
+          [
+            student_id,
+            positions[i],
+            JSON.stringify(emb),
+            quality
+          ]
+        );
+        
+        console.log(`✓ Saved ${positions[i]} pose (quality: ${quality.toFixed(3)})`);
+      }
+
+      console.log(`All face embeddings saved. Qualities: ${qualityScores.map(q => q.toFixed(3)).join(", ")}`);
+    } else {
+      console.log("No face images provided");
+    }
 
     await connection.commit();
+    console.log("✓ Transaction committed successfully");
 
     res.json({
-      message: "Student registered successfully"
+      message: studentExists ? "Face registered successfully" : "Student registered successfully",
+      has_face_data: hasFaceImages
     });
 
   } catch (err) {
-
     if (connection) {
       await connection.rollback();
+      console.log("Transaction rolled back");
     }
 
-    console.error("REGISTER ERROR:", err);
+    console.error("=".repeat(60));
+    console.error("REGISTER ERROR:", err.message);
+    console.error(err.stack);
+    console.error("=".repeat(60));
 
     res.status(500).json({
       message: err.message || "Registration failed"
     });
-
   } finally {
-
     if (connection) {
       connection.release();
     }
-
   }
-
 });
-
-
 /* --------------------------------------------------
 GET ALL STUDENTS
 -------------------------------------------------- */

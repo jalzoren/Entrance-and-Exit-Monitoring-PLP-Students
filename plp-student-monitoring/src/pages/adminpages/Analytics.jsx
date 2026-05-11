@@ -397,7 +397,7 @@ function Analytics() {
         {!isLoading && !error && (
           <>
             {/* ── CHART 1: Daily Traffic Trend ── */}
-            <section className="chart-section">
+            <section className="chart-section daily-traffic-section">
               <div className="section-header">
                 <h2>Daily Traffic Trend (Entries and Exits)</h2>
                 <div className="time-range-selector">
@@ -410,12 +410,28 @@ function Analytics() {
               </div>
               <TrafficChart data={trafficData} />
               {insights && (
-                <div className="insights">
-                  <h4>Insights:</h4>
-                  <ul>
-                    <li><strong>Highest traffic:</strong> {insights.highest.date} ({insights.highest.entrance.toLocaleString()} entries)</li>
-                    <li><strong>Lowest traffic:</strong>  {insights.lowest.date}  ({insights.lowest.entrance.toLocaleString()} entries)</li>
-                  </ul>
+                <div className="traffic-insights-container">
+                  <div className="insights">
+                    <h4>Insights:</h4>
+                    <ul>
+                      <li><strong>Highest traffic:</strong> {insights.highest.date} ({insights.highest.entrance.toLocaleString()} entries)</li>
+                      <li><strong>Lowest traffic:</strong>  {insights.lowest.date}  ({insights.lowest.entrance.toLocaleString()} entries)</li>
+                      <li><strong>Peak Hour Today:</strong>  {insights.peakHour?.date || 'N/A'}  ({insights.peakHour?.entrance.toLocaleString() || '0'} entries)</li>
+                    </ul>
+                  </div>
+                  <div className="traffic-legend">
+                    <h4>Legend:</h4>
+                    <div className="legend-items">
+                      <div className="legend-item-traffic">
+                        <span className="legend-color entrance"></span>
+                        <span className="legend-label">Entrance</span>
+                      </div>
+                      <div className="legend-item-traffic">
+                        <span className="legend-color exit"></span>
+                        <span className="legend-label">Exit</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
               {(!trafficData || trafficData.length === 0) && (
@@ -423,39 +439,56 @@ function Analytics() {
               )}
             </section>
 
-            {/* ── CHART 2: Authentication Method Usage ── */}
-            <section className="chart-section">
-              <div className="section-header">
-                <h2>Authentication Method Usage</h2>
-                <button className="info-btn" title="Shows how students authenticated at the gate.">ℹ</button>
-              </div>
-              {authData.length > 0 ? (
-                <>
-                  <AuthenticationChart data={authData} />
-                  <div className="table-container small-table">
-                    <table className="analytics-table small-table">
-                      <thead>
-                        <tr><th>No.</th><th>Method</th><th>Attempts</th><th>Success</th></tr>
-                      </thead>
-                      <tbody>
-                        {authData.map((auth, i) => (
-                          <tr key={auth.id}>
-                            <td>{i + 1}</td>
-                            <td>{auth.method}</td>
-                            <td>{auth.attempts.toLocaleString()}</td>
-                            <td>{auth.successRate}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <p className="no-data-msg">No authentication data available yet.</p>
-              )}
-            </section>
+            <div className="two-charts">
+              {/* ── CHART 2: Authentication Method Usage ── */}
+              <section className="chart-section">
+                <div className="section-header">
+                  <h2>Authentication Method Usage</h2>
+                  <button className="info-btn" title="Shows how students authenticated at the gate.">ℹ</button>
+                </div>
+                {authData.length > 0 ? (
+                  <>
+                    <AuthenticationChart data={authData} />
+                    <div className="table-container small-table">
+                      <table className="analytics-table small-table">
+                        <thead>
+                          <tr><th>No.</th><th>Method</th><th>Attempts</th><th>Success</th></tr>
+                        </thead>
+                        <tbody>
+                          {authData.map((auth, i) => (
+                            <tr key={auth.id}>
+                              <td>{i + 1}</td>
+                              <td>{auth.method}</td>
+                              <td>{auth.attempts.toLocaleString()}</td>
+                              <td>{auth.successRate}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : (
+                  <p className="no-data-msg">No authentication data available yet.</p>
+                )}
+              </section>
 
-            {/* ── CHART 3: Department Distribution ── */}
+              {/* ── CHART 3: Visitor Entry and Exit ── */} 
+              <section className="chart-section">
+                <div className="section-header">
+                  <h2>Visitor Entry and Exit</h2>
+                </div>
+
+                {visitorData.length > 0 ? (
+                  <VisitorChart data={visitorData} />
+                ) : (
+                  <p className="no-data-msg">No visitor data available.</p>
+                )}
+              </section>
+            </div>
+
+            
+
+            {/* ── CHART 4: Department Distribution ── */}
             <section className="chart-section">
               <div className="section-header">
                 <h2>Department Distribution (Current Campus Population)</h2>
@@ -510,17 +543,8 @@ function Analytics() {
                 <p className="no-data-msg">No department data available. Students need to be on campus.</p>
               )}
             </section>
-            <section className="chart-section">
-              <div className="section-header">
-                <h2>Visitor Entry and Exit</h2>
-              </div>
 
-              {visitorData.length > 0 ? (
-                <VisitorChart data={visitorData} />
-              ) : (
-                <p className="no-data-msg">No visitor data available.</p>
-              )}
-            </section>
+            
           </>
         )}
       </div>

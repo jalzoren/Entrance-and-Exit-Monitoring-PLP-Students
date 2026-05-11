@@ -189,12 +189,94 @@ router.get('/metrics', async (req, res) => {
             console.log(`   Total active students: ${totalStudentsRows[0].total}`);
             console.log('[analytics/metrics] totalStudents:', totalStudentsRows[0].total);
 
+            // ── System-level counts for metric cards ─────────────────────────
+            console.log('\n🔍 [DEBUG] Fetching system-level counts for metric cards...');
+            let totalUsers = 0, totalSuperAdmins = 0, totalEEMSAdmins = 0, totalEAMSAdmins = 0;
+            let totalDepartments = 0, totalPrograms = 0;
+            let archivedUsers = 0, archivedStudents = 0, archivedDepartments = 0, archivedPrograms = 0;
+            
+            try {
+              const [totalUsersRows] = await db.query(`SELECT COUNT(*) AS total FROM admins WHERE status IS NULL OR status != 'archived'`);
+              totalUsers = Number(totalUsersRows[0]?.total || 0);
+              console.log('   ✅ totalUsers:', totalUsers);
+            } catch (e) { console.log('   ❌ totalUsers query failed:', e.message); }
+            
+            try {
+              const [superAdminRows] = await db.query(`SELECT COUNT(*) AS total FROM admins WHERE role = 'Super Admin' AND (status IS NULL OR status != 'archived')`);
+              totalSuperAdmins = Number(superAdminRows[0]?.total || 0);
+              console.log('   ✅ totalSuperAdmins:', totalSuperAdmins);
+            } catch (e) { console.log('   ❌ totalSuperAdmins query failed:', e.message); }
+            
+            try {
+              const [eemsAdminRows] = await db.query(`SELECT COUNT(*) AS total FROM admins WHERE role = 'EEMS Admin' AND (status IS NULL OR status != 'archived')`);
+              totalEEMSAdmins = Number(eemsAdminRows[0]?.total || 0);
+              console.log('   ✅ totalEEMSAdmins:', totalEEMSAdmins);
+            } catch (e) { console.log('   ❌ totalEEMSAdmins query failed:', e.message); }
+            
+            try {
+              const [eamsAdminRows] = await db.query(`SELECT COUNT(*) AS total FROM admins WHERE role = 'EAMS Admin' AND (status IS NULL OR status != 'archived')`);
+              totalEAMSAdmins = Number(eamsAdminRows[0]?.total || 0);
+              console.log('   ✅ totalEAMSAdmins:', totalEAMSAdmins);
+            } catch (e) { console.log('   ❌ totalEAMSAdmins query failed:', e.message); }
+            
+            try {
+              const [deptCountRows] = await db.query(`SELECT COUNT(*) AS total FROM departments WHERE status IS NULL OR status != 'Inactive'`);
+              totalDepartments = Number(deptCountRows[0]?.total || 0);
+              console.log('   ✅ totalDepartments:', totalDepartments);
+            } catch (e) { console.log('   ❌ totalDepartments query failed:', e.message); }
+            
+            try {
+              const [programCountRows] = await db.query(`SELECT COUNT(*) AS total FROM programs WHERE program_status IS NULL OR program_status != 'Inactive'`);
+              totalPrograms = Number(programCountRows[0]?.total || 0);
+              console.log('   ✅ totalPrograms:', totalPrograms);
+            } catch (e) { console.log('   ❌ totalPrograms query failed:', e.message); }
+            
+            try {
+              const [archivedUsersRows] = await db.query(`SELECT COUNT(*) AS total FROM admins WHERE status = 'archived'`);
+              archivedUsers = Number(archivedUsersRows[0]?.total || 0);
+              console.log('   ✅ archivedUsers:', archivedUsers);
+            } catch (e) { console.log('   ❌ archivedUsers query failed:', e.message); }
+            
+            try {
+              const [archivedStudentsRows] = await db.query(`SELECT COUNT(*) AS total FROM students WHERE is_archived = 1`);
+              archivedStudents = Number(archivedStudentsRows[0]?.total || 0);
+              console.log('   ✅ archivedStudents:', archivedStudents);
+            } catch (e) { console.log('   ❌ archivedStudents query failed:', e.message); }
+            
+            try {
+              const [archivedDeptRows] = await db.query(`SELECT COUNT(*) AS total FROM departments WHERE status = 'Inactive'`);
+              archivedDepartments = Number(archivedDeptRows[0]?.total || 0);
+              console.log('   ✅ archivedDepartments:', archivedDepartments);
+            } catch (e) { console.log('   ❌ archivedDepartments query failed:', e.message); }
+            
+            try {
+              const [archivedProgRows] = await db.query(`SELECT COUNT(*) AS total FROM programs WHERE program_status = 'Inactive'`);
+              archivedPrograms = Number(archivedProgRows[0]?.total || 0);
+              console.log('   ✅ archivedPrograms:', archivedPrograms);
+            } catch (e) { console.log('   ❌ archivedPrograms query failed:', e.message); }
+            console.log('   system counts → users:', totalUsers, 'super:', totalSuperAdmins, 'eems:', totalEEMSAdmins, 'eams:', totalEAMSAdmins, 'depts:', totalDepartments, 'programs:', totalPrograms);
+            console.log('   archived items → users:', archivedUsers, 'students:', archivedStudents, 'depts:', archivedDepartments, 'programs:', archivedPrograms);
+
             const payload = {
               onCampus:        Number(onCampusRows[0].on_campus),
               totalEntries:    Number(entriesRows[0].total),
               totalStudents:   Number(totalStudentsRows[0].total),
               authSuccessRate,
               peakHour,
+
+              // system metric cards
+              totalUsers,
+              totalSuperAdmins,
+              totalEEMSAdmins,
+              totalEAMSAdmins,
+              totalDepartments,
+              totalPrograms,
+              
+              // archived items
+              archivedUsers,
+              archivedStudents,
+              archivedDepartments,
+              archivedPrograms,
 
               visitorsOnCampus: Number(visitorOnCampusRows[0].on_campus),
             };
@@ -206,6 +288,16 @@ router.get('/metrics', async (req, res) => {
             console.log('   peakHour:', payload.peakHour);
             console.log('[analytics/metrics] → responding with:', payload);
             console.log('   visitors:', payload.visitors);
+            console.log('   totalUsers:', payload.totalUsers);
+            console.log('   totalSuperAdmins:', payload.totalSuperAdmins);
+            console.log('   totalEEMSAdmins:', payload.totalEEMSAdmins);
+            console.log('   totalEAMSAdmins:', payload.totalEAMSAdmins);
+            console.log('   totalDepartments:', payload.totalDepartments);
+            console.log('   totalPrograms:', payload.totalPrograms);
+            console.log('   archivedUsers:', payload.archivedUsers);
+            console.log('   archivedStudents:', payload.archivedStudents);
+            console.log('   archivedDepartments:', payload.archivedDepartments);
+            console.log('   archivedPrograms:', payload.archivedPrograms);
 
             res.json(payload);
 
@@ -459,11 +551,13 @@ router.get('/records', async (req, res) => {
         s.first_name,
         s.last_name,
         s.middle_name,
-        s.college_department,
+        d.dept_name AS college_department,
         s.year_level,
         a.method
       FROM entry_exit_logs eel
       LEFT JOIN students s ON s.student_id = eel.student_id
+      LEFT JOIN programs p ON p.id = s.program_id
+      LEFT JOIN departments d ON d.id = p.department_id
       LEFT JOIN authentication a ON a.auth_id = eel.auth_id
       ORDER BY eel.log_time DESC, eel.log_id DESC
     `);

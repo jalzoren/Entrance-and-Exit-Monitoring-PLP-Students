@@ -125,6 +125,13 @@ body {
   border: 2px solid #ddd;
 }
 
+/* Skipped step — light grey with dash */
+.step-skipped .step-circle {
+  background: #f9f9f9;
+  color: #999;
+  border: 2px dashed #ddd;
+}
+
 /* MdCheckCircle icon inside completed circle */
 .step-check-icon {
   font-size: 1.15rem;
