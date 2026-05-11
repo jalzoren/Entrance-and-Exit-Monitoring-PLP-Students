@@ -554,12 +554,7 @@ export default function Monitor() {
               >
                 Export Excel
               </button>
-              <button
-                onClick={exportEndOfDayReport}
-                className="rtm-filter-btn end-of-day"
-              >
-                End of Day Report
-              </button>
+            
               {/* XML Export Button */}
               <button
                 onClick={exportToXML}

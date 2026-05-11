@@ -478,16 +478,7 @@ function Analytics() {
               </section>
 
               {/* ── CHART 3: Visitor Entry and Exit ── */}
-              <section className="chart-section">
-                <div className="section-header">
-                  <h2>Visitor Entry and Exit</h2>
-                </div>
-                {visitorData.length > 0 && visitorData.some(v => v.value > 0) ? (
-                  <VisitorChart data={visitorData} />
-                ) : (
-                  <p className="no-data-msg">No visitor data available.</p>
-                )}
-              </section>
+             
             </div>
 
             {/* ── CHART 4: Department Distribution ── */}
@@ -547,53 +538,7 @@ function Analytics() {
             </section>
 
             {/* ── CHART 5: Visitor Logs Table ── */}
-            <section className="chart-section">
-              <div className="section-header">
-                <h2>Visitor Activity Logs</h2>
-                <button className="info-btn" title="Detailed visitor entry and exit records">ℹ</button>
-              </div>
-              <div className="table-container">
-                <table className="analytics-table">
-                  <thead>
-                    <tr>
-                      <th>No.</th>
-                      <th>Date & Time</th>
-                      <th>Visitor Name</th>
-                      <th>Action</th>
-                      <th>Purpose</th>
-                      <th>Person to Visit</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {visitorLogs && visitorLogs.length > 0 ? (
-                      visitorLogs.map((visitor, i) => (
-                        <tr key={i}>
-                          <td>{i + 1}</td>
-                          <td>{visitor.dateTime || visitor.timestamp || '-'}</td>
-                          <td>{visitor.name || visitor.visitor_name || 'Unknown'}</td>
-                          <td>
-                            <span style={{
-                              color: (visitor.action || '').toUpperCase() === 'ENTRY' ? '#2E7D32' : '#D99201',
-                              fontWeight: 'bold'
-                            }}>
-                              {visitor.action || visitor.type || 'N/A'}
-                            </span>
-                          </td>
-                          <td>{visitor.purpose || '-'}</td>
-                          <td>{visitor.personToVisit || visitor.department || '-'}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="6" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                          No visitor logs available
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </section>
+         
 
           </>
         )}
@@ -847,30 +792,8 @@ function VisitorChart({ data }) {
     return <p className="no-data-msg">No visitor activity recorded</p>;
   }
 
-  return (
-    <div className="chart-container pie-chart" style={{ width: '100%', height: '350px' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            dataKey="value"
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-          >
-            {pieData.map((_, i) => (
-              <Cell key={i} fill={VISITOR_COLORS[i % VISITOR_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value) => [value?.toLocaleString(), 'Count']}
-          />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
+ 
+
 }
 
 export default Analytics;
