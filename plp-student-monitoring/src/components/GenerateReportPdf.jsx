@@ -64,77 +64,82 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
 
   const collegeDataArray = safeArray(collegeData);
 
-  // FIXED: Process college data with proper department filtering
-  let processedCollegeDataFinal = [];
+// Debug - log what we received
+console.log('College data received:', collegeDataArray);
 
-  if (filters?.collegeDepartment) {
-    // Filter to ONLY the selected department
-    const filteredDept = collegeDataArray.find(dept => {
-      const deptName = dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || '';
-      return deptName.toLowerCase() === filters.collegeDepartment.toLowerCase();
-    });
+// FIXED: Process college data - show ALL departments, even those with 0 present
+let processedCollegeDataFinal = [];
 
-    if (filteredDept) {
-      const presentNow =
-        filteredDept.presentNow      ??
-        filteredDept.presenceNow     ??
-        filteredDept.currentStudents ??
-        filteredDept.student_count   ??
-        0;
+if (filters?.collegeDepartment) {
+  // Filter to ONLY the selected department
+  const filteredDept = collegeDataArray.find(dept => {
+    const deptName = dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || '';
+    return deptName.toLowerCase() === filters.collegeDepartment.toLowerCase();
+  });
 
-      const totalEnrolled =
-        filteredDept.totalEnrolled   ??
-        filteredDept.totalStudents   ??
-        filteredDept.enrolled_count  ??
-        0;
+  if (filteredDept) {
+    const presentNow =
+      filteredDept.presentNow      ??
+      filteredDept.presenceNow     ??
+      filteredDept.currentStudents ??
+      filteredDept.student_count   ??
+      0;
 
-      const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
+    const totalEnrolled =
+      filteredDept.totalEnrolled   ??
+      filteredDept.totalStudents   ??
+      filteredDept.enrolled_count  ??
+      0;
 
-      processedCollegeDataFinal = [{
-        id: 1,
-        name: filters.collegeDepartment,
-        presentNow,
-        totalEnrolled,
-        percentagePresent: pctPresent,
-        percentageOfCampus: 100,
-      }];
-    }
-  } else {
-    // No filter - show all departments
-    const processedCollegeData = collegeDataArray.map((dept, idx) => {
-      const presentNow =
-        dept.presentNow      ??
-        dept.presenceNow     ??
-        dept.currentStudents ??
-        dept.student_count   ??
-        0;
+    const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
 
-      const totalEnrolled =
-        dept.totalEnrolled   ??
-        dept.totalStudents   ??
-        dept.enrolled_count  ??
-        0;
-
-      const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
-
-      return {
-        id: idx + 1,
-        name: dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || 'Unknown',
-        presentNow,
-        totalEnrolled,
-        percentagePresent: pctPresent,
-        percentageOfCampus: 0,
-      };
-    }).sort((a, b) => b.presentNow - a.presentNow);
-
-    const totalPresentOnCampus = processedCollegeData.reduce((s, d) => s + d.presentNow, 0);
-    processedCollegeDataFinal = processedCollegeData.map(d => ({
-      ...d,
-      percentageOfCampus: totalPresentOnCampus > 0
-        ? (d.presentNow / totalPresentOnCampus) * 100
-        : 0,
-    }));
+    processedCollegeDataFinal = [{
+      id: 1,
+      name: filters.collegeDepartment,
+      presentNow,
+      totalEnrolled,
+      percentagePresent: pctPresent,
+      percentageOfCampus: 100,
+    }];
   }
+} else {
+  // No filter - show ALL departments (including those with 0 present)
+  const processedCollegeData = collegeDataArray.map((dept, idx) => {
+    const presentNow =
+      dept.presentNow      ??
+      dept.presenceNow     ??
+      dept.currentStudents ??
+      dept.student_count   ??
+      0;
+
+    const totalEnrolled =
+      dept.totalEnrolled   ??
+      dept.totalStudents   ??
+      dept.enrolled_count  ??
+      0;
+
+    const pctPresent = totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0;
+
+    return {
+      id: idx + 1,
+      name: dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || 'Unknown',
+      presentNow: presentNow,
+      totalEnrolled: totalEnrolled,
+      percentagePresent: pctPresent,
+      percentageOfCampus: 0,
+    };
+  }).sort((a, b) => b.totalEnrolled - a.totalEnrolled); // Sort by TOTAL ENROLLED, not by presentNow
+
+  const totalPresentOnCampus = processedCollegeData.reduce((s, d) => s + d.presentNow, 0);
+  const totalEnrolledAll = processedCollegeData.reduce((s, d) => s + d.totalEnrolled, 0);
+  
+  processedCollegeDataFinal = processedCollegeData.map(d => ({
+    ...d,
+    percentageOfCampus: totalEnrolledAll > 0 ? (d.totalEnrolled / totalEnrolledAll) * 100 : 0,
+  }));
+}
+
+console.log('Processed college data final:', processedCollegeDataFinal);
 
  // Calculate totals from filtered data
   const displayOnCampus = processedCollegeDataFinal.reduce((s, d) => s + d.presentNow, 0);

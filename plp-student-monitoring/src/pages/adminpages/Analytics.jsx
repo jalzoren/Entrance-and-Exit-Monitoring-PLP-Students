@@ -245,25 +245,36 @@ function Analytics() {
         else reportParams.to = filters.dateRange.to;
       }
       if (filters.collegeDepartment) reportParams.dept = filters.collegeDepartment;
-
+  
       const reportData = await AnalyticsService.fetchReport(reportParams);
-
+      
+      // Debug - log what we got from the API
+      console.log('Report data from API:', reportData);
+      console.log('College data from API:', reportData.collegeData);
+  
       const xmlString = reportToXml(reportData, reportParams);
       const parsedData = xmlToReport(xmlString);
-
+  
       setFilteredReportData({
         ...parsedData,
         _xml: xmlString,
         dateRange: filters.dateRange?.from && filters.dateRange?.to
           ? `${filters.dateRange.from} - ${filters.dateRange.to}`
           : parsedData.dateRange,
-        // Ensure all required data is passed
-        collegeData: collegeData,
-        authData: authData,
-        trafficData: trafficData,
+        // FIXED: Use reportData.collegeData (from API) instead of state collegeData
+        collegeData: reportData.collegeData,  // ✅ THIS IS FIXED
+        authData: reportData.authData,        // ✅ Use from API
+        trafficData: reportData.trafficChartData || trafficData,  // ✅ Use from API
         visitorData: visitorData,
-        visitorLogs: visitorLogs, // ── NEW: Pass visitor logs
+        visitorLogs: visitorLogs,
         metrics: metrics,
+        // Also pass these for the PDF
+        totalStudents: reportData.totalStudents,
+        currentOnCampus: reportData.currentOnCampus,
+        totalEntries: reportData.totalEntries,
+        studentLogs: reportData.studentLogs,
+        entryLogs: reportData.entryLogs,
+        exitLogs: reportData.exitLogs,
       });
       setShowPdfPreview(true);
     } catch (err) {
