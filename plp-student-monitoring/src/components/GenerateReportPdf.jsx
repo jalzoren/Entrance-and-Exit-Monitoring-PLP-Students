@@ -2,7 +2,7 @@ import React, { useRef, forwardRef, useImperativeHandle } from 'react';
 import html2pdf from 'html2pdf.js';
 import '../componentscss/GenerateReportPdf.css';
 
-const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) => {
+const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'full' }, ref) => {
   const reportRef = useRef(null);
 
   const handleGeneratePDF = async () => {
@@ -10,9 +10,10 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
       console.error('Report ref is not available');
       return;
     }
+    const suffix = mode === 'entry' ? '_entry_logs' : mode === 'exit' ? '_exit_logs' : '';
     const opt = {
       margin: [0.2, 0.2, 0.2, 0.2],
-      filename: `eems_report_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`,
+      filename: `eems_report${suffix}_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2, letterRendering: true, useCORS: true, logging: false },
       jsPDF: { unit: 'in', format: 'a4', orientation: 'landscape', compress: true }
@@ -61,21 +62,18 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
     return [];
   };
 
-  // ── FIXED: handle ALL possible field name variants from both old and new API ──
   const collegeDataArray = safeArray(collegeData);
   const processedCollegeData = collegeDataArray.map((dept, idx) => {
-    // presentNow covers: new fixed API, old API field presenceNow, and other variants
     const presentNow =
-      dept.presentNow      ??  // set by our fixed Analytics.jsx handleApplyFilters
-      dept.presenceNow     ??  // raw from /api/analytics/departments
+      dept.presentNow      ??
+      dept.presenceNow     ??
       dept.currentStudents ??
       dept.student_count   ??
       0;
 
-    // totalEnrolled covers all variants
     const totalEnrolled =
-      dept.totalEnrolled   ??  // set by our fixed Analytics.jsx
-      dept.totalStudents   ??  // raw from /api/analytics/departments
+      dept.totalEnrolled   ??
+      dept.totalStudents   ??
       dept.enrolled_count  ??
       0;
 
@@ -84,22 +82,16 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
         ? parseFloat(dept.percentagePresent)
         : (totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0);
 
-    const pctCampus =
-      dept.percentageOfCampus != null
-        ? parseFloat(dept.percentageOfCampus)
-        : 0; // will be recalculated below
-
     return {
       id: idx + 1,
       name: dept.displayName || dept.fullCollegeName || dept.collegeName || dept.dept_name || 'Unknown',
       presentNow,
       totalEnrolled,
       percentagePresent: pctPresent,
-      percentageOfCampus: pctCampus,
+      percentageOfCampus: 0,
     };
   }).sort((a, b) => b.presentNow - a.presentNow);
 
-  // Recalculate % of campus dynamically from actual data
   const totalPresentOnCampus = processedCollegeData.reduce((s, d) => s + d.presentNow, 0);
   const processedCollegeDataFinal = processedCollegeData.map(d => ({
     ...d,
@@ -111,14 +103,12 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
       : 0,
   }));
 
-  // ── FIXED green box numbers: prefer currentOnCampus from props, else sum from dept data ──
   const displayOnCampus = currentOnCampus > 0
     ? currentOnCampus
     : totalPresentOnCampus;
 
   const displayTotalEnrolled = processedCollegeDataFinal.reduce((s, d) => s + d.totalEnrolled, 0) || totalStudents;
 
-  // ── Auth data ──
   const authDataArray = safeArray(authData);
   const processedAuthData = authDataArray.map((auth, idx) => ({
     id: idx + 1,
@@ -129,7 +119,6 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
 
   const methodDistributionData = [...processedAuthData].sort((a, b) => b.attempts - a.attempts);
 
-  // ── Traffic data ──
   const trafficDataArray = safeArray(trafficData);
   const processedTrafficData = trafficDataArray.map(day => ({
     date: day.date,
@@ -159,12 +148,10 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
     return String(peakHour);
   };
 
-  // ── Visitor stats ──
   const visitorDataArray = safeArray(visitorData);
   const visitorEntries = visitorDataArray.find(v => v.name === 'ENTRY' || v.name === 'Entry')?.value || 0;
   const visitorExits   = visitorDataArray.find(v => v.name === 'EXIT'  || v.name === 'Exit')?.value  || 0;
 
-  // ── Logs ──
   const getEntryLogs = () => {
     if (entryLogs && entryLogs.length > 0) return safeArray(entryLogs);
     return safeArray(studentLogs).filter(log => {
@@ -184,7 +171,6 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
   const finalEntryLogs = getEntryLogs();
   const finalExitLogs  = getExitLogs();
 
-  // ── Filter display helpers ──
   const formatDateRange = () => {
     if (dateRange && dateRange !== 'All Time') return dateRange;
     if (filters?.dateRange) {
@@ -204,22 +190,265 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
     return s.length > 0 ? s.join(' | ') : 'No additional filters applied';
   };
 
-  const actionType    = filters?.actionType || 'both';
-  const showEntryPage = actionType === 'both' || actionType === 'entry';
-  const showExitPage  = actionType === 'both' || actionType === 'exit';
-
-  // ── Stable page numbers ──
-  const pageCount = 3 + (showEntryPage ? 1 : 0) + (showExitPage ? 1 : 0);
-  const p1 = 1;
-  const p2 = 2;
-  const p3 = 3;
-  const p4 = showEntryPage ? 4 : null;
-  const p5 = showExitPage  ? (showEntryPage ? 5 : 4) : null;
-
   const thGreen = { backgroundColor: '#01311d', color: 'white', padding: '8px' };
   const thEntry = { backgroundColor: '#2E7D32', color: 'white', padding: '6px', textAlign: 'left' };
   const thExit  = { backgroundColor: '#D99201', color: 'white', padding: '6px', textAlign: 'left' };
   const tdSmall = { padding: '4px', fontSize: '9px' };
+
+  // Render based on mode
+  if (mode === 'entry') {
+    // ENTRY LOGS ONLY PDF
+    const pageCount = 1;
+    return (
+      <div className="pdf-container">
+        <div ref={reportRef} className="pdf-report landscape">
+          <div className="pdf-page">
+            <div className="pdf-header">
+              <div className="pdf-logos-row">
+                <div className="pdf-left-logos">
+                  {[leftLogoSrc1, leftLogoSrc2, leftLogoSrc3, rightLogoSrc].map((src, i) => (
+                    <div key={i} className="pdf-logo-box"
+                      style={i === 1 ? { width: '65px', height: '65px' } : i === 3 ? { width: '70px', height: '70px' } : {}}>
+                      <img src={src} alt={`Logo ${i + 1}`} className="pdf-logo-img"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    </div>
+                  ))}
+                </div>
+                <div className="pdf-center-text">
+                  <div className="pdf-university-name">PAMANTASAN NG LUNGSOD NG PASIG</div>
+                  <div className="pdf-system-title">ENTRANCE AND EXIT STUDENT MONITORING SYSTEM</div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '2px solid #01311d', margin: '10px 0 8px 0' }}></div>
+              <div style={{ borderTop: '1px solid #d0d0d0', margin: '8px 0' }}></div>
+
+              <div className="pdf-title-row">
+                <h1 className="pdf-main-title">ENTRY LOGS REPORT</h1>
+                <p className="pdf-subtitle">
+                  Student entry records
+                  {filters?.collegeDepartment ? ` — ${filters.collegeDepartment}` : ''}.
+                </p>
+              </div>
+
+              {getAppliedFiltersSummary() !== 'No additional filters applied' && (
+                <div style={{ backgroundColor: '#f0f7f4', border: '1px solid #01311d', borderRadius: '6px', padding: '8px 12px', fontSize: '10px', color: '#01311d', marginBottom: '8px' }}>
+                  <strong>Filters Applied:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                  <strong>Date Range:</strong> {formatDateRange()}
+                </div>
+              )}
+            </div>
+
+            <div className="pdf-section-spacing">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ width: '5px', height: '32px', backgroundColor: '#2E7D32', borderRadius: '3px' }}></div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#2E7D32', fontWeight: 'bold' }}>ENTRY LOGS</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>
+                    Student ENTRY records &nbsp;|&nbsp;
+                    <strong>Filters:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                    <strong>Date:</strong> {formatDateRange()} &nbsp;|&nbsp;
+                    <strong>Total:</strong> {finalEntryLogs.length}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table className="pdf-table pdf-table-full">
+                  <thead>
+                    <tr>
+                      <th style={thEntry}>No.</th>
+                      <th style={thEntry}>Date &amp; Time</th>
+                      <th style={thEntry}>Student ID</th>
+                      <th style={thEntry}>Name</th>
+                      <th style={thEntry}>College / Department</th>
+                      <th style={thEntry}>Year Level</th>
+                      <th style={thEntry}>Method</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finalEntryLogs.length > 0 ? (
+                      finalEntryLogs.map((log, i) => (
+                        <tr key={`entry-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9fef9' }}>
+                          <td style={tdSmall}>{i + 1}</td>
+                          <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
+                          <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
+                          <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
+                          <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
+                          <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
+                          <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                          No entry records found for the selected filters
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {finalEntryLogs.length > 0 && (
+                    <tfoot>
+                      <tr style={{ backgroundColor: '#e8f5e9' }}>
+                        <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
+                          Total Entry Records: {finalEntryLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            <div className="pdf-footer">
+              <div className="pdf-footer-content">
+                <div className="pdf-footer-left">
+                  <span className="pdf-footer-text">
+                    ENTRANCE AND EXIT STUDENT MONITORING SYSTEM<br />
+                    PAMANTASAN NG LUNGSOD NG PASIG | Powered by College of Computer Studies
+                  </span>
+                </div>
+                <div className="pdf-footer-right">
+                  <span className="pdf-footer-text">Page 1 of 1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === 'exit') {
+    // EXIT LOGS ONLY PDF
+    const pageCount = 1;
+    return (
+      <div className="pdf-container">
+        <div ref={reportRef} className="pdf-report landscape">
+          <div className="pdf-page">
+            <div className="pdf-header">
+              <div className="pdf-logos-row">
+                <div className="pdf-left-logos">
+                  {[leftLogoSrc1, leftLogoSrc2, leftLogoSrc3, rightLogoSrc].map((src, i) => (
+                    <div key={i} className="pdf-logo-box"
+                      style={i === 1 ? { width: '65px', height: '65px' } : i === 3 ? { width: '70px', height: '70px' } : {}}>
+                      <img src={src} alt={`Logo ${i + 1}`} className="pdf-logo-img"
+                        onError={e => { e.target.style.display = 'none'; }} />
+                    </div>
+                  ))}
+                </div>
+                <div className="pdf-center-text">
+                  <div className="pdf-university-name">PAMANTASAN NG LUNGSOD NG PASIG</div>
+                  <div className="pdf-system-title">ENTRANCE AND EXIT STUDENT MONITORING SYSTEM</div>
+                </div>
+              </div>
+
+              <div style={{ borderTop: '2px solid #01311d', margin: '10px 0 8px 0' }}></div>
+              <div style={{ borderTop: '1px solid #d0d0d0', margin: '8px 0' }}></div>
+
+              <div className="pdf-title-row">
+                <h1 className="pdf-main-title">EXIT LOGS REPORT</h1>
+                <p className="pdf-subtitle">
+                  Student exit records
+                  {filters?.collegeDepartment ? ` — ${filters.collegeDepartment}` : ''}.
+                </p>
+              </div>
+
+              {getAppliedFiltersSummary() !== 'No additional filters applied' && (
+                <div style={{ backgroundColor: '#f0f7f4', border: '1px solid #01311d', borderRadius: '6px', padding: '8px 12px', fontSize: '10px', color: '#01311d', marginBottom: '8px' }}>
+                  <strong>Filters Applied:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                  <strong>Date Range:</strong> {formatDateRange()}
+                </div>
+              )}
+            </div>
+
+            <div className="pdf-section-spacing">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                <div style={{ width: '5px', height: '32px', backgroundColor: '#D99201', borderRadius: '3px' }}></div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', color: '#D99201', fontWeight: 'bold' }}>EXIT LOGS</h3>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#666' }}>
+                    Student EXIT records &nbsp;|&nbsp;
+                    <strong>Filters:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                    <strong>Date:</strong> {formatDateRange()} &nbsp;|&nbsp;
+                    <strong>Total:</strong> {finalExitLogs.length}
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ overflowX: 'auto' }}>
+                <table className="pdf-table pdf-table-full">
+                  <thead>
+                    <tr>
+                      <th style={thExit}>No.</th>
+                      <th style={thExit}>Date &amp; Time</th>
+                      <th style={thExit}>Student ID</th>
+                      <th style={thExit}>Name</th>
+                      <th style={thExit}>College / Department</th>
+                      <th style={thExit}>Year Level</th>
+                      <th style={thExit}>Method</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {finalExitLogs.length > 0 ? (
+                      finalExitLogs.map((log, i) => (
+                        <tr key={`exit-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#fffdf0' }}>
+                          <td style={tdSmall}>{i + 1}</td>
+                          <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
+                          <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
+                          <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
+                          <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
+                          <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
+                          <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
+                          No exit records found for the selected filters
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                  {finalExitLogs.length > 0 && (
+                    <tfoot>
+                      <tr style={{ backgroundColor: '#fff8e1' }}>
+                        <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
+                          Total Exit Records: {finalExitLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  )}
+                </table>
+              </div>
+            </div>
+
+            <div className="pdf-footer">
+              <div className="pdf-footer-content">
+                <div className="pdf-footer-left">
+                  <span className="pdf-footer-text">
+                    ENTRANCE AND EXIT STUDENT MONITORING SYSTEM<br />
+                    PAMANTASAN NG LUNGSOD NG PASIG | Powered by College of Computer Studies
+                  </span>
+                </div>
+                <div className="pdf-footer-right">
+                  <span className="pdf-footer-text">Page 1 of 1</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // FULL REPORT (default mode)
+  const pageCount = 3 + (finalEntryLogs.length > 0 ? 1 : 0) + (finalExitLogs.length > 0 ? 1 : 0);
+  const p1 = 1;
+  const p2 = 2;
+  const p3 = 3;
+  const p4 = finalEntryLogs.length > 0 ? 4 : null;
+  const p5 = finalExitLogs.length > 0 ? (finalEntryLogs.length > 0 ? 5 : 4) : null;
 
   const PageFooter = ({ page }) => (
     <div className="pdf-footer">
@@ -241,7 +470,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
     <div className="pdf-container">
       <div ref={reportRef} className="pdf-report landscape">
 
-        {/* ══ PAGE 1: HEADER, SUMMARY STATS & DEPARTMENT TABLE ══ */}
+        {/* PAGE 1: HEADER, SUMMARY STATS & DEPARTMENT TABLE */}
         <div className="pdf-page">
           <div className="pdf-header">
             <div className="pdf-logos-row">
@@ -301,7 +530,6 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
             </div>
 
             <div className="pdf-stats-section">
-              {/* ── FIXED GREEN BOX: uses dynamic displayOnCampus / displayTotalEnrolled ── */}
               <div className="pdf-stats-left">
                 <div className="pdf-green-box">
                   <div className="pdf-big-number">
@@ -420,10 +648,9 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
           <footer page={p1} />
         </div>
 
-        {/* ══ PAGE 2: DAILY TRAFFIC TREND & VISITOR STATS ══ */}
-       
+      
 
-        {/* ══ PAGE 3: AUTH SUCCESS RATE & METHOD DISTRIBUTION ══ */}
+        {/* PAGE 3: AUTH SUCCESS RATE & METHOD DISTRIBUTION */}
         <div className="pdf-page">
           <div style={{ borderTop: '1px solid #01311d', margin: '10px 0' }}></div>
 
@@ -499,8 +726,8 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
           <footer page={p3} />
         </div>
 
-        {/* ══ PAGE 4: ENTRY LOGS ══ */}
-        {showEntryPage && (
+        {/* PAGE 4: ENTRY LOGS */}
+        {finalEntryLogs.length > 0 && (
           <div className="pdf-page">
             <div style={{ borderTop: '1px solid #01311d', margin: '10px 0' }}></div>
 
@@ -532,35 +759,25 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
                     </tr>
                   </thead>
                   <tbody>
-                    {finalEntryLogs.length > 0 ? (
-                      finalEntryLogs.map((log, i) => (
-                        <tr key={`entry-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9fef9' }}>
-                          <td style={tdSmall}>{i + 1}</td>
-                          <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
-                          <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
-                          <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
-                          <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
-                          <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
-                          <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                          No entry records found for the selected filters
-                        </td>
+                    {finalEntryLogs.map((log, i) => (
+                      <tr key={`entry-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#f9fef9' }}>
+                        <td style={tdSmall}>{i + 1}</td>
+                        <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
+                        <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
+                        <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
+                        <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
+                        <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
+                        <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
-                  {finalEntryLogs.length > 0 && (
-                    <tfoot>
-                      <tr style={{ backgroundColor: '#e8f5e9' }}>
-                        <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
-                          Total Entry Records: {finalEntryLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
+                  <tfoot>
+                    <tr style={{ backgroundColor: '#e8f5e9' }}>
+                      <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
+                        Total Entry Records: {finalEntryLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
@@ -569,8 +786,8 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
           </div>
         )}
 
-        {/* ══ PAGE 5: EXIT LOGS ══ */}
-        {showExitPage && (
+        {/* PAGE 5: EXIT LOGS */}
+        {finalExitLogs.length > 0 && (
           <div className="pdf-page">
             <div style={{ borderTop: '1px solid #01311d', margin: '10px 0' }}></div>
 
@@ -602,35 +819,25 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {} }, ref) =>
                     </tr>
                   </thead>
                   <tbody>
-                    {finalExitLogs.length > 0 ? (
-                      finalExitLogs.map((log, i) => (
-                        <tr key={`exit-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#fffdf0' }}>
-                          <td style={tdSmall}>{i + 1}</td>
-                          <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
-                          <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
-                          <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
-                          <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
-                          <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
-                          <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
-                        </tr>
-                      ))
-                    ) : (
-                      <tr>
-                        <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                          No exit records found for the selected filters
-                        </td>
+                    {finalExitLogs.map((log, i) => (
+                      <tr key={`exit-${i}`} style={{ backgroundColor: i % 2 === 0 ? '#fff' : '#fffdf0' }}>
+                        <td style={tdSmall}>{i + 1}</td>
+                        <td style={tdSmall}>{log.dateTime || log.date || log.time || log.timestamp || '—'}</td>
+                        <td style={tdSmall}>{log.studentId || log.student_id || 'N/A'}</td>
+                        <td style={tdSmall}>{log.name || log.student_name || 'Unknown'}</td>
+                        <td style={tdSmall}>{log.department || log.collegeDept || log.college || 'N/A'}</td>
+                        <td style={tdSmall}>{log.yearLevel || log.year || 'N/A'}</td>
+                        <td style={tdSmall}>{log.method || log.authMethod || 'Face Recognition'}</td>
                       </tr>
-                    )}
+                    ))}
                   </tbody>
-                  {finalExitLogs.length > 0 && (
-                    <tfoot>
-                      <tr style={{ backgroundColor: '#fff8e1' }}>
-                        <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
-                          Total Exit Records: {finalExitLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
+                  <tfoot>
+                    <tr style={{ backgroundColor: '#fff8e1' }}>
+                      <td colSpan="7" style={{ padding: '6px', textAlign: 'center', fontSize: '10px', fontStyle: 'italic', color: '#555' }}>
+                        Total Exit Records: {finalExitLogs.length} &nbsp;|&nbsp; Generated on {generationDate}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
             </div>
