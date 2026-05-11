@@ -89,7 +89,6 @@ function VisitorModal({ onClose }) {
       });
       setForm(resetForm);
       
-      // Optional: Close modal after 2 seconds on success
       setTimeout(() => {
         onClose();
       }, 2000);
