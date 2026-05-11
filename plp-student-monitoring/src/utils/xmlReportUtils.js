@@ -64,96 +64,153 @@ function attrTag(name, obj) {
  */
 export function reportToXml(reportData, filters = {}) {
   const {
-    generatedAt    = '',
-    dateRange      = '',
+    generatedAt    = new Date().toISOString(),
+    dateRange      = 'All Time',
     totalStudents  = 0,
-    totalLogs      = 0,
-    collegeData    = [],
-    methodData     = [],
-    trafficChartData = [],
-    trafficData    = {},
+    currentOnCampus = 0,
+    totalEntries   = 0,
+    authSuccessRate = 0,
+    peakHour       = null,
+    entryLogs      = [],
+    exitLogs       = [],
     studentLogs    = [],
+    collegeData    = [],
+    authData       = [],
+    trafficData    = [],
+    trafficInsights = {},
+    visitorData    = [],
   } = reportData;
+
+  // Determine which logs to use (prefer separated logs if available)
+  const finalEntryLogs = entryLogs && entryLogs.length > 0 
+    ? entryLogs 
+    : studentLogs.filter(log => {
+        const action = (log.action || '').toUpperCase();
+        return action === 'ENTRY' || action === 'ENTRANCE';
+      });
+  
+  const finalExitLogs = exitLogs && exitLogs.length > 0
+    ? exitLogs
+    : studentLogs.filter(log => {
+        const action = (log.action || '').toUpperCase();
+        return action === 'EXIT';
+      });
 
   // ── Meta ────────────────────────────────────────────────────────────────
   const metaXml = tag('meta',
     tag('generatedAt', esc(generatedAt)) +
-    tag('dateRange',   esc(dateRange))   +
-    tag('totalStudents', totalStudents)  +
-    tag('totalLogs',     totalLogs)      +
+    tag('dateRange',   esc(dateRange)) +
+    tag('totalStudents', totalStudents) +
+    tag('currentOnCampus', currentOnCampus) +
+    tag('totalEntries', totalEntries) +
+    tag('authSuccessRate', authSuccessRate) +
+    tag('peakHour', esc(peakHour ? (typeof peakHour === 'object' ? peakHour.hour || JSON.stringify(peakHour) : peakHour) : 'N/A')) +
     tag('filters',
-      tag('from',       esc(filters.from       || '')) +
-      tag('to',         esc(filters.to         || '')) +
-      tag('department', esc(filters.dept        || filters.collegeDepartment || ''))
+      tag('from',       esc(filters.from || filters.dateRange?.from || '')) +
+      tag('to',         esc(filters.to   || filters.dateRange?.to   || '')) +
+      tag('department', esc(filters.dept || filters.collegeDepartment || '')) +
+      tag('actionType', esc(filters.actionType || 'both'))
     )
   );
 
   // ── Traffic summary ──────────────────────────────────────────────────────
   const trafficSummaryXml = tag('trafficSummary',
-    tag('highest', esc(trafficData.highest || 'N/A')) +
-    tag('lowest',  esc(trafficData.lowest  || 'N/A'))
+    tag('highest', esc(trafficInsights?.highest?.date || 'N/A')) +
+    tag('highestEntries', trafficInsights?.highest?.entrance || 0) +
+    tag('lowest',  esc(trafficInsights?.lowest?.date || 'N/A')) +
+    tag('lowestEntries', trafficInsights?.lowest?.entrance || 0)
   );
 
   // ── Traffic chart data ───────────────────────────────────────────────────
   const trafficChartXml = tag('trafficChart',
-    trafficChartData.map(d =>
-      attrTag('day', { date: d.date, entrance: d.entrance ?? 0, exit: d.exit ?? 0 })
+    (Array.isArray(trafficData) ? trafficData : []).map(d =>
+      attrTag('day', { 
+        date: d.date, 
+        entrance: d.entrance ?? d.entrances ?? 0, 
+        exit: d.exit ?? d.exits ?? 0 
+      })
     ).join('\n    ')
   );
 
   // ── College / department distribution ────────────────────────────────────
   const collegeXml = tag('collegeDistribution',
-    collegeData.map((c, i) =>
+    (Array.isArray(collegeData) ? collegeData : []).map((c, i) =>
       tag('college', null, {
-        no:           i + 1,
-        name:         c.name,
-        count:        c.count,
-        totalStudents: c.totalStudents,
-        percentage:   c.percentage,
+        no:              i + 1,
+        name:            c.displayName || c.fullCollegeName || c.collegeName || c.dept_name || 'Unknown',
+        presentNow:      c.presentNow ?? c.presenceNow ?? c.currentStudents ?? 0,
+        totalEnrolled:   c.totalEnrolled ?? c.totalStudents ?? 0,
+        percentagePresent: c.percentagePresent?.toFixed(1) ?? 0,
+        percentageOfCampus: c.percentageOfCampus?.toFixed(1) ?? 0,
       })
     ).join('\n    ')
   );
 
   // ── Authentication method breakdown ──────────────────────────────────────
-  const methodXml = tag('authMethods',
-    methodData.map((m, i) =>
+  const authXml = tag('authMethods',
+    (Array.isArray(authData) ? authData : []).map((a, i) =>
       tag('method', null, {
-        no:         i + 1,
-        name:       m.name,
-        count:      m.count,
-        percentage: m.percentage,
-        total:      m.total,
+        no:          i + 1,
+        name:        a.method || a.authentication_method || 'Unknown',
+        attempts:    a.attempts || a.total_attempts || 0,
+        successRate: a.successRate || a.success_rate || 0,
       })
     ).join('\n    ')
   );
 
-  // ── Student log entries ──────────────────────────────────────────────────
-  const logsXml = tag('studentLogs',
-    studentLogs.map(l =>
+  // ── Visitor stats ────────────────────────────────────────────────────────
+  const visitorXml = tag('visitorStats',
+    (Array.isArray(visitorData) ? visitorData : []).map((v, i) =>
+      attrTag('visitor', {
+        name:  v.name || (v.action?.toUpperCase() === 'ENTRY' ? 'ENTRY' : 'EXIT'),
+        value: v.value || 1,
+      })
+    ).join('\n    ')
+  );
+
+  // ── ENTRY Logs (separate table) ──────────────────────────────────────────
+  const entryLogsXml = tag('entryLogs',
+    finalEntryLogs.map((l, i) =>
       tag('entry', null, {
-        no:         l.no,
-        dateTime:   l.dateTime,
-        studentId:  l.studentId,
-        name:       l.name,
-        department: l.department,
-        program:    l.program   || 'N/A',
-        yearLevel:  l.yearLevel || 'N/A',
-        action:     l.action,
-        method:     l.method,
-        accuracy:   l.accuracy  || 'N/A',
+        no:         i + 1,
+        dateTime:   l.dateTime || l.date || l.time || l.timestamp || '',
+        studentId:  l.studentId || l.student_id || 'N/A',
+        name:       l.name || l.student_name || 'Unknown',
+        department: l.department || l.collegeDept || l.college || 'N/A',
+        yearLevel:  l.yearLevel || l.year || 'N/A',
+        method:     l.method || l.authMethod || 'Face Recognition',
+      })
+    ).join('\n    ')
+  );
+
+  // ── EXIT Logs (separate table) ───────────────────────────────────────────
+  const exitLogsXml = tag('exitLogs',
+    finalExitLogs.map((l, i) =>
+      tag('exit', null, {
+        no:         i + 1,
+        dateTime:   l.dateTime || l.date || l.time || l.timestamp || '',
+        studentId:  l.studentId || l.student_id || 'N/A',
+        name:       l.name || l.student_name || 'Unknown',
+        department: l.department || l.collegeDept || l.college || 'N/A',
+        yearLevel:  l.yearLevel || l.year || 'N/A',
+        method:     l.method || l.authMethod || 'Face Recognition',
       })
     ).join('\n    ')
   );
 
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
+    '<?xml-stylesheet type="text/xsl" href="eems-report.xslt"?>',
     '<eems-report>',
     '  ' + metaXml,
     '  ' + trafficSummaryXml,
     '  ' + trafficChartXml,
     '  ' + collegeXml,
-    '  ' + methodXml,
-    '  ' + logsXml,
+    '  ' + authXml,
+    '  ' + visitorXml,
+    '  ' + tag('logs',
+      '    ' + entryLogsXml + '\n    ' + exitLogsXml
+    ),
     '</eems-report>',
   ].join('\n');
 }
@@ -183,25 +240,36 @@ export function xmlToReport(xmlString) {
 
   // ── Meta ────────────────────────────────────────────────────────────────
   const meta = doc.querySelector('meta');
-  const generatedAt   = getText(meta, 'generatedAt');
-  const dateRange     = getText(meta, 'dateRange');
-  const totalStudents = getNum(meta, 'totalStudents');
-  const totalLogs     = getNum(meta, 'totalLogs');
+  const generatedAt     = getText(meta, 'generatedAt');
+  const dateRange       = getText(meta, 'dateRange');
+  const totalStudents   = getNum(meta, 'totalStudents');
+  const currentOnCampus = getNum(meta, 'currentOnCampus');
+  const totalEntries    = getNum(meta, 'totalEntries');
+  const authSuccessRate = getNum(meta, 'authSuccessRate');
+  const peakHour        = getText(meta, 'peakHour');
+  
   const filters = {
-    from:       getText(meta, 'filters > from'),
-    to:         getText(meta, 'filters > to'),
-    department: getText(meta, 'filters > department'),
+    from:        getText(meta, 'filters > from'),
+    to:          getText(meta, 'filters > to'),
+    department:  getText(meta, 'filters > department'),
+    actionType:  getText(meta, 'filters > actionType'),
   };
 
   // ── Traffic summary ──────────────────────────────────────────────────────
   const ts = doc.querySelector('trafficSummary');
-  const trafficData = {
-    highest: getText(ts, 'highest'),
-    lowest:  getText(ts, 'lowest'),
+  const trafficInsights = {
+    highest: {
+      date:     getText(ts, 'highest'),
+      entrance: getNum(ts, 'highestEntries'),
+    },
+    lowest: {
+      date:     getText(ts, 'lowest'),
+      entrance: getNum(ts, 'lowestEntries'),
+    },
   };
 
   // ── Traffic chart ────────────────────────────────────────────────────────
-  const trafficChartData = Array.from(doc.querySelectorAll('trafficChart > day')).map(el => ({
+  const trafficData = Array.from(doc.querySelectorAll('trafficChart > day')).map(el => ({
     date:     getAttr(el, 'date'),
     entrance: getNumA(el, 'entrance'),
     exit:     getNumA(el, 'exit'),
@@ -209,44 +277,64 @@ export function xmlToReport(xmlString) {
 
   // ── College distribution ─────────────────────────────────────────────────
   const collegeData = Array.from(doc.querySelectorAll('collegeDistribution > college')).map(el => ({
-    name:          getAttr(el, 'name'),
-    count:         getNumA(el, 'count'),
-    totalStudents: getNumA(el, 'totalStudents'),
-    percentage:    getNumA(el, 'percentage'),
+    displayName:        getAttr(el, 'name'),
+    presentNow:         getNumA(el, 'presentNow'),
+    totalEnrolled:      getNumA(el, 'totalEnrolled'),
+    percentagePresent:  parseFloat(getAttr(el, 'percentagePresent')) || 0,
+    percentageOfCampus: parseFloat(getAttr(el, 'percentageOfCampus')) || 0,
   }));
 
   // ── Auth methods ─────────────────────────────────────────────────────────
-  const methodData = Array.from(doc.querySelectorAll('authMethods > method')).map(el => ({
-    name:       getAttr(el, 'name'),
-    count:      getNumA(el, 'count'),
-    percentage: getNumA(el, 'percentage'),
-    total:      getNumA(el, 'total'),
+  const authData = Array.from(doc.querySelectorAll('authMethods > method')).map(el => ({
+    method:      getAttr(el, 'name'),
+    attempts:    getNumA(el, 'attempts'),
+    successRate: getNumA(el, 'successRate'),
   }));
 
-  // ── Student logs ─────────────────────────────────────────────────────────
-  const studentLogs = Array.from(doc.querySelectorAll('studentLogs > entry')).map(el => ({
+  // ── Visitor stats ────────────────────────────────────────────────────────
+  const visitorData = Array.from(doc.querySelectorAll('visitorStats > visitor')).map(el => ({
+    name:  getAttr(el, 'name'),
+    value: getNumA(el, 'value'),
+  }));
+
+  // ── ENTRY Logs (separate) ────────────────────────────────────────────────
+  const entryLogs = Array.from(doc.querySelectorAll('entryLogs > entry')).map(el => ({
     no:         getNumA(el, 'no'),
     dateTime:   getAttr(el, 'dateTime'),
     studentId:  getAttr(el, 'studentId'),
     name:       getAttr(el, 'name'),
     department: getAttr(el, 'department'),
-    program:    getAttr(el, 'program'),
     yearLevel:  getAttr(el, 'yearLevel'),
-    action:     getAttr(el, 'action'),
     method:     getAttr(el, 'method'),
-    accuracy:   getAttr(el, 'accuracy'),
+  }));
+
+  // ── EXIT Logs (separate) ─────────────────────────────────────────────────
+  const exitLogs = Array.from(doc.querySelectorAll('exitLogs > exit')).map(el => ({
+    no:         getNumA(el, 'no'),
+    dateTime:   getAttr(el, 'dateTime'),
+    studentId:  getAttr(el, 'studentId'),
+    name:       getAttr(el, 'name'),
+    department: getAttr(el, 'department'),
+    yearLevel:  getAttr(el, 'yearLevel'),
+    method:     getAttr(el, 'method'),
   }));
 
   return {
     generatedAt,
     dateRange,
     totalStudents,
-    totalLogs,
+    currentOnCampus,
+    totalEntries,
+    authSuccessRate,
+    peakHour: peakHour === 'N/A' ? null : peakHour,
     collegeData,
-    methodData,
-    trafficChartData,
+    authData,
     trafficData,
-    studentLogs,
+    trafficInsights,
+    visitorData,
+    entryLogs,
+    exitLogs,
+    studentLogs: [...entryLogs, ...exitLogs],
     filters,
   };
 }
@@ -355,8 +443,12 @@ export async function openXmlReportWindow(xmlString, windowName = 'eems-report')
   try {
     const htmlString = await xmlToHtml(xmlString);
     const newWindow = window.open('', windowName, 'width=1000,height=800');
-    newWindow.document.write(htmlString);
-    newWindow.document.close();
+    if (newWindow) {
+      newWindow.document.write(htmlString);
+      newWindow.document.close();
+    } else {
+      alert('Popup blocked. Please allow popups for this site.');
+    }
   } catch (err) {
     console.error('[xmlReportUtils.openXmlReportWindow] Error:', err.message);
     alert('Failed to open report window. Check console for details.');

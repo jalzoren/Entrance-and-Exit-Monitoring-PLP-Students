@@ -1,100 +1,112 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
   <xsl:output method="html" encoding="UTF-8" indent="yes"/>
-
+  
   <xsl:template match="/">
     <html>
       <head>
-        <meta charset="UTF-8"/>
-        <title>EEMS Report</title>
+        <title>EEMS Report - Student Entrance and Exit Monitoring System</title>
         <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
           body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
+            background: #f5f5f5;
+            padding: 40px 20px;
             color: #333;
-            line-height: 1.6;
           }
           .report-container {
             max-width: 1200px;
-            margin: 20px auto;
+            margin: 0 auto;
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
             overflow: hidden;
           }
           .report-header {
-            background: linear-gradient(135deg, #01311d 0%, #548772 100%);
+            background: linear-gradient(135deg, #01311d 0%, #0a5c3e 100%);
             color: white;
             padding: 30px;
             text-align: center;
           }
-          .report-header h1 { font-size: 28px; margin-bottom: 10px; }
-          .report-header p { font-size: 14px; opacity: 0.9; }
-          .meta-section {
-            padding: 20px 30px;
-            border-bottom: 1px solid #e0e0e0;
-            background: #fafafa;
+          .report-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
           }
-          .meta-row {
+          .report-header p {
+            opacity: 0.9;
+            font-size: 14px;
+          }
+          .report-meta {
+            background: #e8f5e9;
+            padding: 20px 30px;
+            border-bottom: 1px solid #c8e6c9;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+          }
+          .meta-item {
+            font-size: 14px;
+          }
+          .meta-label {
+            font-weight: bold;
+            color: #01311d;
+          }
+          .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 20px;
-            margin-top: 10px;
-          }
-          .meta-item {
-            padding: 12px;
-            background: white;
-            border-left: 4px solid #01311d;
-            border-radius: 4px;
-          }
-          .meta-label { font-size: 12px; color: #666; text-transform: uppercase; font-weight: 600; }
-          .meta-value { font-size: 18px; color: #01311d; font-weight: bold; margin-top: 5px; }
-          .content-section {
             padding: 30px;
+            background: #f9f9f9;
+          }
+          .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border: 1px solid #e0e0e0;
+          }
+          .stat-value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #01311d;
+          }
+          .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+          }
+          .section {
+            padding: 30px;
+            border-bottom: 1px solid #e0e0e0;
           }
           .section-title {
             font-size: 20px;
             color: #01311d;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #548772;
+            border-bottom: 2px solid #d99201;
+            display: inline-block;
           }
-          .traffic-summary {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
-          }
-          .summary-card {
-            padding: 15px;
-            background: white;
-            border-left: 4px solid #d99201;
-            border-radius: 4px;
-          }
-          .summary-card.high { border-left-color: #58761B; }
-          .summary-label { font-size: 12px; color: #666; text-transform: uppercase; font-weight: 600; }
-          .summary-value { font-size: 16px; color: #01311d; font-weight: bold; margin-top: 8px; word-break: break-word; }
-          .chart-section {
-            margin: 30px 0;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 8px;
+          .section-subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 15px;
           }
           table {
             width: 100%;
             border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 14px;
-          }
-          thead {
-            background: #01311d;
-            color: white;
+            margin-top: 15px;
+            font-size: 13px;
           }
           th {
+            background-color: #01311d;
+            color: white;
             padding: 12px;
             text-align: left;
             font-weight: 600;
@@ -103,21 +115,87 @@
             padding: 10px 12px;
             border-bottom: 1px solid #e0e0e0;
           }
-          tbody tr:hover { background: #f5f5f5; }
-          tbody tr:nth-child(even) { background: #fafafa; }
-          .page-break { page-break-after: always; margin: 20px 0; }
-          .footer {
-            padding: 20px 30px;
-            background: #fafafa;
-            border-top: 1px solid #e0e0e0;
-            font-size: 12px;
-            color: #666;
+          tr:hover {
+            background-color: #f5f5f5;
+          }
+          .entry-header {
+            background-color: #2E7D32;
+          }
+          .exit-header {
+            background-color: #D99201;
+          }
+          .insights-box {
+            background: #f0f7f4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            border-left: 4px solid #01311d;
+          }
+          .visitor-stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 15px;
+          }
+          .visitor-card {
+            flex: 1;
+            padding: 20px;
             text-align: center;
+            border-radius: 8px;
+          }
+          .visitor-entry {
+            background: #e8f5e9;
+            border: 1px solid #a5d6a7;
+          }
+          .visitor-exit {
+            background: #fff3e0;
+            border: 1px solid #ffe0b2;
+          }
+          .visitor-value {
+            font-size: 28px;
+            font-weight: bold;
+          }
+          .progress-bar {
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 5px;
+          }
+          .progress-fill {
+            background: #d99201;
+            height: 20px;
+            border-radius: 10px;
+            transition: width 0.3s;
+          }
+          .footer {
+            background: #f5f5f5;
+            padding: 20px 30px;
+            text-align: center;
+            font-size: 11px;
+            color: #666;
           }
           @media print {
-            body { background: white; }
-            .report-container { box-shadow: none; margin: 0; border-radius: 0; }
-            .page-break { page-break-after: always; }
+            body {
+              background: white;
+              padding: 0;
+              margin: 0;
+            }
+            .report-container {
+              box-shadow: none;
+              border-radius: 0;
+            }
+            .stats-grid {
+              break-inside: avoid;
+            }
+            .section {
+              break-inside: avoid;
+            }
+            table {
+              break-inside: auto;
+            }
+            tr {
+              break-inside: avoid;
+              break-after: auto;
+            }
           }
         </style>
       </head>
@@ -125,69 +203,103 @@
         <div class="report-container">
           <!-- Header -->
           <div class="report-header">
-            <h1>Entrance &amp; Exit Monitoring System</h1>
-            <p>EEMS Report</p>
+            <h1>ENTRANCE AND EXIT STUDENT MONITORING SYSTEM</h1>
+            <p>PAMANTASAN NG LUNGSOD NG PASIG</p>
           </div>
-
-          <!-- Metadata Section -->
-          <div class="meta-section">
-            <div class="meta-row">
-              <div class="meta-item">
-                <div class="meta-label">Generated At</div>
-                <div class="meta-value">
-                  <xsl:value-of select="/eems-report/meta/generatedAt"/>
-                </div>
-              </div>
-              <div class="meta-item">
-                <div class="meta-label">Date Range</div>
-                <div class="meta-value">
-                  <xsl:value-of select="/eems-report/meta/dateRange"/>
-                </div>
-              </div>
-              <div class="meta-item">
-                <div class="meta-label">Total Students</div>
-                <div class="meta-value">
-                  <xsl:value-of select="/eems-report/meta/totalStudents"/>
-                </div>
-              </div>
-              <div class="meta-item">
-                <div class="meta-label">Total Logs</div>
-                <div class="meta-value">
-                  <xsl:value-of select="/eems-report/meta/totalLogs"/>
-                </div>
-              </div>
+          
+          <!-- Meta Information -->
+          <div class="report-meta">
+            <div class="meta-item">
+              <span class="meta-label">Generated:</span> 
+              <span><xsl:value-of select="/eems-report/meta/generatedAt"/></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Date Range:</span> 
+              <span><xsl:value-of select="/eems-report/meta/dateRange"/></span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">Filters:</span> 
+              <span>
+                <xsl:if test="/eems-report/meta/filters/department != ''">
+                  Dept: <xsl:value-of select="/eems-report/meta/filters/department"/>
+                </xsl:if>
+                <xsl:if test="/eems-report/meta/filters/actionType != 'both' and /eems-report/meta/filters/actionType != ''">
+                  <xsl:if test="/eems-report/meta/filters/department != ''"> | </xsl:if>
+                  Action: <xsl:value-of select="/eems-report/meta/filters/actionType"/>
+                </xsl:if>
+                <xsl:if test="/eems-report/meta/filters/from != '' and /eems-report/meta/filters/to != ''">
+                  <xsl:if test="/eems-report/meta/filters/department != '' or /eems-report/meta/filters/actionType != ''"> | </xsl:if>
+                  <xsl:value-of select="/eems-report/meta/filters/from"/> to <xsl:value-of select="/eems-report/meta/filters/to"/>
+                </xsl:if>
+              </span>
             </div>
           </div>
-
-          <!-- Content Section -->
-          <div class="content-section">
-
-            <!-- Traffic Summary -->
-            <h2 class="section-title">Traffic Summary</h2>
-            <div class="traffic-summary">
-              <div class="summary-card high">
-                <div class="summary-label">Highest Traffic Day</div>
-                <div class="summary-value">
-                  <xsl:value-of select="/eems-report/trafficSummary/highest"/>
-                </div>
-              </div>
-              <div class="summary-card">
-                <div class="summary-label">Lowest Traffic Day</div>
-                <div class="summary-value">
-                  <xsl:value-of select="/eems-report/trafficSummary/lowest"/>
-                </div>
-              </div>
+          
+          <!-- Stats Grid -->
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-value"><xsl:value-of select="/eems-report/meta/totalStudents"/></div>
+              <div class="stat-label">TOTAL STUDENTS ENROLLED</div>
             </div>
-
-            <!-- Traffic Chart Data -->
-            <div class="chart-section">
-              <h3 class="section-title">Daily Traffic Data</h3>
+            <div class="stat-card">
+              <div class="stat-value"><xsl:value-of select="/eems-report/meta/currentOnCampus"/></div>
+              <div class="stat-label">CURRENTLY ON CAMPUS</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value"><xsl:value-of select="/eems-report/meta/totalEntries"/></div>
+              <div class="stat-label">TOTAL ENTRIES</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-value"><xsl:value-of select="/eems-report/meta/authSuccessRate"/>%</div>
+              <div class="stat-label">AUTH SUCCESS RATE</div>
+            </div>
+          </div>
+          
+          <!-- Department Distribution -->
+          <div class="section">
+            <h2 class="section-title">Department Distribution</h2>
+            <xsl:if test="count(/eems-report/collegeDistribution/college) > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th>No.</th>
+                    <th>Department</th>
+                    <th>Present Now</th>
+                    <th>Total Enrolled</th>
+                    <th>% Present</th>
+                    <th>% of Campus</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <xsl:for-each select="/eems-report/collegeDistribution/college">
+                    <tr>
+                      <td><xsl:value-of select="@no"/></td>
+                      <td><xsl:value-of select="@name"/></td>
+                      <td><xsl:value-of select="@presentNow"/></td>
+                      <td><xsl:value-of select="@totalEnrolled"/></td>
+                      <td><xsl:value-of select="@percentagePresent"/>%</td>
+                      <td><xsl:value-of select="@percentageOfCampus"/>%</td>
+                    </tr>
+                  </xsl:for-each>
+                </tbody>
+              </table>
+            </xsl:if>
+            <xsl:if test="count(/eems-report/collegeDistribution/college) = 0">
+              <p>No department data available.</p>
+            </xsl:if>
+          </div>
+          
+          <!-- Traffic Trend -->
+          <div class="section">
+            <h2 class="section-title">Daily Traffic Trend</h2>
+            <xsl:if test="count(/eems-report/trafficChart/day) > 0">
               <table>
                 <thead>
                   <tr>
                     <th>Date</th>
                     <th>Entrances</th>
                     <th>Exits</th>
+                    <th>Total</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -196,50 +308,34 @@
                       <td><xsl:value-of select="@date"/></td>
                       <td><xsl:value-of select="@entrance"/></td>
                       <td><xsl:value-of select="@exit"/></td>
+                      <td><xsl:value-of select="@entrance + @exit"/></td>
                     </tr>
                   </xsl:for-each>
                 </tbody>
               </table>
-            </div>
-
-            <!-- College Distribution -->
-            <div class="chart-section">
-              <h3 class="section-title">College/Department Distribution</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>No.</th>
-                    <th>Department</th>
-                    <th>Present Now</th>
-                    <th>Total Students</th>
-                    <th>Percentage</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <xsl:for-each select="/eems-report/collegeDistribution/college">
-                    <tr>
-                      <td><xsl:value-of select="@no"/></td>
-                      <td><xsl:value-of select="@name"/></td>
-                      <td><xsl:value-of select="@count"/></td>
-                      <td><xsl:value-of select="@totalStudents"/></td>
-                      <td><xsl:value-of select="@percentage"/>%</td>
-                    </tr>
-                  </xsl:for-each>
-                </tbody>
-              </table>
-            </div>
-
-            <!-- Authentication Methods -->
-            <div class="chart-section">
-              <h3 class="section-title">Authentication Methods</h3>
+              <div class="insights-box">
+                <strong>Insights:</strong><br/>
+                Highest traffic: <xsl:value-of select="/eems-report/trafficSummary/highest"/> (<xsl:value-of select="/eems-report/trafficSummary/highestEntries"/> entries)<br/>
+                Lowest traffic: <xsl:value-of select="/eems-report/trafficSummary/lowest"/> (<xsl:value-of select="/eems-report/trafficSummary/lowestEntries"/> entries)<br/>
+                Peak Hour: <xsl:value-of select="/eems-report/meta/peakHour"/>
+              </div>
+            </xsl:if>
+            <xsl:if test="count(/eems-report/trafficChart/day) = 0">
+              <p>No traffic data available.</p>
+            </xsl:if>
+          </div>
+          
+          <!-- Authentication Methods -->
+          <div class="section">
+            <h2 class="section-title">Authentication Methods</h2>
+            <xsl:if test="count(/eems-report/authMethods/method) > 0">
               <table>
                 <thead>
                   <tr>
                     <th>No.</th>
                     <th>Method</th>
-                    <th>Count</th>
-                    <th>Percentage</th>
-                    <th>Total</th>
+                    <th>Attempts</th>
+                    <th>Success Rate</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -247,60 +343,123 @@
                     <tr>
                       <td><xsl:value-of select="@no"/></td>
                       <td><xsl:value-of select="@name"/></td>
-                      <td><xsl:value-of select="@count"/></td>
-                      <td><xsl:value-of select="@percentage"/>%</td>
-                      <td><xsl:value-of select="@total"/></td>
+                      <td><xsl:value-of select="@attempts"/></td>
+                      <td><xsl:value-of select="@successRate"/>%</td>
                     </tr>
                   </xsl:for-each>
                 </tbody>
               </table>
-            </div>
-
-            <!-- Student Logs -->
-            <xsl:if test="/eems-report/studentLogs/entry">
-              <div class="chart-section page-break">
-                <h3 class="section-title">Student Entry/Exit Logs</h3>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>No.</th>
-                      <th>Date/Time</th>
-                      <th>Student ID</th>
-                      <th>Name</th>
-                      <th>Department</th>
-                      <th>Program</th>
-                      <th>Year Level</th>
-                      <th>Action</th>
-                      <th>Method</th>
-                      <th>Accuracy</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <xsl:for-each select="/eems-report/studentLogs/entry">
-                      <tr>
-                        <td><xsl:value-of select="@no"/></td>
-                        <td><xsl:value-of select="@dateTime"/></td>
-                        <td><xsl:value-of select="@studentId"/></td>
-                        <td><xsl:value-of select="@name"/></td>
-                        <td><xsl:value-of select="@department"/></td>
-                        <td><xsl:value-of select="@program"/></td>
-                        <td><xsl:value-of select="@yearLevel"/></td>
-                        <td><xsl:value-of select="@action"/></td>
-                        <td><xsl:value-of select="@method"/></td>
-                        <td><xsl:value-of select="@accuracy"/></td>
-                      </tr>
-                    </xsl:for-each>
-                  </tbody>
-                </table>
-              </div>
             </xsl:if>
-
+            <xsl:if test="count(/eems-report/authMethods/method) = 0">
+              <p>No authentication data available.</p>
+            </xsl:if>
           </div>
-
+          
+          <!-- Visitor Stats -->
+          <xsl:if test="count(/eems-report/visitorStats/visitor) > 0">
+            <div class="section">
+              <h2 class="section-title">Visitor Statistics</h2>
+              <div class="visitor-stats">
+                <div class="visitor-card visitor-entry">
+                  <div class="visitor-value">
+                    <xsl:value-of select="/eems-report/visitorStats/visitor[@name='ENTRY']/@value"/>
+                  </div>
+                  <div>Visitor Entries</div>
+                </div>
+                <div class="visitor-card visitor-exit">
+                  <div class="visitor-value">
+                    <xsl:value-of select="/eems-report/visitorStats/visitor[@name='EXIT']/@value"/>
+                  </div>
+                  <div>Visitor Exits</div>
+                </div>
+              </div>
+            </div>
+          </xsl:if>
+          
+          <!-- ENTRY LOGS (Separate Table) -->
+          <div class="section">
+            <h2 class="section-title" style="color: #2E7D32;">ENTRY LOGS</h2>
+            <div class="section-subtitle">
+              Student ENTRY Records | Total: <xsl:value-of select="count(/eems-report/logs/entryLogs/entry)"/>
+            </div>
+            <xsl:if test="count(/eems-report/logs/entryLogs/entry) > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="entry-header">No.</th>
+                    <th class="entry-header">Date &amp; Time</th>
+                    <th class="entry-header">Student ID</th>
+                    <th class="entry-header">Name</th>
+                    <th class="entry-header">College/Department</th>
+                    <th class="entry-header">Year Level</th>
+                    <th class="entry-header">Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <xsl:for-each select="/eems-report/logs/entryLogs/entry">
+                    <xsl:sort select="@dateTime" order="descending"/>
+                    <tr>
+                      <td><xsl:value-of select="@no"/></td>
+                      <td><xsl:value-of select="@dateTime"/></td>
+                      <td><xsl:value-of select="@studentId"/></td>
+                      <td><xsl:value-of select="@name"/></td>
+                      <td><xsl:value-of select="@department"/></td>
+                      <td><xsl:value-of select="@yearLevel"/></td>
+                      <td><xsl:value-of select="@method"/></td>
+                    </tr>
+                  </xsl:for-each>
+                </tbody>
+              </table>
+            </xsl:if>
+            <xsl:if test="count(/eems-report/logs/entryLogs/entry) = 0">
+              <p>No entry records found for the selected filters.</p>
+            </xsl:if>
+          </div>
+          
+          <!-- EXIT LOGS (Separate Table) -->
+          <div class="section">
+            <h2 class="section-title" style="color: #D99201;">EXIT LOGS</h2>
+            <div class="section-subtitle">
+              Student EXIT Records | Total: <xsl:value-of select="count(/eems-report/logs/exitLogs/exit)"/>
+            </div>
+            <xsl:if test="count(/eems-report/logs/exitLogs/exit) > 0">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="exit-header">No.</th>
+                    <th class="exit-header">Date &amp; Time</th>
+                    <th class="exit-header">Student ID</th>
+                    <th class="exit-header">Name</th>
+                    <th class="exit-header">College/Department</th>
+                    <th class="exit-header">Year Level</th>
+                    <th class="exit-header">Method</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <xsl:for-each select="/eems-report/logs/exitLogs/exit">
+                    <xsl:sort select="@dateTime" order="descending"/>
+                    <tr>
+                      <td><xsl:value-of select="@no"/></td>
+                      <td><xsl:value-of select="@dateTime"/></td>
+                      <td><xsl:value-of select="@studentId"/></td>
+                      <td><xsl:value-of select="@name"/></td>
+                      <td><xsl:value-of select="@department"/></td>
+                      <td><xsl:value-of select="@yearLevel"/></td>
+                      <td><xsl:value-of select="@method"/></td>
+                    </tr>
+                  </xsl:for-each>
+                </tbody>
+              </table>
+            </xsl:if>
+            <xsl:if test="count(/eems-report/logs/exitLogs/exit) = 0">
+              <p>No exit records found for the selected filters.</p>
+            </xsl:if>
+          </div>
+          
           <!-- Footer -->
           <div class="footer">
-            <p>Generated by EEMS on <xsl:value-of select="/eems-report/meta/generatedAt"/></p>
-            <p>© 2024-2026 PLP Students - Entrance and Exit Monitoring System</p>
+            ENTRANCE AND EXIT STUDENT MONITORING SYSTEM<br/>
+            PAMANTASAN NG LUNGSOD NG PASIG | Powered by College of Computer Studies
           </div>
         </div>
       </body>
