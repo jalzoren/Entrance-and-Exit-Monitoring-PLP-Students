@@ -90,6 +90,18 @@ const AnalyticsService = {
     if (!res.ok) throw new Error('visitor-stats failed');
     return res.json();
   },
+
+  // ── NEW: Fetch visitor logs for table display ──
+  async fetchVisitorLogs() {
+    try {
+      const res = await fetch('/api/analytics/visitor-logs');
+      if (!res.ok) throw new Error(`visitor-logs: HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      console.error('[AnalyticsService.fetchVisitorLogs] FAILED:', err.message);
+      return [];
+    }
+  },
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,6 +115,7 @@ function Analytics() {
   const [collegeData, setCollegeData] = useState([]);
   const [authData, setAuthData] = useState([]);
   const [visitorData, setVisitorData] = useState([]);
+  const [visitorLogs, setVisitorLogs] = useState([]); // ── NEW: Visitor logs state
   const [timeRange, setTimeRange] = useState('7days');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -126,12 +139,13 @@ function Analytics() {
     setIsLoading(true);
     setError(null);
     try {
-      const [metricsData, trafficRaw, deptData, authRaw, visitorStats] = await Promise.all([
+      const [metricsData, trafficRaw, deptData, authRaw, visitorStats, visitorLogsRaw] = await Promise.all([
         AnalyticsService.fetchMetrics(),
         AnalyticsService.fetchTraffic(days),
         AnalyticsService.fetchDepartments(),
         AnalyticsService.fetchAuthMethods(),
         AnalyticsService.fetchVisitorStats(),
+        AnalyticsService.fetchVisitorLogs(), // ── NEW: Fetch visitor logs
       ]);
 
       // Format metrics
@@ -181,6 +195,9 @@ function Analytics() {
         { name: 'ENTRY', value: entries },
         { name: 'EXIT', value: exits }
       ]);
+
+      // ── NEW: Format visitor logs
+      setVisitorLogs(visitorLogsRaw || []);
 
     } catch (err) {
       console.error('[Analytics] loadAll error:', err);
@@ -244,6 +261,7 @@ function Analytics() {
         authData: authData,
         trafficData: trafficData,
         visitorData: visitorData,
+        visitorLogs: visitorLogs, // ── NEW: Pass visitor logs
         metrics: metrics,
       });
       setShowPdfPreview(true);
@@ -460,16 +478,7 @@ function Analytics() {
               </section>
 
               {/* ── CHART 3: Visitor Entry and Exit ── */}
-              <section className="chart-section">
-                <div className="section-header">
-                  <h2>Visitor Entry and Exit</h2>
-                </div>
-                {visitorData.length > 0 && visitorData.some(v => v.value > 0) ? (
-                  <VisitorChart data={visitorData} />
-                ) : (
-                  <p className="no-data-msg">No visitor data available.</p>
-                )}
-              </section>
+             
             </div>
 
             {/* ── CHART 4: Department Distribution ── */}
@@ -527,6 +536,10 @@ function Analytics() {
                 <p className="no-data-msg">No department data available. Students need to be on campus.</p>
               )}
             </section>
+
+            {/* ── CHART 5: Visitor Logs Table ── */}
+         
+
           </>
         )}
       </div>
@@ -572,6 +585,7 @@ function Analytics() {
                 padding: '10px 20px', backgroundColor: '#f5f5f5',
                 border: 'none', borderRadius: '6px', cursor: 'pointer',
               }}>Close</button>
+           {/** 
               <button
                 onClick={handleViewHtmlReport}
                 title="View HTML report in new window"
@@ -600,6 +614,8 @@ function Analytics() {
                   border: 'none', borderRadius: '6px', cursor: 'pointer',
                 }}
               >Download HTML</button>
+
+              */}
               <button onClick={handleDownloadPDF} style={{
                 padding: '10px 20px', backgroundColor: '#548772', color: 'white',
                 border: 'none', borderRadius: '6px', cursor: 'pointer',
@@ -776,30 +792,8 @@ function VisitorChart({ data }) {
     return <p className="no-data-msg">No visitor activity recorded</p>;
   }
 
-  return (
-    <div className="chart-container pie-chart" style={{ width: '100%', height: '350px' }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={pieData}
-            cx="50%"
-            cy="50%"
-            outerRadius={100}
-            dataKey="value"
-            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-          >
-            {pieData.map((_, i) => (
-              <Cell key={i} fill={VISITOR_COLORS[i % VISITOR_COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip 
-            formatter={(value) => [value?.toLocaleString(), 'Count']}
-          />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
-    </div>
-  );
+ 
+
 }
 
 export default Analytics;

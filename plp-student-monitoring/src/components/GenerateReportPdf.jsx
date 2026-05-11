@@ -519,14 +519,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
                 <strong style={{ fontSize: '24px', color: '#d99201' }}>{displayOnCampus.toLocaleString()}</strong>
                 <p style={{ margin: '4px 0 0', color: '#666', fontSize: '11px' }}>Currently on Campus</p>
               </div>
-              <div style={{ flex: 1, padding: '12px', background: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
-                <strong style={{ fontSize: '24px', color: '#4a90d9' }}>{Number(totalEntries).toLocaleString()}</strong>
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '11px' }}>Total Entries</p>
-              </div>
-              <div style={{ flex: 1, padding: '12px', background: '#f5f5f5', borderRadius: '8px', textAlign: 'center' }}>
-                <strong style={{ fontSize: '24px', color: '#2ecc71' }}>{Number(authSuccessRate).toFixed(1)}%</strong>
-                <p style={{ margin: '4px 0 0', color: '#666', fontSize: '11px' }}>Auth Success Rate</p>
-              </div>
+             
             </div>
 
             <div className="pdf-stats-section">

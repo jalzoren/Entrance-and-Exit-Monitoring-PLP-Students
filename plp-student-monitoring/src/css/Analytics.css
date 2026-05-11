@@ -192,7 +192,6 @@ html, body {
 /* TWO-CHARTS GRID LAYOUT */
 .two-charts{
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 20px;
   margin-bottom: 32px;
 }

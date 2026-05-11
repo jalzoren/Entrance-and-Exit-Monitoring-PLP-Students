@@ -7,7 +7,7 @@ import {
   exportLogsToXML, 
   downloadXML
 } from "../../utils/xmlUtils";
-//import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 
 function LogEntry({ log, animDelay }) {
   // Format student info display
@@ -17,8 +17,8 @@ function LogEntry({ log, animDelay }) {
     }
     return (
       <>
-        <span className="rtm-log-name">{log.name}</span>
-        <span className="rtm-log-id">({log.studentId})</span>
+        <span className="rtm-log-name">{log.name || 'Unknown'}</span>
+        <span className="rtm-log-id">({log.studentId || 'N/A'})</span>
         {log.collegeDept && log.collegeDept !== "Not Specified" && (
           <span className="rtm-log-dept"> - {log.collegeDept}</span>
         )}
@@ -30,26 +30,26 @@ function LogEntry({ log, animDelay }) {
   };
 
   return (
-    <>
+    <div>
       {log.failed ? (
         <div className="rtm-log-entry failed" style={{ animationDelay: `${animDelay}s` }}>
-          <span className="rtm-log-time">[{log.time}]</span> — Failed Authentication Attempt
+          <span className="rtm-log-time">[{log.time || '--:--:--'}]</span> — Failed Authentication Attempt
           {log.name && log.name !== "Unknown" && (
             <span className="rtm-log-attempt"> (Attempted: {log.name})</span>
           )}
         </div>
       ) : (
-        <div className={`rtm-log-entry success ${log.action.toLowerCase()}`} style={{ animationDelay: `${animDelay}s` }}>
-          <span className="rtm-log-time">[{log.time}]</span>{" "}
+        <div className={`rtm-log-entry success ${(log.action || '').toLowerCase()}`} style={{ animationDelay: `${animDelay}s` }}>
+          <span className="rtm-log-time">[{log.time || '--:--:--'}]</span>{" "}
           {getStudentInfo()}{" "}
-          <span className={`rtm-log-action ${log.action.toLowerCase()}`}>
-            {log.action === "ENTRY" ? "entered" : "exited"}
+          <span className={`rtm-log-action ${(log.action || '').toLowerCase()}`}>
+            {log.action === "ENTRY" ? "entered" : log.action === "EXIT" ? "exited" : log.action}
           </span>{" "}
-          <span className="rtm-log-method">via {log.method}</span>
+          <span className="rtm-log-method">via {log.method || 'Unknown'}</span>
         </div>
       )}
       <div className="rtm-log-divider" />
-    </>
+    </div>
   );
 }
 
@@ -86,13 +86,13 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
                 </thead>
                 <tbody>
                   {studentsInsideList.map((student, index) => (
-                    <tr key={student.studentId}>
+                    <tr key={student.studentId || index}>
                       <td>{index + 1}</td>
-                      <td>{student.studentId}</td>
-                      <td>{student.name}</td>
-                      <td>{student.department || 'N/A'}</td>
+                      <td>{student.studentId || 'N/A'}</td>
+                      <td>{student.name || 'Unknown'}</td>
+                      <td>{student.department || student.collegeDept || 'N/A'}</td>
                       <td>{student.yearLevel || 'N/A'}</td>
-                      <td>{student.entryTime}</td>
+                      <td>{student.entryTime || student.time || 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -116,7 +116,8 @@ export default function Monitor() {
     getAllLogs,
     getStatistics,
     getLogsByDateRange,
-    syncStudentCount
+    syncStudentCount,
+    refreshLogs  // Make sure this exists in your context
   } = useLogContext();
   
   const { 
@@ -132,27 +133,30 @@ export default function Monitor() {
   const [showStudentsModal, setShowStudentsModal] = useState(false);
   const [studentsInsideList, setStudentsInsideList] = useState([]);
   const [lastLogCount, setLastLogCount] = useState(0);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const logRef = useRef(null);
   const localVideoRef = useRef(null);
   const [streamAttached, setStreamAttached] = useState(false);
+  const refreshIntervalRef = useRef(null);
 
   // Calculate counts for each filter
   const totalLogsCount = contextLogs.length;
   const entranceCount = contextLogs.filter(log => !log.failed && log.action === "ENTRY").length;
   const exitCount = contextLogs.filter(log => !log.failed && log.action === "EXIT").length;
-  const failedCount = contextLogs.filter(log => log.failed).length;
+  const failedCount = contextLogs.filter(log => log.failed === true).length;
 
   // Calculate students currently inside based on logs
   const calculateStudentsInside = useCallback(() => {
     const insideMap = new Map();
     const sortedLogs = [...contextLogs].sort((a, b) => {
-      const timeA = a.timestamp || new Date(a.time).getTime();
-      const timeB = b.timestamp || new Date(b.time).getTime();
+      const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0);
+      const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0);
       return timeA - timeB;
     });
 
     for (const log of sortedLogs) {
-      if (!log.failed) {
+      if (!log.failed && log.action) {
         if (log.action === "ENTRY") {
           insideMap.set(log.studentId, {
             studentId: log.studentId,
@@ -177,27 +181,63 @@ export default function Monitor() {
     setStudentsInsideList(inside);
   }, [contextLogs, calculateStudentsInside]);
 
-  // Auto-sync function to check for new logs
-  const syncLogs = useCallback(() => {
-    const currentCount = contextLogs.length;
-    if (currentCount !== lastLogCount) {
-      setLastLogCount(currentCount);
-      setFilteredLogs(prev => [...prev]);
-      syncStudentCount();
+  // Function to manually refresh data
+  const performRefresh = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log("Performing auto-refresh...", new Date().toLocaleTimeString());
+    
+    try {
+      // Call refresh function from context if available
+      if (refreshLogs && typeof refreshLogs === 'function') {
+        await refreshLogs();
+      } else if (getAllLogs && typeof getAllLogs === 'function') {
+        // Alternative: fetch fresh logs
+        const freshLogs = await getAllLogs();
+        console.log("Refreshed logs count:", freshLogs?.length || 0);
+      }
+      
+      // Sync student count if available
+      if (syncStudentCount && typeof syncStudentCount === 'function') {
+        await syncStudentCount();
+      }
+      
+      // Update last refresh time
+      setLastRefresh(new Date());
+      
+      // Check if new logs were added
+      const currentCount = contextLogs.length;
+      if (currentCount !== lastLogCount) {
+        setLastLogCount(currentCount);
+        console.log(`New logs detected! Count changed from ${lastLogCount} to ${currentCount}`);
+      }
+      
+    } catch (error) {
+      console.error("Error during auto-refresh:", error);
+    } finally {
+      setIsRefreshing(false);
     }
-  }, [contextLogs.length, lastLogCount, syncStudentCount]);
+  }, [refreshLogs, getAllLogs, syncStudentCount, contextLogs.length, lastLogCount, isRefreshing]);
 
-  // Set up auto-refresh every 5 seconds
+  // Auto-refresh setup - runs every 5 seconds
   useEffect(() => {
-    syncLogs();
+    // Initial refresh on mount
+    performRefresh();
     
-    const intervalId = setInterval(() => {
-      syncLogs();
-      console.log("Auto-refreshing logs...");
-    }, 5000);
+    // Set up interval for auto-refresh every 5 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      performRefresh();
+    }, 5000); // 5000ms = 5 seconds
     
-    return () => clearInterval(intervalId);
-  }, [syncLogs]);
+    // Cleanup on unmount
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, [performRefresh]);
 
   // Use the video stream from context
   useEffect(() => {
@@ -239,146 +279,224 @@ export default function Monitor() {
     }
     
     const sortedFiltered = filtered.sort((a, b) => {
-      const timeA = a.timestamp || new Date(a.time).getTime();
-      const timeB = b.timestamp || new Date(b.time).getTime();
-      return timeA - timeB;
+      const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0);
+      const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0);
+      return timeB - timeA; // Newest first
     });
     
     setFilteredLogs(sortedFiltered);
   }, [contextLogs, activeFilter]);
 
-  // Auto-scroll to bottom when new log is added
+  // Auto-scroll to top when new log is added (since we show newest first)
   useEffect(() => {
     if (logRef.current && filteredLogs.length > 0) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
+      logRef.current.scrollTop = 0;
     }
   }, [filteredLogs.length]);
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
     if (logRef.current) {
-      logRef.current.scrollTop = logRef.current.scrollHeight;
+      logRef.current.scrollTop = 0;
     }
   };
 
   // Export logs to Excel
   const exportToExcel = () => {
-    const excelData = filteredLogs.map(log => ({
-      'Date & Time': log.time,
-      'Full Date': log.timestamp ? new Date(log.timestamp).toLocaleString() : log.date,
-      'Name': log.failed ? 'Failed Attempt' : log.name,
-      'Student ID': log.failed ? 'N/A' : log.studentId,
-      'Department': log.collegeDept || 'N/A',
-      'Year Level': log.yearLevel || 'N/A',
-      'Action': log.failed ? 'FAILED' : log.action,
-      'Method': log.method || 'N/A',
-      'Status': log.failed ? 'Failed' : 'Success'
-    }));
+    try {
+      const excelData = filteredLogs.map((log, index) => ({
+        '#': index + 1,
+        'Date & Time': log.time || 'N/A',
+        'Full Date': log.timestamp ? new Date(log.timestamp).toLocaleString() : log.date || 'N/A',
+        'Name': log.failed ? 'Failed Attempt' : (log.name || 'Unknown'),
+        'Student ID': log.failed ? 'N/A' : (log.studentId || 'N/A'),
+        'Department': log.collegeDept || 'N/A',
+        'Year Level': log.yearLevel || 'N/A',
+        'Action': log.failed ? 'FAILED' : (log.action || 'N/A'),
+        'Method': log.method || 'N/A',
+        'Status': log.failed ? 'Failed' : 'Success'
+      }));
 
-    const ws = XLSX.utils.json_to_sheet(excelData);
-    const colWidths = [
-      { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, 
-      { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 10 }
-    ];
-    ws['!cols'] = colWidths;
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const colWidths = [
+        { wch: 5 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, 
+        { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 10 }
+      ];
+      ws['!cols'] = colWidths;
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Entry-Exit Logs');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Entry-Exit Logs');
 
-    const summaryData = [
-      { 'Metric': 'Total Logs', 'Value': totalLogsCount },
-      { 'Metric': 'Total Entries', 'Value': entranceCount },
-      { 'Metric': 'Total Exits', 'Value': exitCount },
-      { 'Metric': 'Failed Attempts', 'Value': failedCount },
-      { 'Metric': 'Students Currently Inside', 'Value': studentsInside },
-      { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() }
-    ];
-    
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+      const summaryData = [
+        { 'Metric': 'Total Logs', 'Value': totalLogsCount },
+        { 'Metric': 'Total Entries', 'Value': entranceCount },
+        { 'Metric': 'Total Exits', 'Value': exitCount },
+        { 'Metric': 'Failed Attempts', 'Value': failedCount },
+        { 'Metric': 'Students Currently Inside', 'Value': studentsInside },
+        { 'Metric': 'Filter Applied', 'Value': activeFilter === 'all' ? 'All Logs' : activeFilter === 'entrance' ? 'Entrance Only' : activeFilter === 'exit' ? 'Exit Only' : 'Failed Attempts Only' },
+        { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() }
+      ];
+      
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-    const fileName = `entry_exit_logs_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
+      const fileName = `entry_exit_logs_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      console.log('Excel export successful');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      alert('Failed to export to Excel. Please try again.');
+    }
   };
 
   // Export end of day report
   const exportEndOfDayReport = () => {
-    const today = new Date();
-    const todayStart = new Date(today.setHours(0, 0, 0, 0));
-    const todayEnd = new Date(today.setHours(23, 59, 59, 999));
-    
-    const todayLogs = getLogsByDateRange(todayStart, todayEnd);
-    
-    if (todayLogs.length === 0) {
-      alert('No logs recorded today to export.');
-      return;
+    try {
+      const today = new Date();
+      const todayStart = new Date(today);
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date(today);
+      todayEnd.setHours(23, 59, 59, 999);
+      
+      let todayLogs = [];
+      if (getLogsByDateRange && typeof getLogsByDateRange === 'function') {
+        todayLogs = getLogsByDateRange(todayStart, todayEnd);
+      } else {
+        // Fallback: filter by date string
+        const todayStr = today.toISOString().split('T')[0];
+        todayLogs = contextLogs.filter(log => {
+          const logDate = log.date ? log.date.split(' ')[0] : '';
+          return logDate === todayStr;
+        });
+      }
+      
+      if (todayLogs.length === 0) {
+        alert('No logs recorded today to export.');
+        return;
+      }
+
+      const reportData = todayLogs.map((log, index) => ({
+        '#': index + 1,
+        'Time': log.time || 'N/A',
+        'Date': log.date || 'N/A',
+        'Name': log.failed ? 'Failed Attempt' : (log.name || 'Unknown'),
+        'Student ID': log.failed ? 'N/A' : (log.studentId || 'N/A'),
+        'Department': log.collegeDept || 'N/A',
+        'Year Level': log.yearLevel || 'N/A',
+        'Action': log.failed ? 'FAILED' : (log.action || 'N/A'),
+        'Method': log.method || 'N/A'
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(reportData);
+      ws['!cols'] = [
+        { wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, 
+        { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `End_of_Day_${new Date().toISOString().split('T')[0]}`);
+
+      const dailyEntries = todayLogs.filter(log => !log.failed && log.action === "ENTRY").length;
+      const dailyExits = todayLogs.filter(log => !log.failed && log.action === "EXIT").length;
+      const dailyFailed = todayLogs.filter(log => log.failed).length;
+
+      const summaryData = [
+        { 'Metric': 'Report Date', 'Value': new Date().toLocaleDateString() },
+        { 'Metric': 'Total Logs Today', 'Value': todayLogs.length },
+        { 'Metric': 'Entries Today', 'Value': dailyEntries },
+        { 'Metric': 'Exits Today', 'Value': dailyExits },
+        { 'Metric': 'Failed Attempts Today', 'Value': dailyFailed },
+        { 'Metric': 'Net Change', 'Value': dailyEntries - dailyExits },
+        { 'Metric': 'Students Inside (End of Day)', 'Value': studentsInside },
+        { 'Metric': 'Report Generated', 'Value': new Date().toLocaleString() }
+      ];
+      
+      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, wsSummary, 'Daily_Summary');
+
+      const fileName = `end_of_day_report_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+      
+      console.log('End of day report exported successfully');
+    } catch (error) {
+      console.error('Error exporting end of day report:', error);
+      alert('Failed to export end of day report. Please try again.');
     }
-
-    const reportData = todayLogs.map(log => ({
-      'Time': log.time,
-      'Date': log.date,
-      'Name': log.failed ? 'Failed Attempt' : log.name,
-      'Student ID': log.failed ? 'N/A' : log.studentId,
-      'Department': log.collegeDept || 'N/A',
-      'Year Level': log.yearLevel || 'N/A',
-      'Action': log.failed ? 'FAILED' : log.action,
-      'Method': log.method || 'N/A'
-    }));
-
-    const ws = XLSX.utils.json_to_sheet(reportData);
-    ws['!cols'] = [
-      { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, 
-      { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }
-    ];
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, `End_of_Day_${new Date().toISOString().split('T')[0]}`);
-
-    const dailyEntries = todayLogs.filter(log => !log.failed && log.action === "ENTRY").length;
-    const dailyExits = todayLogs.filter(log => !log.failed && log.action === "EXIT").length;
-    const dailyFailed = todayLogs.filter(log => log.failed).length;
-
-    const summaryData = [
-      { 'Metric': 'Report Date', 'Value': new Date().toLocaleDateString() },
-      { 'Metric': 'Total Logs Today', 'Value': todayLogs.length },
-      { 'Metric': 'Entries Today', 'Value': dailyEntries },
-      { 'Metric': 'Exits Today', 'Value': dailyExits },
-      { 'Metric': 'Failed Attempts Today', 'Value': dailyFailed },
-      { 'Metric': 'Net Change', 'Value': dailyEntries - dailyExits },
-      { 'Metric': 'Students Inside (End of Day)', 'Value': studentsInside },
-      { 'Metric': 'Report Generated', 'Value': new Date().toLocaleString() }
-    ];
-    
-    const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Daily_Summary');
-
-    const fileName = `end_of_day_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-    XLSX.writeFile(wb, fileName);
   };
 
   // Export logs to XML
   const exportToXML = () => {
-    const xmlContent = exportLogsToXML(
-      filteredLogs, 
-      totalLogsCount, 
-      studentsInside, 
-      entranceCount, 
-      exitCount, 
-      failedCount,
-      true
-    );
-    downloadXML(xmlContent);
+    try {
+      if (typeof exportLogsToXML === 'function') {
+        const xmlContent = exportLogsToXML(
+          filteredLogs, 
+          totalLogsCount, 
+          studentsInside, 
+          entranceCount, 
+          exitCount, 
+          failedCount,
+          true
+        );
+        downloadXML(xmlContent);
+      } else {
+        // Fallback XML generation
+        const logsXML = filteredLogs.map(log => `
+  <log>
+    <time>${escapeXml(log.time || '')}</time>
+    <date>${escapeXml(log.date || '')}</date>
+    <name>${escapeXml(log.failed ? 'Failed Attempt' : (log.name || 'Unknown'))}</name>
+    <studentId>${escapeXml(log.failed ? 'N/A' : (log.studentId || 'N/A'))}</studentId>
+    <department>${escapeXml(log.collegeDept || 'N/A')}</department>
+    <yearLevel>${escapeXml(log.yearLevel || 'N/A')}</yearLevel>
+    <action>${escapeXml(log.failed ? 'FAILED' : (log.action || 'N/A'))}</action>
+    <method>${escapeXml(log.method || 'N/A')}</method>
+    <status>${log.failed ? 'Failed' : 'Success'}</status>
+  </log>`).join('');
+        
+        const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<eems_report>
+  <summary>
+    <totalLogs>${totalLogsCount}</totalLogs>
+    <totalEntries>${entranceCount}</totalEntries>
+    <totalExits>${exitCount}</totalExits>
+    <failedAttempts>${failedCount}</failedAttempts>
+    <studentsInside>${studentsInside}</studentsInside>
+    <filterApplied>${activeFilter}</filterApplied>
+    <exportDate>${new Date().toISOString()}</exportDate>
+  </summary>
+  <logs>${logsXML}
+  </logs>
+</eems_report>`;
+        
+        downloadXML(xmlContent);
+      }
+      console.log('XML export successful');
+    } catch (error) {
+      console.error('Error exporting to XML:', error);
+      alert('Failed to export to XML. Please try again.');
+    }
   };
 
-  // Auto-refresh indicator
-  const [lastRefresh, setLastRefresh] = useState(new Date());
-  
-  useEffect(() => {
-    const refreshTimer = setInterval(() => {
-      setLastRefresh(new Date());
-    }, 5000);
-    return () => clearInterval(refreshTimer);
-  }, []);
+  // Helper function to escape XML special characters
+  const escapeXml = (str) => {
+    if (!str) return '';
+    return str.replace(/[<>&'"]/g, function(c) {
+      switch (c) {
+        case '<': return '&lt;';
+        case '>': return '&gt;';
+        case '&': return '&amp;';
+        case "'": return '&apos;';
+        case '"': return '&quot;';
+        default: return c;
+      }
+    });
+  };
+
+  // Manual refresh button handler
+  const handleManualRefresh = () => {
+    performRefresh();
+  };
 
   return (
     <div>
@@ -393,7 +511,7 @@ export default function Monitor() {
           <div className="rtm-subheader-horizontal">
             <div className="rtm-student-count">
               Students Currently Inside: 
-              <span className="rtm-student-count-num">{studentsInside}</span>
+              <span className="rtm-student-count-num">{studentsInside || 0}</span>
               <button 
                 className="view-students-btn"
                 onClick={() => setShowStudentsModal(true)}
@@ -436,26 +554,37 @@ export default function Monitor() {
               >
                 Export Excel
               </button>
-              <button
-                onClick={exportEndOfDayReport}
-                className="rtm-filter-btn end-of-day"
-              >
-                End of Day Report
-              </button>
+            
+              {/* XML Export Button */}
               <button
                 onClick={exportToXML}
                 className="rtm-filter-btn export-xml"
               >
                 Export XML
               </button>
+              <button
+                onClick={handleManualRefresh}
+                className="rtm-filter-btn refresh-btn"
+                disabled={isRefreshing}
+                style={{
+                  cursor: isRefreshing ? 'not-allowed' : 'pointer'
+                }}
+              >
+                {isRefreshing ? 'Refreshing...' : '⟳ Refresh'}
+              </button>
             </div>
           </div>
 
           {/* Auto-refresh status indicator */}
           <div className="rtm-auto-refresh-status">
-            <span className="refresh-indicator"></span>
-            <span className="refresh-text">Auto-refreshing every 5 seconds</span>
-            <span className="refresh-time">Last refresh: {lastRefresh.toLocaleTimeString()}</span>
+            <span className={`refresh-indicator ${isRefreshing ? 'refreshing' : ''}`}></span>
+            <span className="refresh-text">
+              Auto-refreshing every 5 seconds
+              {isRefreshing && ' (Updating...)'}
+            </span>
+            <span className="refresh-time">
+              Last refresh: {lastRefresh.toLocaleTimeString()}
+            </span>
           </div>
 
           <div className="rtm-body">
