@@ -104,41 +104,100 @@
   max-width: 90%;
   margin: 0 auto;
 }
-
 /* Stats Section - Two Column Layout */
 .pdf-stats-section {
   display: flex;
   gap: 30px;
   margin: 20px 0;
   flex-wrap: wrap;
-  flex-direction: column;
+  width: 100%;
 }
 
 .pdf-stats-left {
- flex: 0 0 35%;
-    display: flex;
-    flex-direction: row;
-    gap: 15px;
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+  width: 100%;
+  align-items: stretch;
 }
 
+/* Main stats box (Students on Campus) */
 .pdf-green-box {
+ background-color: rgba(1, 49, 29, 0.85);
+  opacity: 0.85;
   padding: 20px;
   border-radius: 12px;
   text-align: center;
+  flex: 1; /* Changed from flex: 2 to flex: 1 */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* Small stats box (Total Entries) */
+.pdf-green-box-small {
+ background-color: rgba(1, 49, 29, 0.85);
+  opacity: 0.85;
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  flex: 1; /* Changed from flex: 1 to flex: 1 (same) */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Date range box */
+.pdf-green-box-small-date {
+ background-color: rgba(1, 49, 29, 0.85);
+    padding: 20px;
+    border-radius: 12px;
+    text-align: center;
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column-reverse;
+    justify-content: space-between;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+
+/* Big number styling */
 .pdf-big-number {
   font-size: 32px;
   font-weight: bold;
   color: white;
 }
 
-.pdf-green-box-small {
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
+/* Date range specific number styling */
+.pdf-green-box-small-date .pdf-big-number {
+  font-size: 24px; /* Increased from 18px for better balance */
+  line-height: 1.3;
 }
 
+/* Text styling for all boxes */
+.pdf-green-box div,
+.pdf-green-box-small div,
+.pdf-green-box-small-date div {
+  color: white;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .pdf-stats-left {
+    flex-direction: column;
+  }
+  
+  .pdf-green-box,
+  .pdf-green-box-small,
+  .pdf-green-box-small-date {
+    width: 100%;
+    flex: auto;
+  }
+}
 /* Chart 1 - Department Distribution */
 .pdf-chart-title {
   font-size: 14px;
@@ -191,41 +250,255 @@
   padding-bottom: 8px;
   border-bottom: 2px solid #548772;
 }
+
+/* Section Header */
+.pdf-section-spacing {
+  margin: 15px 0;
+  width: 100%;
+}
+
+.pdf-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.pdf-section-indicator {
+  width: 5px;
+  height: 32px;
+  border-radius: 3px;
+}
+
+.pdf-section-title-wrapper {
+  flex: 1;
+}
+
+.pdf-section-title {
+  margin: 0;
+  font-size: 16px;
+  color: #01311d;
+  font-weight: bold;
+}
+
+.pdf-section-subtitle {
+  margin: 4px 0 0 0;
+  font-size: 10px;
+  color: #666;
+  line-height: 1.4;
+}
+
+/* Table Container */
+.pdf-table-container {
+  width: 100%;
+  overflow-x: visible;
+  margin-bottom: 20px;
+}
+
+/* Main Table Styles */
 .pdf-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10px;
-  min-width: 800px; /* Forces minimum width */
+  font-size: 9px;
+  table-layout: auto;
+  margin-bottom: 10px;
+  color: #000;
 }
 
-/* For full width tables that need even more space */
-.pdf-table-full {
-  min-width: 1000px;
-}
-
-/* Ensure container allows scrolling */
-.pdf-section-spacing {
-  overflow-x: auto;
-  width: 100%;
-}
-
+/* Table Header */
 .pdf-table th {
-  padding: 10px 8px;
-  text-align: center;
+  background-color: #01311d;
+  color: white;
+  padding: 8px 6px;
+  border: 1px solid #2a5a1a;
   font-weight: bold;
-  color: #01311d;
-  border: 1px solid #ddd;
-}
-
-.pdf-table td {
-  padding: 8px;
-  border: 1px solid #ddd;
   text-align: center;
+  font-size: 9px;
+  white-space: nowrap;
 }
 
-.pdf-table-left th,
-.pdf-table-left td {
+/* Table Cells */
+.pdf-table td {
+  padding: 6px;
+  border: 1px solid #ddd;
+  vertical-align: top;
+  font-size: 9px;
+  color: #000;
+  line-height: 1.3;
+}
+
+
+/* Allow text wrapping */
+.pdf-table td {
+  white-space: normal;
+  word-wrap: break-word;
+  word-break: break-word;
+  color: #000;
+}
+
+/* Column specific alignment */
+.pdf-td-no,
+.pdf-th-no {
+  text-align: center;
+  width: 4%;
+}
+
+.pdf-td-id,
+.pdf-th-id {
+  text-align: center;
+  width: 10%;
+}
+
+.pdf-td-name,
+.pdf-th-name {
   text-align: left;
+  width: 18%;
+}
+
+.pdf-td-dept,
+.pdf-th-dept {
+  text-align: left;
+  width: 22%;
+}
+
+.pdf-td-year,
+.pdf-th-year {
+  text-align: center;
+  width: 6%;
+}
+
+.pdf-td-time-entry,
+.pdf-th-time-entry,
+.pdf-td-time-exit,
+.pdf-th-time-exit {
+  text-align: center;
+  width: 10%;
+}
+
+.pdf-td-method,
+.pdf-th-method {
+  text-align: center;
+  width: 10%;
+}
+
+/* Row striping */
+.pdf-row-even {
+  background-color: #ffffff;
+}
+
+.pdf-row-odd {
+  background-color: #f5f9f7;
+}
+
+/* Time color highlights */
+.pdf-td-time-entry {
+  color: #2E7D32;
+  font-weight: 500;
+}
+
+.pdf-td-time-exit {
+  color: #D99201;
+  font-weight: 500;
+}
+
+/* Empty state */
+.pdf-row-empty {
+  background-color: #ffffff;
+}
+
+.pdf-empty-message {
+  text-align: center;
+  padding: 30px;
+  color: #999;
+  font-size: 10px;
+}
+
+/* Footer */
+.pdf-footer-row {
+  background-color: #e8f5e9;
+}
+
+.pdf-footer-message {
+  padding: 6px;
+  text-align: center;
+  font-size: 9px;
+  font-style: italic;
+  color: #555;
+}
+
+/* Print/PDF specific styles */
+@media print {
+  .pdf-table {
+    page-break-inside: auto;
+  }
+  
+  .pdf-table tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  .pdf-table thead {
+    display: table-header-group;
+  }
+  
+  .pdf-table tfoot {
+    display: table-footer-group;
+  }
+  
+  .pdf-table th,
+  .pdf-table td {
+    font-size: 8pt;
+    padding: 4px;
+  }
+  
+  .pdf-section-title {
+    font-size: 14pt;
+  }
+  
+  .pdf-section-subtitle {
+    font-size: 9pt;
+  }
+}
+
+/* For tables with many columns - slightly smaller text */
+@media (max-width: 1000px) {
+  .pdf-table th,
+  .pdf-table td {
+    font-size: 8px;
+    padding: 4px;
+  }
+}
+
+/* Logs table specific - when showing both entry and exit */
+.pdf-table-logs th,
+.pdf-table-logs td {
+  font-size: 8px;
+}
+
+/* Ensure long text wraps properly */
+.pdf-td-name,
+.pdf-td-dept {
+  word-break: break-word;
+  hyphens: auto;
+}
+
+/* Keep numeric data compact */
+.pdf-td-no,
+.pdf-td-id,
+.pdf-td-year {
+  white-space: nowrap;
+}
+
+/* Make time and method columns more compact */
+.pdf-td-time-entry,
+.pdf-td-time-exit {
+  white-space: nowrap;
+  font-size: 8px;
+}
+
+.pdf-td-method {
+  white-space: nowrap;
+  font-size: 8px;
 }
 
 /* Insights Box */
@@ -558,7 +831,10 @@
   font-size: 48px;
   font-weight: bold;
   color: white;
-  margin-bottom: 10px;
+}
+.span{
+  font-size: 14px;
+  color: white;
 }
 
 /* Section Titles */

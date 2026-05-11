@@ -1118,4 +1118,213 @@ router.get('/overall-success-rate', async (req, res) => {
   }
 });
 
+
+// ── GET /api/analytics/visitor-logs ─────────────────────────────────────────
+router.get('/visitor-logs', async (req, res) => {
+  try {
+    console.log('[analytics/visitor-logs] Fetching visitor logs...');
+    
+    const [rows] = await db.query(`
+      SELECT 
+        visitor_id,
+        full_name,
+        email,
+        reason,
+        other_reason,
+        action,
+        log_time,
+        qr_token
+      FROM visitor_logs
+      ORDER BY log_time DESC
+      LIMIT 50
+    `);
+
+    console.log(`[analytics/visitor-logs] Found ${rows.length} records`);
+    res.json(rows);
+  } catch (err) {
+    console.error('[analytics/visitor-logs] ERROR:', err);
+    res.status(500).json({ message: 'Failed to fetch visitor logs.', error: err.message });
+  }
+});
+
+
+// ── GET /api/analytics/student-pairing ─────────────────────────────────────────
+// Fetches students with their entry and exit times paired together
+// Shows entry records even if exit hasn't happened yet
+router.get('/student-pairing', async (req, res) => {
+  try {
+    const { from, to, dept } = req.query;
+    
+    console.log('[analytics/student-pairing] Fetching paired entry-exit records...');
+    
+    let rangeStart, rangeEnd;
+    
+    if (from && to) {
+      let fromDate = from.includes('/') ? from.split('/').reverse().join('-') : from;
+      let toDate = to.includes('/') ? to.split('/').reverse().join('-') : to;
+      rangeStart = `${fromDate} 00:00:00`;
+      rangeEnd = `${toDate} 23:59:59`;
+    } else {
+      const { dayStart, dayEnd } = await getTodayPhRange();
+      rangeStart = dayStart;
+      rangeEnd = dayEnd;
+    }
+    
+    console.log(`[analytics/student-pairing] Date range: ${rangeStart} to ${rangeEnd}`);
+    
+    // Get ALL entry logs (including those without matching exits yet)
+    let entryQuery = `
+      SELECT 
+        eel.student_id,
+        eel.log_time as entry_time,
+        a.method as entry_method,
+        s.first_name,
+        s.last_name,
+        s.middle_name,
+        s.year_level,
+        COALESCE(d.dept_name, 'Unknown Department') as department
+      FROM entry_exit_logs eel
+      LEFT JOIN students s ON s.student_id = eel.student_id
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+      WHERE eel.action = 'ENTRY'
+        AND eel.log_time BETWEEN ? AND ?
+    `;
+    
+    const queryParams = [rangeStart, rangeEnd];
+    
+    if (dept && dept !== 'all' && dept !== '') {
+      entryQuery += ` AND d.dept_name = ?`;
+      queryParams.push(dept);
+    }
+    
+    entryQuery += ` ORDER BY eel.log_time DESC`; // Most recent first
+    
+    const [entryLogs] = await db.query(entryQuery, queryParams);
+    console.log(`[analytics/student-pairing] Found ${entryLogs.length} entry records`);
+    
+    // Get ALL exit logs (including those that might be later)
+    const [exitLogs] = await db.query(`
+      SELECT 
+        eel.student_id,
+        eel.log_time as exit_time,
+        a.method as exit_method
+      FROM entry_exit_logs eel
+      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+      WHERE eel.action = 'EXIT'
+        AND eel.log_time BETWEEN ? AND ?
+      ORDER BY eel.student_id, eel.log_time
+    `, [rangeStart, rangeEnd]);
+    console.log(`[analytics/student-pairing] Found ${exitLogs.length} exit records`);
+    
+    // Helper function for year suffix
+    function getYearSuffix(level) {
+      const num = parseInt(level);
+      if (isNaN(num)) return 'th';
+      if (num === 1) return 'st';
+      if (num === 2) return 'nd';
+      if (num === 3) return 'rd';
+      return 'th';
+    }
+    
+    // Format entry method
+    function formatMethod(method) {
+      if (method === 'FACIAL') return 'Face Recognition';
+      if (method === 'MANUAL') return 'Manual Input';
+      if (method === 'QR') return 'QR Scan';
+      return 'Unknown';
+    }
+    
+    // Group exit logs by student and sort by time
+    const exitMap = new Map();
+    exitLogs.forEach(exit => {
+      if (!exitMap.has(exit.student_id)) {
+        exitMap.set(exit.student_id, []);
+      }
+      exitMap.get(exit.student_id).push({
+        exit_time: exit.exit_time,
+        exit_method: exit.exit_method
+      });
+    });
+    
+    // Sort exits for each student by time
+    for (const [studentId, exits] of exitMap.entries()) {
+      exits.sort((a, b) => new Date(a.exit_time) - new Date(b.exit_time));
+      exitMap.set(studentId, exits);
+    }
+    
+    // Pair entries with exits - show ALL entries, even without exit
+    const pairedRecords = [];
+    const exitIndexMap = new Map(); // Track which exit index to use per student
+    
+    for (const entry of entryLogs) {
+      const studentExits = exitMap.get(entry.student_id) || [];
+      let currentIndex = exitIndexMap.get(entry.student_id) || 0;
+      
+      let matchedExit = null;
+      
+      // Find the next exit that occurs after this entry
+      while (currentIndex < studentExits.length) {
+        const potentialExit = studentExits[currentIndex];
+        if (new Date(potentialExit.exit_time) > new Date(entry.entry_time)) {
+          matchedExit = potentialExit;
+          currentIndex++;
+          break;
+        }
+        currentIndex++;
+      }
+      
+      exitIndexMap.set(entry.student_id, currentIndex);
+      
+      // Format student name
+      const lastName = entry.last_name?.trim() || '';
+      const firstName = entry.first_name?.trim() || '';
+      const middleName = entry.middle_name?.trim() || '';
+      let fullName = entry.student_id;
+      
+      if (lastName && (firstName || middleName)) {
+        fullName = `${lastName}, ${[firstName, middleName].filter(Boolean).join(' ')}`;
+      } else if (firstName || middleName || lastName) {
+        fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+      }
+      
+      const entryTimeDate = new Date(entry.entry_time);
+      const isCurrentlyInside = !matchedExit;
+      
+      pairedRecords.push({
+        no: pairedRecords.length + 1,
+        studentId: entry.student_id,
+        name: fullName,
+        department: entry.department || 'Not Specified',
+        yearLevel: entry.year_level ? `${entry.year_level}${getYearSuffix(entry.year_level)} Year` : 'N/A',
+        entryTime: entryTimeDate.toLocaleString('en-PH', { hour12: true }),
+        entryMethod: formatMethod(entry.entry_method),
+        exitTime: matchedExit ? new Date(matchedExit.exit_time).toLocaleString('en-PH', { hour12: true }) : 'Still Inside',
+        exitMethod: matchedExit ? formatMethod(matchedExit.exit_method) : '—',
+        status: isCurrentlyInside ? 'Inside Campus' : 'Left Campus'
+      });
+    }
+    
+    console.log(`[analytics/student-pairing] Successfully paired ${pairedRecords.length} records`);
+    const stillInside = pairedRecords.filter(r => r.status === 'Inside Campus').length;
+    console.log(`[analytics/student-pairing] ${stillInside} students still inside campus`);
+    
+    res.json({
+      success: true,
+      totalRecords: pairedRecords.length,
+      stillInsideCount: stillInside,
+      dateRange: `${rangeStart.slice(0,10)} to ${rangeEnd.slice(0,10)}`,
+      records: pairedRecords
+    });
+    
+  } catch (err) {
+    console.error('[analytics/student-pairing] ERROR:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch student pairing data',
+      error: err.message 
+    });
+  }
+});
 module.exports = router;
