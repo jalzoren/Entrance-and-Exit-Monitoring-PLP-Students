@@ -134,6 +134,7 @@ function Analytics() {
   // ── Days mapping ─────────────────────────────────────────────────────────
   const daysMap = { '7days': 7, '30days': 30, '1year': 365 };
 
+
   // ── Load all data ────────────────────────────────────────────────────────
   const loadAll = useCallback(async (days) => {
     setIsLoading(true);

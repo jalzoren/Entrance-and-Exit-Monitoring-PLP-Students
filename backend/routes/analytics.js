@@ -881,4 +881,56 @@ router.get('/logs', async (req, res) => {
     });
   }
 });
+// ── GET /api/analytics/overall-success-rate ─────────────────────────────────
+// Returns the overall facial recognition success rate across all time
+router.get('/overall-success-rate', async (req, res) => {
+  try {
+    console.log('\n📊 [ANALYTICS/OVERALL-SUCCESS-RATE] Calculating overall success rate...');
+    
+    const [result] = await db.query(`
+      SELECT 
+        COUNT(*) as total_attempts,
+        SUM(CASE WHEN auth_status = 'SUCCESS' THEN 1 ELSE 0 END) as successful
+      FROM authentication
+      WHERE method = 'FACIAL'
+    `);
+    
+    const totalAttempts = Number(result[0]?.total_attempts || 0);
+    const successful = Number(result[0]?.successful || 0);
+    const successRate = totalAttempts > 0 ? Math.round((successful / totalAttempts) * 100) : 0;
+    
+    // Also get detailed daily stats for trend chart
+    const [dailyStats] = await db.query(`
+      SELECT 
+        DATE(timestamp) as date,
+        COUNT(*) as attempts,
+        SUM(CASE WHEN auth_status = 'SUCCESS' THEN 1 ELSE 0 END) as successful,
+        ROUND(SUM(CASE WHEN auth_status = 'SUCCESS' THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 2) as success_rate
+      FROM authentication
+      WHERE method = 'FACIAL'
+      GROUP BY DATE(timestamp)
+      ORDER BY date DESC
+      LIMIT 30
+    `);
+    
+    console.log(`[overall-success-rate] Total attempts: ${totalAttempts}, Successful: ${successful}, Rate: ${successRate}%`);
+    
+    res.json({
+      success_rate: successRate,
+      total_attempts: totalAttempts,
+      successful: successful,
+      daily_stats: dailyStats
+    });
+    
+  } catch (err) {
+    console.error('[analytics/overall-success-rate] ERROR:', err);
+    res.status(500).json({ 
+      success_rate: 0, 
+      total_attempts: 0, 
+      successful: 0,
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router;
