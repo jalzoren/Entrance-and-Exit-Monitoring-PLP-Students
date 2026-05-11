@@ -289,7 +289,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
   // ═══════════════════════════════════════════════════════════════════
   useEffect(() => {
     if (!cameraOn) return;
-    scanIntervalRef.current = setInterval(captureAndSend, 700); // 700ms for fast scanning
+    scanIntervalRef.current = setInterval(captureAndSend, 2000); // 700ms for fast scanning
     return () => clearInterval(scanIntervalRef.current);
   }, [cameraOn, captureAndSend]);
 

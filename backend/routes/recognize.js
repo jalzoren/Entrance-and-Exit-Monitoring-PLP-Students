@@ -66,7 +66,7 @@ router.post("/recognize", async (req, res) => {
     console.log(`Comparing student ${dbRow.student_id} (${dbRow.face_position}, quality: ${storedQuality.toFixed(3)}): ${sim.toFixed(3)} -> weighted: ${weightedSim.toFixed(3)}`);
 
     // Use lower threshold for testing
-    if (sim > 0.60 && sim > maxSimilarity) {
+    if (sim > 0.45 && sim > maxSimilarity) {
       maxSimilarity = sim;
       matchedStudent = dbRow.student_id;
       bestMatchPosition = dbRow.face_position;

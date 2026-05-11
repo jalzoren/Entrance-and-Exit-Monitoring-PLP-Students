@@ -306,7 +306,7 @@ function FaceRecognition({ mode = 'ENTRY' }) {
   // ── Start scan loop when camera turns on ─────────
   useEffect(() => {
     if (!cameraOn) return;
-    scanIntervalRef.current = setInterval(captureAndSend, 700);
+    scanIntervalRef.current = setInterval(captureAndSend, 2000);
     return () => clearInterval(scanIntervalRef.current);
   }, [cameraOn, captureAndSend]);
 
