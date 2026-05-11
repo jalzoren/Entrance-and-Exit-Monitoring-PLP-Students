@@ -3,35 +3,10 @@ const express = require("express");
 const router  = express.Router();
 const axios   = require("axios");
 const pool    = require("../src/db");
+const { getGateStatus } = require('../src/gateUtils');
 const { cosineSimilarity }        = require("../src/utils");
 const { getTodayPhRange, getPhTime } = require("../src/time"); // ← added getPhTime
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPER: check if the gate is open for the given mode
-// Uses pool (not db) — consistent with the rest of this file
-// ─────────────────────────────────────────────────────────────────────────────
-async function isGateOpen(mode) {
-  const startKey = mode === 'ENTRY' ? 'gate_entry_start' : 'gate_exit_start';
-  const endKey   = mode === 'ENTRY' ? 'gate_entry_end'   : 'gate_exit_end';
-
-  const [rows] = await pool.query(                            // ← pool, not db
-    "SELECT `key`, value FROM system_settings WHERE `key` IN (?, ?, ?)",
-    [startKey, endKey, 'block_outside_window']
-  );
-
-  const s = rows.reduce((acc, r) => { acc[r.key] = r.value; return acc; }, {});
-
-  // If enforcement is disabled, always allow
-  if (s.block_outside_window !== 'true') return true;
-
-  const now  = await getPhTime(pool);                         // ← getPhTime now imported
-  const hhmm = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-
-  const start = mode === 'ENTRY' ? s.gate_entry_start : s.gate_exit_start;
-  const end   = mode === 'ENTRY' ? s.gate_entry_end   : s.gate_exit_end;
-
-  return hhmm >= start && hhmm <= end;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/recognize
@@ -41,11 +16,11 @@ router.post("/recognize", async (req, res) => {
     const { image, mode } = req.body;
 
     // ── Gate check ──────────────────────────────────────────────
-    const open = await isGateOpen(mode);
-    if (!open) {
+    const gateStatus = await getGateStatus(mode);
+    if (!gateStatus.open) {
       return res.status(403).json({
         recognized: false,
-        message: `The ${mode === 'ENTRY' ? 'entry' : 'exit'} gate is currently closed.`,
+        message: gateStatus.message,
         action: 'GATE_CLOSED',
       });
     }
@@ -77,27 +52,27 @@ router.post("/recognize", async (req, res) => {
     let bestMatchPosition = null;
 
   // In your recognize.js, update the comparison logic
-for (const dbRow of rows) {
-  const storedEmbedding = JSON.parse(dbRow.face_embedding);
-  const storedQuality = dbRow.quality || 0.5;
-  
-  // Calculate base similarity
-  const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
-  
-  // Weight by quality of stored embedding (better quality = more trustworthy)
-  const qualityWeight = 0.3 + (storedQuality * 0.4); // Range: 0.5 to 0.7
-  const weightedSim = sim * qualityWeight;
-  
-  console.log(`Comparing student ${dbRow.student_id} (${dbRow.face_position}, quality: ${storedQuality.toFixed(3)}): ${sim.toFixed(3)} -> weighted: ${weightedSim.toFixed(3)}`);
+  for (const dbRow of rows) {
+    const storedEmbedding = JSON.parse(dbRow.face_embedding);
+    const storedQuality = dbRow.quality || 0.5;
+    
+    // Calculate base similarity
+    const sim = cosineSimilarity(capturedEmbedding, storedEmbedding);
+    
+    // Weight by quality of stored embedding (better quality = more trustworthy)
+    const qualityWeight = 0.3 + (storedQuality * 0.4); // Range: 0.5 to 0.7
+    const weightedSim = sim * qualityWeight;
+    
+    console.log(`Comparing student ${dbRow.student_id} (${dbRow.face_position}, quality: ${storedQuality.toFixed(3)}): ${sim.toFixed(3)} -> weighted: ${weightedSim.toFixed(3)}`);
 
-  // Use lower threshold for testing
-  if (sim > 0.60 && sim > maxSimilarity) {
-    maxSimilarity = sim;
-    matchedStudent = dbRow.student_id;
-    bestMatchPosition = dbRow.face_position;
-    bestMatchQuality = storedQuality;
+    // Use lower threshold for testing
+    if (sim > 0.60 && sim > maxSimilarity) {
+      maxSimilarity = sim;
+      matchedStudent = dbRow.student_id;
+      bestMatchPosition = dbRow.face_position;
+      bestMatchQuality = storedQuality;
+    }
   }
-}
 
     if (!matchedStudent) {
       console.log(`No matching student found. Best similarity: ${maxSimilarity.toFixed(3)}`);
@@ -183,9 +158,9 @@ for (const dbRow of rows) {
 
     // ── Step 10: Insert entry/exit log ───────────────────────────
     await pool.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time)
-       VALUES (?, ?, ?, ?)`,
-      [matchedStudent, authInsert.insertId, action, now]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_violation)
+      VALUES (?, ?, ?, ?, ?)`,
+      [matchedStudent, authInsert.insertId, action, now, gateStatus.warning ? 1 : 0]
     );
 
     // ── Step 11: Respond to React UI ─────────────────────────────
@@ -197,6 +172,8 @@ for (const dbRow of rows) {
       department: studentInfo.college_department ?? 'N/A',
       action,
       confidence: maxSimilarity,
+      gateWarning: gateStatus.warning || false,
+      gateWarningMessage: gateStatus.warning ? gateStatus.message : undefined,
     });
 
   } catch (err) {

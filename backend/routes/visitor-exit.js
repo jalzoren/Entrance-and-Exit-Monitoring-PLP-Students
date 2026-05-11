@@ -2,7 +2,8 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
-const { getPhTime } = require('../src/time'); // no pool arg needed
+const { getGateStatus } = require('../src/gateUtils');
+const { getPhTime } = require('../src/time');
 
 router.post('/', async (req, res) => {
   const { qr_data } = req.body;
@@ -29,6 +30,14 @@ router.post('/', async (req, res) => {
 
     const lastLog = rows[0];
 
+    const gateStatus = await getGateStatus('EXIT');
+    if (!gateStatus.open) {
+      return res.status(403).json({
+        message: gateStatus.message,
+        action: 'GATE_CLOSED',
+      });
+    }
+
     if (lastLog.action === 'EXIT')
       return res.status(409).json({ message: 'This QR has already been used for exit.' });
 
@@ -41,8 +50,11 @@ router.post('/', async (req, res) => {
       [lastLog.full_name, lastLog.email, lastLog.reason, lastLog.other_reason, now, qrToken]
     );
 
-    return res.json({ message: `Goodbye ${lastLog.full_name}! Exit recorded.` });
-
+    return res.json({
+      message: `Goodbye ${lastLog.full_name}! Exit recorded.`,
+      gateWarning: gateStatus.warning || false,
+      gateWarningMessage: gateStatus.warning ? gateStatus.message : undefined,
+    });
   } catch (err) {
     console.error('[Visitor Exit Error]', err);
     return res.status(500).json({ message: 'Server error.' });

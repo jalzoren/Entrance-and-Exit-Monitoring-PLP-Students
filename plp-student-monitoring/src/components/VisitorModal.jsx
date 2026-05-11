@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { parseVisitorConfig } from '../utils/xmlParser';
 import '../componentscss/VisitorModal.css';
 import '../css/GlobalModal.css';
+import Swal from 'sweetalert2';
 
 function VisitorModal({ onClose }) {
   const [config, setConfig] = useState(null);
@@ -79,6 +80,19 @@ function VisitorModal({ onClose }) {
       });
 
       const data = await res.json();
+
+      if (data.gateWarning && data.gateWarningMessage) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Outside Gate Hours',
+          text: data.gateWarningMessage,
+          timer: 3000,
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+        });
+      }
+
       if (!res.ok) throw new Error(data.message || 'Submission failed.');
 
       setStatus({ type: 'success', message: data.message || 'Visitor pass registered.' });
@@ -89,7 +103,6 @@ function VisitorModal({ onClose }) {
       });
       setForm(resetForm);
       
-      // Optional: Close modal after 2 seconds on success
       setTimeout(() => {
         onClose();
       }, 2000);

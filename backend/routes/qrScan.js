@@ -2,6 +2,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
+const { getGateStatus } = require('../src/gateUtils');
 const { getTodayPhRange } = require('../src/time'); 
 
 router.post('/', async (req, res) => {
@@ -138,6 +139,14 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ message: 'Student not found. Invalid QR code.' });
     }
 
+    const gateStatus = await getGateStatus(mode);
+    if (!gateStatus.open) {
+      return res.status(403).json({
+        message: gateStatus.message,
+        action: 'GATE_CLOSED',
+      });
+    }
+
     const student = studentRows[0];
     const fullName = `${student.last_name}, ${student.first_name}`;
     const yearLevelNumber = student.year_level;
@@ -197,9 +206,9 @@ router.post('/', async (req, res) => {
 
     // Insert into entry_exit_logs table
     const [logResult] = await db.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time)
-       VALUES (?, ?, ?, ?)`,
-      [student_id, authResult.insertId, mode, now]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_violation)
+      VALUES (?, ?, ?, ?, ?)`,
+      [student_id, authResult.insertId, mode, now, gateStatus.warning ? 1 : 0]
     );
     console.log('[QR Scan] Log saved to entry_exit_logs, log_id:', logResult.insertId);
 
@@ -213,8 +222,9 @@ router.post('/', async (req, res) => {
       department: collegeDept,
       year_level: yearLevelNumber,
       course: course,
-      gender: "Not Specified",
-      status: student.status || "Not Specified"
+      status: student.status || "Not Specified",
+      gateWarning: gateStatus.warning || false,
+      gateWarningMessage: gateStatus.warning ? gateStatus.message : undefined,
     };
     
     console.log('[QR Scan] Sending response:', response);

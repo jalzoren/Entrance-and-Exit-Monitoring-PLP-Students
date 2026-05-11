@@ -2,7 +2,8 @@
 const express    = require('express');
 const router     = express.Router();
 const db         = require('../src/db');
-const { getTodayPhRange } = require('../src/time'); // no pool arg needed
+const { getGateStatus } = require('../src/gateUtils');
+const { getTodayPhRange } = require('../src/time');
 
 const QRCode     = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
@@ -27,6 +28,14 @@ router.post('/', async (req, res) => {
   try {
     // ── Server-authoritative PH time ───────────────────────────────────
     const { now, dayStart, dayEnd } = await getTodayPhRange();
+
+    const gateStatus = await getGateStatus('ENTRY');
+    if (!gateStatus.open) {
+      return res.status(403).json({
+        message: gateStatus.message,
+        action: 'GATE_CLOSED',
+      });
+    }
 
     // ── Check if visitor already entered today (BETWEEN, not DATE()) ───
     const [existingLogs] = await db.query(
@@ -363,7 +372,11 @@ router.post('/', async (req, res) => {
   }],
 });
 
-    return res.json({ message: `Visitor pass issued for ${full_name.trim()}. Welcome!` });
+  return res.json({
+    message: `Visitor pass issued for ${full_name.trim()}. Welcome!`,
+    gateWarning: gateStatus.warning || false,
+    gateWarningMessage: gateStatus.warning ? gateStatus.message : undefined,
+  });
 
   } catch (err) {
     console.error('[Visitor Log Error]', err);
