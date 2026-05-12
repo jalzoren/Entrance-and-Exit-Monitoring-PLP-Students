@@ -452,7 +452,7 @@ function AcademicYearSection() {
         <p className="setting-description" style={{ marginBottom: 12 }}>
           Run at the end of the school year. Regular students advance one year level;
           4th-year Regular students are automatically marked as <strong>Graduated</strong>.
-          Irregular, LOA, and other statuses are <strong>not affected</strong>.
+          Irregular, LOA, Dropout and other statuses are <strong>not affected</strong>.
         </p>
 
         {academicInfo?.promotionDue && (
