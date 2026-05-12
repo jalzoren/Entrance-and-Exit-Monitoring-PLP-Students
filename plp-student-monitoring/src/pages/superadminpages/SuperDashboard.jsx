@@ -203,17 +203,378 @@ function NotificationsPanel({ notifications }) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// USERS LIST MODAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+function UsersListModal({ isOpen, users, onClose, isLoading }) {
+  if (!isOpen) return null;
+
+  // Inline styles for modal overlay
+  const overlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    padding: '1rem',
+    backdropFilter: 'blur(2px)',
+  };
+
+  // Inline styles for modal container
+  const containerStyle = {
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+    width: '100%',
+    maxWidth: '900px',
+    maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    animation: 'slideUp 0.3s ease',
+  };
+
+  // Inline styles for modal header
+  const headerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+    background: 'linear-gradient(135deg, rgba(84, 135, 114, 0.05), rgba(217, 146, 1, 0.05))',
+  };
+
+  const headerH2Style = {
+    margin: 0,
+    fontSize: '1.25rem',
+    color: '#123',
+    fontFamily: '"Montserrat", sans-serif',
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  };
+
+  const closeButtonStyle = {
+    background: 'none',
+    border: 'none',
+    fontSize: '28px',
+    color: '#999',
+    cursor: 'pointer',
+    padding: 0,
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '6px',
+    transition: 'all 0.2s ease',
+    flexShrink: 0,
+  };
+
+  const [closeButtonHover, setCloseButtonHover] = React.useState(false);
+
+  // Inline styles for modal body
+  const bodyStyle = {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '1.5rem',
+  };
+
+  const loadingEmptyStyle = {
+    textAlign: 'center',
+    padding: '3rem 1.5rem',
+    color: '#999',
+    fontFamily: '"Montserrat", sans-serif',
+    fontSize: '0.95rem',
+  };
+
+  const tableWrapperStyle = {
+    width: '100%',
+    overflowX: 'auto',
+  };
+
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontFamily: '"Montserrat", sans-serif',
+    fontSize: '0.9rem',
+  };
+
+  const theadStyle = {
+    background: 'rgba(0, 0, 0, 0.04)',
+    borderBottom: '2px solid rgba(0, 0, 0, 0.08)',
+  };
+
+  const thStyle = {
+    padding: '1rem',
+    textAlign: 'left',
+    fontWeight: 600,
+    color: '#123',
+    whiteSpace: 'nowrap',
+  };
+
+  const tbodyTrStyle = {
+    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+    transition: 'background 0.15s ease',
+  };
+
+  const [hoveredRowId, setHoveredRowId] = React.useState(null);
+
+  const tdStyle = {
+    padding: '0.75rem 1rem',
+    color: '#555',
+    verticalAlign: 'middle',
+  };
+
+
+
+  const userNameStyle = {
+    ...tdStyle,
+    fontWeight: 500,
+    color: '#123',
+  };
+
+  const userEmailStyle = {
+    ...tdStyle,
+    color: '#666',
+    fontSize: '0.88rem',
+  };
+
+  const userRoleStyle = {
+    ...tdStyle,
+    textAlign: 'center',
+  };
+
+  const userStatusStyle = {
+    ...tdStyle,
+    textAlign: 'center',
+  };
+
+  // Role badge styles with variants
+  const getRoleBadgeStyle = (role) => {
+    const baseStyle = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.35rem 0.75rem',
+      borderRadius: '6px',
+      fontSize: '0.78rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    };
+
+    const roleLC = role?.toLowerCase() || 'user';
+
+    if (roleLC === 'super_admin' || roleLC === 'superadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(217, 146, 1, 0.15)',
+        color: '#d99201',
+        border: '1px solid rgba(217, 146, 1, 0.3)',
+      };
+    } else if (roleLC === 'eems_admin' || roleLC === 'eemsadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(84, 135, 114, 0.15)',
+        color: '#548772',
+        border: '1px solid rgba(84, 135, 114, 0.3)',
+      };
+    } else if (roleLC === 'eams_admin' || roleLC === 'eamsadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(52, 152, 219, 0.15)',
+        color: '#3498db',
+        border: '1px solid rgba(52, 152, 219, 0.3)',
+      };
+    } else {
+      return {
+        ...baseStyle,
+        background: 'rgba(149, 165, 166, 0.15)',
+        color: '#7f8c8d',
+        border: '1px solid rgba(149, 165, 166, 0.3)',
+      };
+    }
+  };
+
+  // Status badge styles
+  const getStatusBadgeStyle = (isArchived) => {
+    const baseStyle = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.35rem 0.75rem',
+      borderRadius: '6px',
+      fontSize: '0.78rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    };
+
+    if (isArchived) {
+      return {
+        ...baseStyle,
+        background: 'rgba(231, 76, 60, 0.15)',
+        color: '#e74c3c',
+        border: '1px solid rgba(231, 76, 60, 0.3)',
+      };
+    } else {
+      return {
+        ...baseStyle,
+        background: 'rgba(39, 174, 96, 0.15)',
+        color: '#27ae60',
+        border: '1px solid rgba(39, 174, 96, 0.3)',
+      };
+    }
+  };
+
+  // Footer styles
+  const footerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+    background: 'rgba(0, 0, 0, 0.02)',
+  };
+
+  const userCountStyle = {
+    margin: 0,
+    fontSize: '0.9rem',
+    color: '#555',
+    fontFamily: '"Montserrat", sans-serif',
+  };
+
+  const btnCloseStyle = {
+    background: '#548772',
+    color: '#fff',
+    border: 'none',
+    padding: '0.5rem 1.25rem',
+    borderRadius: '6px',
+    fontSize: '0.9rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontFamily: '"Montserrat", sans-serif',
+  };
+
+  return ReactDOM.createPortal(
+    <>
+      <style>
+        {`
+          @keyframes slideUp {
+            from {
+              transform: translateY(20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
+      <div style={overlayStyle} onClick={onClose}>
+        <div style={containerStyle} onClick={(e) => e.stopPropagation()}>
+          <div style={headerStyle}>
+            <h2 style={headerH2Style}><FaUsers /> Users List</h2>
+            <button
+              style={{
+                ...closeButtonStyle,
+                background: closeButtonHover ? 'rgba(0, 0, 0, 0.08)' : 'none',
+                color: closeButtonHover ? '#123' : '#999',
+              }}
+              onClick={onClose}
+              onMouseEnter={() => setCloseButtonHover(true)}
+              onMouseLeave={() => setCloseButtonHover(false)}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={bodyStyle}>
+            {isLoading ? (
+              <div style={loadingEmptyStyle}>Loading users...</div>
+            ) : users.length === 0 ? (
+              <div style={loadingEmptyStyle}>No users found.</div>
+            ) : (
+              <div style={tableWrapperStyle}>
+                <table style={tableStyle}>
+                  <thead style={theadStyle}>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Email</th>
+                      <th style={thStyle}>Role</th>
+                      <th style={thStyle}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr
+                        key={user.email}
+                        style={{
+                          ...tbodyTrStyle,
+                          background: hoveredRowId === user.email ? 'rgba(84, 135, 114, 0.04)' : 'transparent',
+                        }}
+                        onMouseEnter={() => setHoveredRowId(user.email)}
+                        onMouseLeave={() => setHoveredRowId(null)}
+                      >
+                        <td style={userNameStyle}>{user.fullname || "—"}</td>
+                        <td style={userEmailStyle}>{user.email || "—"}</td>
+                        <td style={userRoleStyle}>
+                          <span style={getRoleBadgeStyle(user.role)}>
+                            {user.role || "User"}
+                          </span>
+                        </td>
+                        <td style={userStatusStyle}>
+                          <span style={getStatusBadgeStyle(false)}>
+                            Active
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={footerStyle}>
+            <p style={userCountStyle}>Total Users: {users.length}</p>
+            <button
+              style={btnCloseStyle}
+              onClick={onClose}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#01311d';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#548772';
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // QUICK ACTIONS (updated)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QuickActionsSection() {
+function QuickActionsSection({ onShowUsers }) {
   const actions = [
     {
       variant: "primary",
       icon: <FaUsers />,
-      title: "Manage Users",
-      desc: "Add, edit & archive users",
-      onClick: () => console.log("Manage Users"),
+      title: "Show list of Users",
+      desc: "View all system users",
+      onClick: onShowUsers,
     },
     {
       variant: "success",
@@ -278,6 +639,32 @@ function SuperDashboard() {
   const [notifications,   setNotifications]   = useState([]);
   const [trafficDays,     setTrafficDays]     = useState(7);
   const [chartKey,        setChartKey]        = useState(0);
+  const [showUsersModal,  setShowUsersModal]  = useState(false);
+  const [usersList,       setUsersList]       = useState([]);
+  const [usersLoading,    setUsersLoading]    = useState(false);
+
+  // Function to fetch users from backend
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const json = await res.json();
+      const data = json.data ?? json.users ?? json;
+      setUsersList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('[SuperDashboard] fetchUsers failed:', err.message);
+      setUsersList([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  // Handle opening users modal
+  const handleShowUsers = useCallback(async () => {
+    setShowUsersModal(true);
+    await fetchUsers();
+  }, [fetchUsers]);
 
   // Clock
   useEffect(() => {
@@ -401,7 +788,7 @@ function SuperDashboard() {
           <NotificationsPanel
             notifications={notifications}
           />
-          <QuickActionsSection />
+          <QuickActionsSection onShowUsers={handleShowUsers} />
         </section>
 
         {/* ── QUICK GUIDE ── */}
@@ -473,6 +860,14 @@ function SuperDashboard() {
         </footer>
 
       </div>
+
+      {/* Users List Modal */}
+      <UsersListModal 
+        isOpen={showUsersModal}
+        users={usersList}
+        isLoading={usersLoading}
+        onClose={() => setShowUsersModal(false)}
+      />
     </div>
   );
 }
