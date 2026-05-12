@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer,
   AreaChart as ReAreaChart,
@@ -567,7 +568,7 @@ function UsersListModal({ isOpen, users, onClose, isLoading }) {
 // QUICK ACTIONS (updated)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QuickActionsSection({ onShowUsers, onShowSupport }) {
+function QuickActionsSection({ onShowUsers, onShowSupport, onSystemSettings }) {
   const actions = [
     {
       variant: "primary",
@@ -588,7 +589,7 @@ function QuickActionsSection({ onShowUsers, onShowSupport }) {
       icon: <FaCog />,
       title: "System Settings",
       desc: "Configure gate & academic year settings",
-      onClick: () => console.log("System Settings"),
+      onClick: onSystemSettings,
     },
     {
       variant: "warning",
@@ -643,6 +644,7 @@ function SuperDashboard() {
   const [usersList,       setUsersList]       = useState([]);
   const [usersLoading,    setUsersLoading]    = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
+  const navigate = useNavigate();
 
   // Function to fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -789,7 +791,7 @@ function SuperDashboard() {
           <NotificationsPanel
             notifications={notifications}
           />
-          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} />
+          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} onSystemSettings={() => navigate('/systemsettings')} />
         </section>
 
         {/* ── QUICK GUIDE ── */}
