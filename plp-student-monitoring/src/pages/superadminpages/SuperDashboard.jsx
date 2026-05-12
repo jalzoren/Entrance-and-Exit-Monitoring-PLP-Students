@@ -29,73 +29,7 @@ import {
 // SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVITY_ICONS = {
-  user_add:       { icon: <FaUserPlus />,     color: "#2ecc71", label: "User Added" },
-  user_edit:      { icon: <FaUserEdit />,     color: "#3498db", label: "User Edited" },
-  user_archive:   { icon: <FaUserMinus />,    color: "#e74c3c", label: "User Archived" },
-  student_add:    { icon: <FaGraduationCap />,color: "#27ae60", label: "Student Added" },
-  student_edit:   { icon: <FaUserEdit />,     color: "#2980b9", label: "Student Edited" },
-  student_archive:{ icon: <FaGraduationCap />,color: "#c0392b", label: "Student Archived" },
-  dept_add:       { icon: <FaBuilding />,     color: "#8e44ad", label: "Dept. Added" },
-  dept_edit:      { icon: <FaBuilding />,     color: "#6c3483", label: "Dept. Edited" },
-  dept_archive:   { icon: <FaBuilding />,     color: "#922b21", label: "Dept. Archived" },
-  program_add:    { icon: <FaLayerGroup />,   color: "#e67e22", label: "Program Added" },
-  program_edit:   { icon: <FaLayerGroup />,   color: "#d35400", label: "Program Edited" },
-  program_archive:{ icon: <FaLayerGroup />,   color: "#a04000", label: "Program Archived" },
-  settings:       { icon: <FaCog />,          color: "#7f8c8d", label: "Settings Changed" },
-};
 
-const SAMPLE_ACTIVITIES = [
-  {
-    id: 1,
-    type: "user_add",
-    message: "Super Admin added User:",
-    subject: "Juan Dela Cruz",
-    time: "2 mins ago",
-  },
-  {
-    id: 2,
-    type: "settings",
-    message: "System Settings Updated:",
-    subject: "Gate Settings",
-    time: "1 hr ago",
-  },
-  {
-    id: 3,
-    type: "student_archive",
-    message: "Archived 300 4th year graduated students",
-    subject: "",
-    time: "3 hrs ago",
-  },
-  {
-    id: 4,
-    type: "student_add",
-    message: "New student enrolled:",
-    subject: "Maria Santos",
-    time: "5 hrs ago",
-  },
-  {
-    id: 5,
-    type: "dept_add",
-    message: "Department added:",
-    subject: "College of Architecture",
-    time: "Yesterday",
-  },
-  {
-    id: 6,
-    type: "program_edit",
-    message: "Program updated:",
-    subject: "BS Information Technology",
-    time: "Yesterday",
-  },
-  {
-    id: 7,
-    type: "user_edit",
-    message: "User profile edited:",
-    subject: "Admin Reyes",
-    time: "2 days ago",
-  },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVICES
@@ -266,67 +200,7 @@ function NotificationsPanel({ notifications }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// RECENT ACTIVITY PANEL
-// ─────────────────────────────────────────────────────────────────────────────
 
-function RecentActivityPanel({ activities }) {
-  return (
-    <div className="panel-card activity-panel">
-      {/* Header */}
-      <div className="panel-header">
-        <div className="panel-title-group">
-          <span className="panel-icon-wrap activity-icon-wrap">
-            <FaClipboardList />
-          </span>
-          <h3 className="panel-title">Recent Activity</h3>
-        </div>
-      </div>
-
-      {/* List */}
-      <ul className="activity-list">
-        {activities.map((a, idx) => {
-          const meta = ACTIVITY_ICONS[a.type] || ACTIVITY_ICONS.settings;
-          return (
-            <li key={a.id} className="activity-item">
-              {/* Timeline line */}
-              <div className="activity-timeline">
-                <span
-                  className="activity-dot"
-                  style={{ background: meta.color }}
-                >
-                  {meta.icon}
-                </span>
-                {idx < activities.length - 1 && (
-                  <span className="activity-line" />
-                )}
-              </div>
-              <div className="activity-body">
-                <p className="activity-message">
-                  {a.message}{" "}
-                  {a.subject && (
-                    <strong className="activity-subject">{a.subject}</strong>
-                  )}
-                </p>
-                <div className="activity-meta">
-                  <span
-                    className="activity-type-chip"
-                    style={{ borderColor: meta.color, color: meta.color }}
-                  >
-                    {meta.label}
-                  </span>
-                  <span className="activity-time">
-                    <FaClock /> {a.time}
-                  </span>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // QUICK ACTIONS (updated)
@@ -365,7 +239,7 @@ function QuickActionsSection() {
   ];
 
   return (
-    <section className="quick-actions-section">
+    <section className="quick-actions-section-superadmin">
       <div className="section-header-wrapper">
         <h3>
           <FaBolt /> Quick Actions
@@ -522,41 +396,13 @@ function SuperDashboard() {
           />
         </section>
 
-        <section className="metrics-row">
-          <MetricCard
-            title="Archived Users"
-            value={formatNumber(metrics?.archivedUsers)}
-            tooltip="Shows the number of archived user accounts."
-          />
-          <MetricCard
-            title="Archived Students"
-            value={formatNumber(metrics?.archivedStudents)}
-            tooltip="Shows the number of archived students."
-          />
-          <MetricCard
-            title="Archived Departments"
-            value={formatNumber(metrics?.archivedDepartments)}
-            tooltip="Shows the number of archived departments."
-          />
-          <MetricCard
-            title="Archived Programs"
-            value={formatNumber(metrics?.archivedPrograms)}
-            tooltip="Shows the number of archived programs."
-          />
-        </section>
-
-        {/* ── NOTIFICATIONS + RECENT ACTIVITY ── */}
+        {/* ── NOTIFICATIONS + QUICK ACTIONS ── */}
         <section className="info-panels-row">
           <NotificationsPanel
             notifications={notifications}
           />
-          <RecentActivityPanel
-            activities={SAMPLE_ACTIVITIES}
-          />
+          <QuickActionsSection />
         </section>
-
-        {/* ── QUICK ACTIONS ── */}
-        <QuickActionsSection />
 
         {/* ── QUICK GUIDE ── */}
         <section className="quick-guide-section">
