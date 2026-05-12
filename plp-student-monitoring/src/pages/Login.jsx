@@ -1,5 +1,5 @@
 // Login.jsx
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "../css/Login.css";
 import { useNavigate, Link } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
@@ -31,9 +31,42 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [logoUrl, setLogoUrl] = useState("../logoplp.gif");
 
   const navigate = useNavigate();
   const { login } = useAuth();
+
+  // Load logo from server
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('/api/settings/logo');
+        const data = await response.json();
+        if (data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+      }
+    };
+    
+    loadLogo();
+
+    // Listen for logo updates
+    const handleLogoUpdate = (event) => {
+      if (event.detail.logoUrl) {
+        setLogoUrl(event.detail.logoUrl);
+      } else {
+        setLogoUrl("../logoplp.gif");
+      }
+    };
+    
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    
+    return () => {
+      window.removeEventListener('logoUpdated', handleLogoUpdate);
+    };
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -78,7 +111,7 @@ export default function Login() {
 
       <div className="login-wrapper">
         <div className="login-header-container">
-          <img className="login-icon" src="../logoplp.gif" alt="PLP Seal" />
+          <img className="login-icon" src={logoUrl} alt="PLP Seal" />
           <h1 className="logintext">LOGIN</h1>
         </div>
 

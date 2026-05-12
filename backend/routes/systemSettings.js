@@ -3,6 +3,24 @@ const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
 const { getPhTime } = require('../src/time');
+const multer = require('multer');
+const path = require('path');
+
+// ── Multer config for logo upload (memory storage for BLOB) ──
+const storage = multer.memoryStorage();
+
+const upload = multer({
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed'));
+    }
+  }
+});
 
 // ── Helper: get all settings as a flat object ─────────────────────────────────
 async function getAllSettings() {
@@ -207,6 +225,75 @@ router.post('/promote-students', async (req, res) => {
     res.status(500).json({ message: 'Promotion failed: ' + err.message });
   } finally {
     if (connection) connection.release();
+  }
+});
+
+// ── GET /api/settings/logo ─────────────────────────────────────────────────
+router.get('/logo', async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      'SELECT logo_data, logo_type FROM system_logo WHERE id = 1'
+    );
+    
+    if (rows[0]?.logo_data) {
+      const base64Data = rows[0].logo_data.toString('base64');
+      const logoUrl = `data:${rows[0].logo_type};base64,${base64Data}`;
+      res.json({ logoUrl: logoUrl });
+    } else {
+      res.json({ logoUrl: null });
+    }
+  } catch (err) {
+    console.error('[logo GET]', err);
+    res.status(500).json({ message: 'Failed to get logo' });
+  }
+});
+
+// ── POST /api/settings/logo ────────────────────────────────────────────────
+router.post('/logo', upload.single('logo'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+    
+    const base64Data = req.file.buffer.toString('base64');
+    const logoUrl = `data:${req.file.mimetype};base64,${base64Data}`;
+    
+    // UPDATE existing record (always id=1)
+    await db.query(
+      `INSERT INTO system_logo (id, logo_data, logo_type) 
+       VALUES (1, ?, ?) 
+       ON DUPLICATE KEY UPDATE 
+       logo_data = VALUES(logo_data), 
+       logo_type = VALUES(logo_type)`,
+      [req.file.buffer, req.file.mimetype]
+    );
+    
+    res.json({ 
+      message: 'Logo uploaded successfully', 
+      logoUrl: logoUrl 
+    });
+    
+  } catch (err) {
+    console.error('[logo POST]', err);
+    res.status(500).json({ message: 'Failed to upload logo' });
+  }
+});
+
+// ── POST /api/settings/logo/reset ──────────────────────────────────────────
+router.post('/logo/reset', async (req, res) => {
+  try {
+    await db.query(
+      'UPDATE system_logo SET logo_data = NULL, logo_type = NULL WHERE id = 1'
+    );
+    
+    res.json({ 
+      message: 'Logo reset to default', 
+      logoUrl: null 
+    });
+    
+  } catch (err) {
+    console.error('[logo RESET]', err);
+    res.status(500).json({ message: 'Failed to reset logo' });
   }
 });
 

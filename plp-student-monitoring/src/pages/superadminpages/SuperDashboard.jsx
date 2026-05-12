@@ -24,7 +24,6 @@ import {
   FaInfoCircle, FaSchool, FaDoorOpen,
   FaEllipsisH,
 } from "react-icons/fa";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,6 +207,7 @@ class DashboardService {
     }
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTIFICATION PANEL
@@ -404,6 +404,38 @@ function SuperDashboard() {
   const [notifications,   setNotifications]   = useState([]);
   const [trafficDays,     setTrafficDays]     = useState(7);
   const [chartKey,        setChartKey]        = useState(0);
+  const [logoUrl, setLogoUrl] = useState("../logoplp.gif");
+
+    // Load logo from server (ADD THIS NEW useEffect HERE)
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('/api/settings/logo');
+        const data = await response.json();
+        if (data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+      }
+    };
+    
+    loadLogo();
+
+    const handleLogoUpdate = (event) => {
+      if (event.detail.logoUrl) {
+        setLogoUrl(event.detail.logoUrl);
+      } else {
+        setLogoUrl("../logoplp.gif");
+      }
+    };
+    
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    
+    return () => {
+      window.removeEventListener('logoUpdated', handleLogoUpdate);
+    };
+  }, []);
 
   // Clock
   useEffect(() => {
@@ -465,7 +497,7 @@ function SuperDashboard() {
         {/* ── HEADER ── */}
         <header className="campus-header">
           <div className="logo-area">
-            <img className="seal-placeholder" src="../logoplp.gif" alt="PLP Seal" />
+            <img className="seal-placeholder" src={logoUrl} alt="PLP Seal" />
             <div className="university-info">
               <h1>Pamantasan ng Lungsod ng Pasig</h1>
               <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>
