@@ -9,6 +9,7 @@ import Swal from 'sweetalert2';
 import { FaUserGraduate } from "react-icons/fa";
 import { BsPersonFillDash } from "react-icons/bs";
 import { BsPersonFillSlash } from "react-icons/bs";
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 import { FiDownload, FiPlus, FiFilter, FiArchive } from "react-icons/fi";
 import {
@@ -74,8 +75,8 @@ function Students() {
   const [error,           setError]           = useState(null);
 
   // ── Filter option lists (fetched from DB) ─────────────────────────────────
-  const [deptOptions,    setDeptOptions]    = useState([]);   // [{id, dept_name}, ...]
-  const [programOptions, setProgramOptions] = useState([]);   // [{id, programName, department}, ...]
+  const [deptOptions,    setDeptOptions]    = useState([]);
+  const [programOptions, setProgramOptions] = useState([]);
 
   // ── Active filter values ──────────────────────────────────────────────────
   const [filterDept,       setFilterDept]       = useState("");
@@ -83,7 +84,7 @@ function Students() {
   const [filterYearLevel,  setFilterYearLevel]   = useState("");
   const [filterBatchYear,  setFilterBatchYear]   = useState("");
   const [filterStatus,     setFilterStatus]      = useState("");
-  const [filterFaceStatus, setFilterFaceStatus]  = useState(""); // "" | "registered" | "missing"
+  const [filterFaceStatus, setFilterFaceStatus]  = useState("");
   const [searchQuery,      setSearchQuery]       = useState("");
 
   // ── Modal state ───────────────────────────────────────────────────────────
@@ -97,15 +98,31 @@ function Students() {
   const recordsPerPage = 10;
 
   // ── Sorting ────────────────────────────────────────────────────────────────
-  const [sortColumn, setSortColumn] = useState("last_name"); // Default sort by last name
+  const [sortColumn, setSortColumn] = useState("last_name");
   const [sortDirection, setSortDirection] = useState("asc");
 
   // ── Selection ──────────────────────────────────────────────────────────────
   const [selectedStudents, setSelectedStudents] = useState(new Set());
 
+  // ── College status chart data ───────────────────────────────────────────────
+  const [collegeStatusData, setCollegeStatusData] = useState([]);
+  const [collegeChartLoading, setCollegeChartLoading] = useState(false);
+
   // ─────────────────────────────────────────────────────────────────────────
   // DATA FETCHING
   // ─────────────────────────────────────────────────────────────────────────
+
+  const fetchCollegeStatus = async () => {
+    setCollegeChartLoading(true);
+    try {
+      const res = await axios.get("/api/analytics/college-status-summary");
+      setCollegeStatusData(res.data);
+    } catch (err) {
+      console.error("Failed to load college status:", err);
+    } finally {
+      setCollegeChartLoading(false);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -158,6 +175,7 @@ function Students() {
     fetchStudents();
     fetchFaceStatus();
     fetchPendingFace();
+    fetchCollegeStatus();
   };
 
   useEffect(() => {
@@ -165,13 +183,11 @@ function Students() {
     fetchFilterOptions();
   }, []);
 
-  // Reset to page 1 whenever any filter changes
   useEffect(() => { setCurrentPage(1); }, [
     searchQuery, filterDept, filterProgram,
     filterYearLevel, filterBatchYear, filterStatus, filterFaceStatus,
   ]);
 
-  // When department filter changes, clear the program filter
   useEffect(() => {
     setFilterProgram("");
   }, [filterDept]);
@@ -180,13 +196,11 @@ function Students() {
   // DERIVED DATA
   // ─────────────────────────────────────────────────────────────────────────
 
-  // Programs available under the currently selected department (for the filter)
   const programsForFilter = useMemo(() => {
     if (!filterDept) return programOptions;
     return programOptions.filter(p => p.dept_name === filterDept);
   }, [filterDept, programOptions]);
 
-  // Unique batch years extracted from loaded student IDs — sorted descending
   const batchYearOptions = useMemo(() => {
     const set = new Set(
       students.map(s => batchYearFromId(s.student_id)).filter(Boolean)
@@ -194,7 +208,7 @@ function Students() {
     return [...set].sort((a, b) => b - a);
   }, [students]);
 
-  // ── Stats ─────────────────────────────────────────────────────────────────
+  // ── Stats (still needed for the summary legend) ───────────────────────────
   const stats = useMemo(() => ({
     total:       students.length,
     regular:     students.filter(s => s.status === "Regular").length,
@@ -209,35 +223,21 @@ function Students() {
   // ── Filtered list ─────────────────────────────────────────────────────────
   const filteredStudents = useMemo(() => {
     return students.filter(s => {
-      // Search
       const q = searchQuery.toLowerCase();
       const matchSearch = !q ||
         s.first_name?.toLowerCase().includes(q)  ||
         s.last_name?.toLowerCase().includes(q)   ||
         s.student_id?.toLowerCase().includes(q);
-
-      // Department
-      const matchDept = !filterDept || s.dept_name === filterDept;
-
-      // Program
-      const matchProg = !filterProgram || s.program_name === filterProgram;
-
-      // Year level — stored as int, filter value is a string
-      const matchYear = !filterYearLevel || String(s.year_level) === filterYearLevel;
-
-      // Batch year — first two chars of student_id
-      const matchBatch = !filterBatchYear || batchYearFromId(s.student_id) === filterBatchYear;
-
-      // Status
-      const matchStatus = !filterStatus || s.status === filterStatus;
-
-      // Face registration
-      const hasFace = faceStatusMap[s.student_id] === true;
-      const matchFace =
+      const matchDept    = !filterDept    || s.dept_name    === filterDept;
+      const matchProg    = !filterProgram || s.program_name === filterProgram;
+      const matchYear    = !filterYearLevel || String(s.year_level) === filterYearLevel;
+      const matchBatch   = !filterBatchYear || batchYearFromId(s.student_id) === filterBatchYear;
+      const matchStatus  = !filterStatus  || s.status === filterStatus;
+      const hasFace      = faceStatusMap[s.student_id] === true;
+      const matchFace    =
         !filterFaceStatus ||
         (filterFaceStatus === "registered" &&  hasFace) ||
         (filterFaceStatus === "missing"    && !hasFace);
-
       return matchSearch && matchDept && matchProg && matchYear &&
              matchBatch && matchStatus && matchFace;
     });
@@ -246,11 +246,10 @@ function Students() {
     filterYearLevel, filterBatchYear, filterStatus, filterFaceStatus, faceStatusMap,
   ]);
 
-  // ── Sorted and paginated list ──────────────────────────────────────────────
+  // ── Sorted list ────────────────────────────────────────────────────────────
   const sortedStudents = useMemo(() => {
     const sorted = [...filteredStudents].sort((a, b) => {
       let aVal, bVal;
-      
       switch(sortColumn) {
         case "last_name":
           aVal = `${a.last_name || ""} ${a.first_name || ""}`.toLowerCase();
@@ -279,7 +278,6 @@ function Students() {
         default:
           return 0;
       }
-
       if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
       if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
       return 0;
@@ -288,18 +286,17 @@ function Students() {
   }, [filteredStudents, sortColumn, sortDirection]);
 
   // ── Paginated slice ───────────────────────────────────────────────────────
-  const totalPages        = Math.max(1, Math.ceil(sortedStudents.length / recordsPerPage));
-  const indexOfFirst      = (currentPage - 1) * recordsPerPage;
-  const currentStudents   = sortedStudents.slice(indexOfFirst, indexOfFirst + recordsPerPage);
+  const totalPages      = Math.max(1, Math.ceil(sortedStudents.length / recordsPerPage));
+  const indexOfFirst    = (currentPage - 1) * recordsPerPage;
+  const currentStudents = sortedStudents.slice(indexOfFirst, indexOfFirst + recordsPerPage);
 
   // ─────────────────────────────────────────────────────────────────────────
-  // MODAL HANDLERS
+  // MODAL / SORT HANDLERS (unchanged)
   // ─────────────────────────────────────────────────────────────────────────
 
   const openModal  = () => { document.body.style.overflow = "hidden"; };
   const closeModal = () => { document.body.style.overflow = "unset"; };
 
-  // ── Sort handler ───────────────────────────────────────────────────────────
   const handleSort = (column) => {
     if (sortColumn === column) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -307,16 +304,14 @@ function Students() {
       setSortColumn(column);
       setSortDirection("asc");
     }
-    setCurrentPage(1); // Reset to first page when sorting changes
+    setCurrentPage(1);
   };
 
-  // ── Sort indicator ─────────────────────────────────────────────────────────
   const getSortIndicator = (column) => {
     if (sortColumn !== column) return " ⇅";
     return sortDirection === "asc" ? " ↑" : " ↓";
   };
 
-  // ── Checkbox handlers ──────────────────────────────────────────────────────
   const handleSelectStudent = (studentId) => {
     const newSelected = new Set(selectedStudents);
     if (newSelected.has(studentId)) {
@@ -331,14 +326,13 @@ function Students() {
     if (selectedStudents.size === currentStudents.length) {
       setSelectedStudents(new Set());
     } else {
-      const newSelected = new Set(currentStudents.map(s => s.student_id));
-      setSelectedStudents(newSelected);
+      setSelectedStudents(new Set(currentStudents.map(s => s.student_id)));
     }
   };
 
-  const handleAdd   = () => { openModal(); setShowRegisterModal(true); };
-  const handleImport= () => { openModal(); setShowImportModal(true); };
-  const handleEdit  = (student) => {
+  const handleAdd    = () => { openModal(); setShowRegisterModal(true); };
+  const handleImport = () => { openModal(); setShowImportModal(true); };
+  const handleEdit   = (student) => {
     setEditingStudent({ ...student, hasFace: faceStatusMap[student.student_id] === true });
     openModal();
     setShowEditModal(true);
@@ -351,33 +345,19 @@ function Students() {
     closeModal(); setShowEditModal(false); setEditingStudent(null); refreshAll();
   };
 
-  // ── Bulk archive with SweetAlert ──────────────────────────────────────────
+  // ── Bulk archive ──────────────────────────────────────────────────────────
   const ARCHIVABLE_STATUSES = ["LOA", "Dropout", "Kickout", "Graduated", "Transferred"];
 
   const handleArchiveByStatus = async (status) => {
-    // Validate status
     if (!status || !ARCHIVABLE_STATUSES.includes(status)) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Invalid Status',
-        text: `Cannot archive status: ${status}`,
-        confirmButtonColor: '#3085d6'
-      });
+      Swal.fire({ icon: 'error', title: 'Invalid Status', text: `Cannot archive status: ${status}`, confirmButtonColor: '#3085d6' });
       return;
     }
-
     const count = students.filter(s => s.status === status).length;
     if (count === 0) {
-      Swal.fire({
-        icon: 'info',
-        title: 'No Students Found',
-        text: `No ${status} students to archive.`,
-        confirmButtonColor: '#3085d6'
-      });
+      Swal.fire({ icon: 'info', title: 'No Students Found', text: `No ${status} students to archive.`, confirmButtonColor: '#3085d6' });
       return;
     }
-
-    // Show confirmation dialog
     const result = await Swal.fire({
       title: 'Archive Students?',
       html: `Are you sure you want to archive <strong>${count}</strong> ${status} student${count > 1 ? 's' : ''}?<br><br>Their original status will be preserved and they will be moved to the archived students list.`,
@@ -388,49 +368,23 @@ function Students() {
       confirmButtonText: `Yes, archive ${count} student${count > 1 ? 's' : ''}!`,
       cancelButtonText: 'Cancel'
     });
-
-    if (!result.isConfirmed) {
-      return;
-    }
-
-    // Show loading
+    if (!result.isConfirmed) return;
     Swal.fire({
-      title: 'Archiving...',
-      text: `Please wait while we archive ${count} student${count > 1 ? 's' : ''}.`,
-      allowOutsideClick: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
+      title: 'Archiving...', text: `Please wait while we archive ${count} student${count > 1 ? 's' : ''}.`,
+      allowOutsideClick: false, showConfirmButton: false, didOpen: () => { Swal.showLoading(); }
     });
-
     try {
       const res = await axios.put("/api/students/archive-by-status", { status });
-      
-      // Immediately remove archived students from the local state for instant UI feedback
-      setStudents(prevStudents => 
-        prevStudents.filter(s => s.status !== status)
-      );
-      
+      setStudents(prev => prev.filter(s => s.status !== status));
       Swal.fire({
-        icon: 'success',
-        title: 'Archived Successfully!',
+        icon: 'success', title: 'Archived Successfully!',
         html: `<strong>${res.data.count || count}</strong> ${status} student${(res.data.count || count) > 1 ? 's have' : ' has'} been archived.`,
-        timer: 3000,
-        showConfirmButton: false
+        timer: 3000, showConfirmButton: false
       });
-      
-      // Refresh all data from backend to ensure consistency
       refreshAll();
     } catch (err) {
       console.error('Archive error:', err);
-      Swal.fire({
-        icon: 'error',
-        title: 'Archive Failed',
-        text: err.response?.data?.message || 'Something went wrong. Please try again.',
-        confirmButtonColor: '#3085d6'
-      });
-      // Refresh on error to ensure UI is in sync with backend
+      Swal.fire({ icon: 'error', title: 'Archive Failed', text: err.response?.data?.message || 'Something went wrong. Please try again.', confirmButtonColor: '#3085d6' });
       refreshAll();
     } finally {
       setLoading(false);
@@ -455,7 +409,6 @@ function Students() {
       .replace(/\//g, "-");
   };
 
-  // ── Pagination renderer ───────────────────────────────────────────────────
   const renderPageNumbers = () => {
     if (totalPages <= 1) return null;
     const pages = [];
@@ -469,7 +422,7 @@ function Students() {
       addBtn(1);
       let start = Math.max(2, currentPage - 1);
       let end   = Math.min(totalPages - 1, currentPage + 1);
-      if (currentPage <= 3)             end   = 4;
+      if (currentPage <= 3)              end   = 4;
       if (currentPage >= totalPages - 2) start = totalPages - 3;
       if (start > 2) pages.push(<span key="e1" className="ellipsis">…</span>);
       for (let i = start; i <= end; i++) addBtn(i);
@@ -508,71 +461,121 @@ function Students() {
         </section>
       )}
 
-      {/* ── Stat cards ── */}
-      <div className="stats-container">
-        <div className="stat-card all-students">
-          <div className="stat-icon"><BsFillPeopleFill /></div>
-          <div className="stat-details">
-            <h3>All Students</h3>
-            <p className="stat-number">{stats.total}</p>
+      {/* ── College Analytics Section (replaces stat cards) ── */}
+      {collegeChartLoading ? (
+        <div className="loading-charts">Loading college statistics…</div>
+      ) : (
+        <div className="college-analytics-section">
+          <h3 className="section-title">College Distribution &amp; Status Breakdown</h3>
+
+          <div className="charts-row">
+
+            {/* Pie Chart – Total Students per College */}
+            <div className="chart-card chart-card--pie">
+              <div className="chart-card-header">
+                <h4>Total Students by College</h4>
+              </div>
+              <div className="chart-card-body">
+                <ResponsiveContainer width="100%" height={320}>
+                  <PieChart>
+                    <Pie
+                      data={collegeStatusData}
+                      dataKey="total"
+                      nameKey="collegeAbbrev"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={95}
+                      labelLine={false}
+                      label={({ collegeAbbrev, percent }) =>
+                        `${collegeAbbrev}: ${(percent * 100).toFixed(0)}%`
+                      }
+                    >
+                    {collegeStatusData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={`hsl(${(index * 45) % 360}, 70%, 50%)`} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value, name, props) =>
+                      [`${value} students`, props.payload.college]
+                    }
+                    cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }}
+                  />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="square" iconSize="5px" />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+            {/* Vertical Stacked Bar Chart – Status per College */}
+            <div className="chart-card chart-card--bar">
+              <div className="chart-card-header">
+                <h4>Student Status Breakdown by College</h4>
+              </div>
+              <div className="chart-card-body">
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart
+                    data={collegeStatusData}
+                    margin={{ top: 18, right: 20, left: 0, bottom: 22 }}
+                    barCategoryGap="18%"
+                    barGap={4}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="collegeAbbrev" tick={{ fontSize: 11, fill: '#5c6b7a' }} />
+                    <YAxis tick={{ fontSize: 11, fill: '#5c6b7a' }} />
+                    <Tooltip cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }} />
+                    <Bar dataKey="regular"   stackId="status" fill="#17a057" name="Regular" />
+                    <Bar dataKey="irregular" stackId="status" fill="#f39c12" name="Irregular" />
+                    <Bar dataKey="loa"       stackId="status" fill="#3498db" name="LOA" />
+                    <Bar dataKey="graduated" stackId="status" fill="#9b59b6" name="Graduated" />
+                    <Bar dataKey="withdrawn" stackId="status" fill="#e74c3c" name="Withdrawn" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* ── Summary legend strip (replaces the old stat cards) ── */}
+              <div className="chart-summary-legend">
+                <span className="summary-item summary-total">
+                  <span className="summary-dot" style={{ background: "#3498db" }} />
+                  TOTAL STUDENTS: {stats.total.toLocaleString()}
+                </span>
+                <span className="summary-item">
+                  <span className="summary-dot" style={{ background: "#2ecc71" }} />
+                  REGULAR: {stats.regular.toLocaleString()}
+                </span>
+                <span className="summary-item">
+                  <span className="summary-dot" style={{ background: "#f39c12" }} />
+                  IRREGULAR: {stats.irregular.toLocaleString()}
+                </span>
+                <span className="summary-item">
+                  <span className="summary-dot" style={{ background: "#3498db" }} />
+                  LOA: {stats.loa.toLocaleString()}
+                </span>
+                <span className="summary-item">
+                  <span className="summary-dot" style={{ background: "#9b59b6" }} />
+                  GRADUATED: {stats.graduated.toLocaleString()}
+                </span>
+                <span className="summary-item">
+                  <span className="summary-dot" style={{ background: "#e74c3c" }} />
+                  WITHDRAWN: {stats.withdrawn.toLocaleString()}
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
-        <div className="stat-card regular-students">
-          <div className="stat-icon"><BsPersonFillCheck /></div>
-          <div className="stat-details">
-            <h3>Regular</h3>
-            <p className="stat-number">{stats.regular}</p>
-          </div>
-        </div>
-        <div className="stat-card irregular-students">
-          <div className="stat-icon"><BsPersonFillExclamation /></div>
-          <div className="stat-details">
-            <h3>Irregular</h3>
-            <p className="stat-number">{stats.irregular}</p>
-          </div>
-        </div>
-        <div className="stat-card loa-students">
-          <div className="stat-icon"><BsPersonFillSlash />
-</div>
-          <div className="stat-details">
-            <h3>On Leave (LOA)</h3>
-            <p className="stat-number">{stats.loa}</p>
-          </div>
-        </div>
-        <div className="stat-card graduated-students">
-          <div className="stat-icon"><FaUserGraduate /></div>
-          <div className="stat-details">
-            <h3>Graduated</h3>
-            <p className="stat-number">{stats.graduated}</p>
-          </div>
-        </div>
-        <div className="stat-card withdrawn-students">
-          <div className="stat-icon"><BsPersonFillDash /></div>
-          <div className="stat-details">
-            <h3>Withdrawn</h3>
-            <p className="stat-number">{stats.withdrawn}</p>
-            <p className="stat-sub">Dropout + Kickout</p>
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="student-management">
 
         {/* ── Controls row ── */}
         <div className="controls">
-          {/* Department — dynamic from DB */}
-          <select
-            className="filter-select"
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-          >
+          <select className="filter-select" value={filterDept} onChange={e => setFilterDept(e.target.value)}>
             <option value="">All Departments</option>
             {deptOptions.map(d => (
               <option key={d.id} value={d.dept_name}>{d.dept_name}</option>
             ))}
           </select>
 
-          {/* Program — dynamic, filtered by selected dept */}
           <select
             className="filter-select"
             value={filterProgram}
@@ -587,12 +590,7 @@ function Students() {
             ))}
           </select>
 
-          {/* Year Level */}
-          <select
-            className="filter-select"
-            value={filterYearLevel}
-            onChange={e => setFilterYearLevel(e.target.value)}
-          >
+          <select className="filter-select" value={filterYearLevel} onChange={e => setFilterYearLevel(e.target.value)}>
             <option value="">All Year Levels</option>
             <option value="1">1st Year</option>
             <option value="2">2nd Year</option>
@@ -600,42 +598,26 @@ function Students() {
             <option value="4">4th Year</option>
           </select>
 
-          {/* Batch Year — dynamic from student IDs in DB */}
-          <select
-            className="filter-select"
-            value={filterBatchYear}
-            onChange={e => setFilterBatchYear(e.target.value)}
-          >
+          <select className="filter-select" value={filterBatchYear} onChange={e => setFilterBatchYear(e.target.value)}>
             <option value="">All Batches</option>
             {batchYearOptions.map(y => (
               <option key={y} value={y}>Batch {y}</option>
             ))}
           </select>
 
-          {/* Status */}
-          <select
-            className="filter-select"
-            value={filterStatus}
-            onChange={e => setFilterStatus(e.target.value)}
-          >
+          <select className="filter-select" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
             <option value="">All Statuses</option>
             {ALL_STATUSES.map(s => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>
 
-          {/* Face Registration Status */}
-          <select
-            className="filter-select"
-            value={filterFaceStatus}
-            onChange={e => setFilterFaceStatus(e.target.value)}
-          >
+          <select className="filter-select" value={filterFaceStatus} onChange={e => setFilterFaceStatus(e.target.value)}>
             <option value="">All Face Status</option>
             <option value="registered">Face Registered</option>
             <option value="missing">Face Not Registered</option>
           </select>
 
-          {/* Search */}
           <input
             type="text"
             className="search-input"
@@ -644,7 +626,6 @@ function Students() {
             onChange={e => setSearchQuery(e.target.value)}
           />
 
-          {/* Action buttons */}
           <button className="action-button import-button" onClick={handleImport}>
             <FiDownload className="button-icon" /> Import
           </button>
@@ -657,21 +638,11 @@ function Students() {
         <div className="archive-buttons-section">
           <h4 className="archive-section-title">Archive Students by Status:</h4>
           <div className="archive-buttons-group">
-            <button className="action-button archive-button" onClick={() => handleArchiveByStatus("LOA")}>
-              <FiArchive className="button-icon" /> Archive all LOA students
-            </button>
-            <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Dropout")}>
-              <FiArchive className="button-icon" /> Archive all Dropout students
-            </button>
-            <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Kickout")}>
-              <FiArchive className="button-icon" /> Archive all Kickout students
-            </button>
-            <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Graduated")}>
-              <FiArchive className="button-icon" /> Archive all Graduated students
-            </button>
-            <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Transferred")}>
-              <FiArchive className="button-icon" /> Archive all Transferred students
-            </button>
+            {ARCHIVABLE_STATUSES.map(s => (
+              <button key={s} className="action-button archive-button" onClick={() => handleArchiveByStatus(s)}>
+                <FiArchive className="button-icon" /> Archive all {s} students
+              </button>
+            ))}
           </div>
         </div>
 
@@ -718,6 +689,7 @@ function Students() {
                     Program{getSortIndicator("program_name")}
                   </th>
                   <th>Year Level</th>
+                  <th>Section</th>
                   <th style={{ cursor: "pointer" }} onClick={() => handleSort("status")}>
                     Status{getSortIndicator("status")}
                   </th>
@@ -736,7 +708,7 @@ function Students() {
                           checked={selectedStudents.has(s.student_id)}
                           onChange={() => handleSelectStudent(s.student_id)}
                         />
-                       </td>
+                      </td>
                       <td>{indexOfFirst + idx + 1}</td>
                       <td>
                         <div className="student-id-cell">
@@ -753,6 +725,7 @@ function Students() {
                         {s.program_name || "—"}
                       </td>
                       <td>{s.year_level ? `${s.year_level}` : "—"}</td>
+                      <td>{s.section || "—"}</td>
                       <td>
                         <span className={`status-badge ${statusBadgeClass(s.status)}`}>
                           {s.status || "Unknown"}

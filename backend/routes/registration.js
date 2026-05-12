@@ -157,6 +157,7 @@ router.post("/register", async (req, res) => {
       college_department,
       program,
       year_level,
+      section,
       status,
       email,       
       images
@@ -165,6 +166,8 @@ router.post("/register", async (req, res) => {
     if (!student_id) {
       throw new Error("Missing required student data");
     }
+
+    if (!section) throw new Error("Section is required");
 
     // Check if student already exists
     const [existingStudents] = await connection.query(
@@ -226,6 +229,7 @@ router.post("/register", async (req, res) => {
       const sanitizedLastName = last_name?.trim().toUpperCase();
       const sanitizedMiddleName = middle_name?.trim().toUpperCase() || null;
       const sanitizedExtensionName = extension_name?.trim() || null;
+      const sanitizedSection = section?.trim() || null;
       const sanitizedStatus = status?.trim() || "Regular";
       
       // Validate required fields
@@ -242,8 +246,8 @@ router.post("/register", async (req, res) => {
       await connection.query(
         `INSERT INTO students
         (student_id, email, first_name, last_name, middle_name, extension_name,
-          program_id, year_level, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          program_id, year_level, section, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           student_id,
           sanitizedEmail,   
@@ -253,6 +257,7 @@ router.post("/register", async (req, res) => {
           sanitizedExtensionName,
           programId,
           yearLevelNum,
+          sanitizedSection,
           sanitizedStatus
         ]
       );
@@ -293,6 +298,12 @@ router.post("/register", async (req, res) => {
         updates.push("year_level = ?");
         updateValues.push(parseInt(year_level));
       }
+
+      if (section && section !== student.section) {
+        updates.push("section = ?");
+        updateValues.push(section);
+      }
+
       if (status && status !== student.status) {
         updates.push("status = ?");
         updateValues.push(status.trim());
@@ -439,11 +450,13 @@ router.get("/students", async (req, res) => {
     const [rows] = await db.query(`
       SELECT
         s.student_id,
+        s.email,
         s.first_name,
         s.last_name,
         s.middle_name,
         s.program_id,
         s.year_level,
+        s.section,
         s.status,
         s.is_archived,
         s.created_at,
@@ -517,7 +530,7 @@ router.put("/students/:student_id", async (req, res) => {
     const { student_id } = req.params;
     const {
       first_name, last_name, middle_name, extension_name,
-      program_id, year_level, status,
+      program_id, year_level, status, section
     } = req.body;
  
     // ── Validate status ──────────────────────────────────────────────────────
@@ -531,7 +544,7 @@ router.put("/students/:student_id", async (req, res) => {
       `UPDATE students
        SET first_name = ?, last_name = ?, middle_name = ?,
            extension_name = ?, program_id = ?,
-           year_level = ?, status = ?, is_archived = 0, archived_status = NULL,
+           year_level = ?, section = ?, status = ?, is_archived = 0, archived_status = NULL,
            updated_at = CURRENT_TIMESTAMP
        WHERE student_id = ?`,
       [
@@ -541,6 +554,7 @@ router.put("/students/:student_id", async (req, res) => {
         extension_name?.trim()             || null,
         parseInt(program_id),
         year_level,
+        section,
         status,
         student_id,
       ]
@@ -577,6 +591,7 @@ router.get("/archived-students", async (req, res) => {
         d.dept_name AS college_department,
         p.program_name,
         s.year_level,
+        s.section,
         COALESCE(s.archived_status, s.status) AS status,
         s.is_archived,
         s.created_at,

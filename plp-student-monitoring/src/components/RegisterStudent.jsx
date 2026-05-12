@@ -35,6 +35,7 @@ function RegisterStudent({ onClose, onSuccess }) {
   const [lastName, setLastName] = useState("");
   const [middleName, setMiddleName] = useState("");
   const [yearLevel, setYearLevel] = useState("");
+  const [section, setSection] = useState("");
   const [program, setProgram] = useState("");
   const [autoDept, setAutoDept] = useState("");       // auto-filled from selected program
   const [extension, setExtension] = useState("");
@@ -53,6 +54,7 @@ function RegisterStudent({ onClose, onSuccess }) {
   const collegeRef = useRef(null);
   const programRef = useRef(null);
   const yearLevelRef = useRef(null);
+  const sectionRef = useRef(null);
   const statusRef = useRef(null);
 
   // Tracks which required fields have failed validation
@@ -64,6 +66,7 @@ function RegisterStudent({ onClose, onSuccess }) {
     college:    "",
     program:    "",
     yearLevel:  "",
+    section:    "",
     status:     "",
   });
 
@@ -181,6 +184,7 @@ function RegisterStudent({ onClose, onSuccess }) {
       firstName: !firstName.trim() ? "First Name is required" : "",
       program: !program ? "Program is required" : "",
       yearLevel: !yearLevel.toString().trim() ? "Year Level is required" : "",
+      section: !section ? "Section is required" : "",
       status: !status ? "Status is required" : "",
       emailId: !emailId.trim()
         ? "Email is required"
@@ -242,6 +246,7 @@ function RegisterStudent({ onClose, onSuccess }) {
         college_department: autoDept,
         program: program,
         year_level: yearLevel,
+        section: section,
         status: status,
         email: emailId.trim().toLowerCase(),
         images: [] // No images
@@ -711,21 +716,17 @@ function RegisterStudent({ onClose, onSuccess }) {
               </div>
 
               <div className="input-group">
-                <label>Section<span className="required">*</span></label>
-                <select 
-                  value={section} 
-                  onChange={(e) => setSection(e.target.value)} 
-                  ref={sectionRef} 
+                <label>Section <span className="required">*</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g., A, B, C, Benner, Campbell"
+                  value={section}
+                  onChange={(e) => setSection(e.target.value)}
+                  className={formErrors.section ? "input-error" : ""}
+                  ref={sectionRef}
                   onKeyDown={(e) => handleEnter(e, statusRef)}
-                >
-                  <option value="">Select Section</option>
-                  <option value="A">A</option>
-                  <option value="B">B</option>
-                  <option value="C">C</option>
-                  <option value="D">D</option>
-                  <option value="E">E</option>
-                  <option value="F">F</option>
-                </select>
+                  required
+                />
                 {formErrors.section && <span className="field-error">{formErrors.section}</span>}
               </div>
             </div>
