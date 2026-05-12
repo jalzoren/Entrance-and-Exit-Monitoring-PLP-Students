@@ -4,6 +4,8 @@ import '../componentscss/ManualInputModal.css';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { useLogContext } from '../context/LogContext';
 import Swal from 'sweetalert2';
+import { playEntryExitSuccess, playErrorSound  } from '../../../backend/src/audioUtils';
+import { playEntryRecorded, playExitRecorded, playAlreadyEntered, playAlreadyExited, playNoEntryRecord } from '../../../backend/src/audioUtils';
 
 function ManualInputModal({ onClose, mode = 'ENTRY' }) {
   const [studentId, setStudentId] = useState('');
@@ -69,7 +71,15 @@ function ManualInputModal({ onClose, mode = 'ENTRY' }) {
       });
     }
       
-      if (!res.ok) throw new Error(data.message || 'Entry failed.');
+      if (!res.ok) {
+        // data contains action field from backend
+        const action = data.action;
+        if (action === 'ALREADY_ENTERED') playAlreadyEntered();
+        else if (action === 'ALREADY_EXITED') playAlreadyExited();
+        else if (action === 'NO_ENTRY') playNoEntryRecord();
+        else playErrorSound(data.message || 'Entry failed.');
+        throw new Error(data.message || 'Entry failed.');
+      }
 
       // Convert number to text for display
       const yearLevelText = getYearLevelText(data.year_level);
@@ -89,13 +99,16 @@ function ManualInputModal({ onClose, mode = 'ENTRY' }) {
 
       setStatus({ type: 'success', message: data.message });
       setStudentId('');
-      
+      if (mode === 'ENTRY') {
+        playEntryRecorded();
+      } else {
+        playExitRecorded();
+      }
       showEntryExitAlert({
         action:     data.action || mode,
         student:    data.student,
         department: data.department,
       });
-      
       setTimeout(() => {
         onClose();
       }, 1500);

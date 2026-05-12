@@ -37,6 +37,7 @@ const REQUIRED_COLUMNS = [
   "College Department",
   "Program Name",
   "Year Level",
+  "Section",
   "Enrollment Status",
 ];
 
@@ -53,6 +54,8 @@ const VALID_YEAR_LEVELS = {
 const VALID_STATUSES   = ["Inactive", "Regular", "Irregular", "LOA", "Dropout", "Kickout", "Graduated", "Transferred"];
 const VALID_EXTENSIONS = ["", "Jr.", "Sr.", "I", "II", "III", "IV"];
 
+// VALID_SECTIONS removed – any text allowed.
+
 const STUDENT_ID_REGEX    = /^\d{2}-\d{5}$/;
 const PLPASIG_EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@plpasig\.edu\.ph$/i;
 
@@ -68,6 +71,7 @@ const validateRow = (row, rowNumber, normalizedHeaders, programMap, deptMap) => 
   const collegeDept  = getFieldValue(row, normalizedHeaders, "College Department");
   const programName  = getFieldValue(row, normalizedHeaders, "Program Name");
   const yearLevel    = getFieldValue(row, normalizedHeaders, "Year Level");
+  const section      = getFieldValue(row, normalizedHeaders, "Section");
   const enrollStatus = getFieldValue(row, normalizedHeaders, "Enrollment Status");
   const extensionName = getFieldValue(row, normalizedHeaders, "Extension Name");
 
@@ -79,6 +83,7 @@ const validateRow = (row, rowNumber, normalizedHeaders, programMap, deptMap) => 
   if (!collegeDept)  errors.push(`Row ${rowNumber}: College Department is empty.`);
   if (!programName)  errors.push(`Row ${rowNumber}: Program Name is empty.`);
   if (!yearLevel)    errors.push(`Row ${rowNumber}: Year Level is empty.`);
+  if (!section)      errors.push(`Row ${rowNumber}: Section is empty.`);
   if (!enrollStatus) errors.push(`Row ${rowNumber}: Enrollment Status is empty.`);
 
   if (studentId && !STUDENT_ID_REGEX.test(studentId))
@@ -90,11 +95,6 @@ const validateRow = (row, rowNumber, normalizedHeaders, programMap, deptMap) => 
   if (collegeDept) {
     const deptKey = collegeDept.toLowerCase().trim();
     if (!deptMap[deptKey]) {
-      const validDepts = Object.keys(deptMap).map(k => {
-        // Find original case from lookup
-        const [deptRow] = Object.values(deptMap);
-        return collegeDept;
-      });
       errors.push(`Row ${rowNumber}: College Department "${collegeDept}" not found in system. Please check the department name.`);
     }
   }
@@ -108,6 +108,7 @@ const validateRow = (row, rowNumber, normalizedHeaders, programMap, deptMap) => 
 
   if (yearLevel && !(yearLevel.toLowerCase() in VALID_YEAR_LEVELS))
     errors.push(`Row ${rowNumber}: Year Level "${yearLevel}" is invalid. Valid options: 1, 2, 3, 4.`);
+
 
   if (enrollStatus && !VALID_STATUSES.includes(enrollStatus))
     errors.push(`Row ${rowNumber}: Enrollment Status "${enrollStatus}" is invalid. Valid options: ${VALID_STATUSES.join(", ")}.`);
@@ -313,6 +314,13 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       const status      = getFieldValue(row, normalizedHeaders, "Enrollment Status");
       const extName     = getFieldValue(row, normalizedHeaders, "Extension Name") || null;
 
+      const section = getFieldValue(row, normalizedHeaders, "Section");
+      if (!section) {
+        failedRows.push({ studentId, reason: "Section is empty" });
+        continue;
+      }
+
+
       try {
         // ── Lookup program ID from database ───────────────────────────────
         const progKey = programName.toLowerCase().trim();
@@ -327,8 +335,8 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
           `INSERT INTO students
              (student_id, email, first_name, last_name, middle_name,
               extension_name, program_id,
-              year_level, status, is_archived, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
+              year_level, section, status, is_archived, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NOW())`,
           [
             studentId,
             email,
@@ -338,6 +346,7 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
             extName,
             programData.id,
             yearLevel,
+            section,
             status,
           ]
         );
@@ -352,8 +361,8 @@ router.post("/import-students", upload.single("file"), async (req, res) => {
       inserted:       insertedStudents.length,
       failed:         failedRows.length,
       skipped:        skippedRows.length,
-      skippedDetails: skippedRows,    // [{ studentId, reason }]
-      failedDetails:  failedRows,     // [{ studentId, reason }]
+      skippedDetails: skippedRows,
+      failedDetails:  failedRows,
     });
 
   } catch (error) {

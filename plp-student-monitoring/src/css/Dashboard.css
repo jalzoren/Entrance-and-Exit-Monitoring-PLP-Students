@@ -1005,6 +1005,16 @@ html, body {
   color: var(--color-primary);
 }
 
+/* Quick Actions Section Superadmin */
+.quick-actions-section-superadmin {
+  background: white;
+  border-radius: 20px;
+  padding: 28px;
+  margin-top:0px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+  border: 1px solid var(--color-border-light);
+}
+
 /* Quick Actions Section */
 .quick-actions-section {
   background: white;
@@ -1482,13 +1492,12 @@ html, body {
 
 /* ═══════════════════════════════════════════════════════════════════════════
    INFO PANELS ROW  (Notifications + Recent Activity)
-   Add this block to Dashboard.css
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Two-column grid ────────────────────────────────────────────────────────*/
 .info-panels-row {
   display: grid;
-  grid-template-columns: 1fr 1.6fr;   /* notifications narrower, activity wider */
+  grid-template-columns: 0.7fr 1.6fr;   /* notifications narrower, activity wider */
   gap: 16px;
   margin: 20px 0;
   align-items: start;

@@ -22,7 +22,7 @@ const ImportStudents = ({ isOpen, onClose, onSuccess }) => {
   // ── Column definitions (mirrors backend) ──────────────────────────────────
   const requiredColumns = [
     'Student ID', 'Email', 'First Name', 'Middle Name', 'Last Name',
-    'College Department', 'Program Name', 'Year Level', 'Enrollment Status',
+    'College Department', 'Program Name', 'Year Level', 'Section', 'Enrollment Status',
   ];
 
   // ── File handling ─────────────────────────────────────────────────────────

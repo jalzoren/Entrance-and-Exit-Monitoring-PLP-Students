@@ -4,6 +4,7 @@ import { parseVisitorConfig } from '../utils/xmlParser';
 import '../componentscss/VisitorModal.css';
 import '../css/GlobalModal.css';
 import Swal from 'sweetalert2';
+import { playVisitorPassIssued, playBeep, speakMessage, playErrorSound, playAlreadyEntered } from '../../../backend/src/audioUtils';
 
 function VisitorModal({ onClose }) {
   const [config, setConfig] = useState(null);
@@ -93,10 +94,17 @@ function VisitorModal({ onClose }) {
         });
       }
 
-      if (!res.ok) throw new Error(data.message || 'Submission failed.');
+      if (!res.ok) {
+        if (data.action === 'ALREADY_ENTERED') {
+          playAlreadyEntered();
+        } else {
+          playErrorSound(data.message || 'Submission failed.');
+        }
+        throw new Error(data.message);
+      }
 
       setStatus({ type: 'success', message: data.message || 'Visitor pass registered.' });
-      
+      playVisitorPassIssued();
       const resetForm = {};
       config.fields.forEach(field => {
         resetForm[field.name] = '';

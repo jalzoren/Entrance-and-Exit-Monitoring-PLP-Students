@@ -38,7 +38,7 @@
 }
 
 .gate-current-time {
-  margin-left: auto;
+  text-align: left;
   font-size: 13px;
   color: #555;
 }
@@ -312,6 +312,7 @@
     gap: 10px;
   }
   .gate-current-time {
+    text-align: left;
     margin-left: 0;
   }
   .academic-status-banner {
@@ -320,5 +321,34 @@
   }
   .academic-status-divider {
     display: none;
+  }
+}
+
+/* GeneralSettings.css – add at the end */
+
+.general-settings-row {
+  display: flex;
+  flex-direction: row;
+  gap: 32px;
+  align-items: stretch;
+}
+
+.general-settings-row > div {
+  flex: 1;
+  min-width: 0; /* prevents overflow */
+}
+
+/* On screens narrower than 1200px, stack them vertically */
+@media (max-width: 1199px) {
+  .general-settings-row {
+    flex-direction: column;
+    gap: 32px;
+  }
+}
+
+/* Optional: make each section take full width on small devices */
+@media (max-width: 768px) {
+  .general-settings-row {
+    gap: 24px;
   }
 }

@@ -71,6 +71,7 @@ function EditStudent({ student, onClose }) {
   const [extension,   setExtension]   = useState(student.extension_name    || "");
   const [program,     setProgram]     = useState(student.program_id || "");
   const [yearLevel,   setYearLevel]   = useState(student.year_level        || "");
+  const [section, setSection] = useState(student.section || "");
   const [status,      setStatus]      = useState(student.status            || "");
   const [formErrors,  setFormErrors]  = useState({});
   const [savingInfo,  setSavingInfo]  = useState(false);
@@ -147,6 +148,7 @@ function EditStudent({ student, onClose }) {
       lastName:  !lastName.trim()  ? "Last Name is required"           : "",
       firstName: !firstName.trim() ? "First Name is required"          : "",
       yearLevel: !yearLevel        ? "Year Level is required"          : "",
+      section:  !section          ? "Section is required"             : "",
       status:    !status           ? "Status is required"              : "",
       program:   !program          ? "Program is required"             : "",
     };
@@ -170,6 +172,7 @@ function EditStudent({ student, onClose }) {
           extension_name: extension,
           program_id: parseInt(program),
           year_level: yearLevel,
+          section: section,
           status,
         }
       );
@@ -434,6 +437,21 @@ function EditStudent({ student, onClose }) {
                   <option value="4">4th Year</option>
                 </select>
                 {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="input-group">
+                <label>Section <span className="required">*</span></label>
+                <input
+                  type="text"
+                  placeholder="e.g., A, B, C, Benner, Campbell"
+                  value={section}
+                  onChange={(e) => { setSection(e.target.value); setFormErrors(p => ({ ...p, section: "" })); }}
+                  className={formErrors.section ? "input-error" : ""}
+                  required
+                />
+                {formErrors.section && <span className="field-error">{formErrors.section}</span>}
               </div>
             </div>
 

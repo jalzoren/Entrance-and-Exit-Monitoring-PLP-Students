@@ -1,5 +1,5 @@
 // GeneralSettings.jsx
-// Combines Gate Settings + Academic Year Settings under one tab.
+// Combines Gate Settings + Academic Year Settings side by side
 import React, { useState, useEffect } from 'react';
 import "../../../css/GeneralSettings.css";
 import LogoSettings from './LogoSettings';
@@ -49,7 +49,6 @@ function GateSettingsSection() {
 
     load();
 
-    // Refresh live gate status every 60 s
     const interval = setInterval(() => {
       fetch('/api/settings/gate-status')
         .then(r => r.json())
@@ -97,7 +96,7 @@ function GateSettingsSection() {
   if (loading) return <div className="loading-state">Loading gate settings…</div>;
 
   return (
-    <div className="settings-section">
+    <div className="settings-section gate-settings-section">
       <h2 className="section-title">GATE SETTINGS</h2>
       <p className="setting-description" style={{ marginBottom: 16 }}>
         Define the allowed time windows for student entry and exit. Outside these
@@ -210,6 +209,12 @@ function AcademicYearSection() {
   const [saving,       setSaving]       = useState(false);
   const [promoting,    setPromoting]    = useState(false);
 
+  const formatToDMY = (dateStr) => {
+    if (!dateStr) return '—';
+    const [year, month, day] = dateStr.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   // ── Load ──────────────────────────────────────────────────────────────────
   useEffect(() => {
     const load = async () => {
@@ -240,13 +245,11 @@ function AcademicYearSection() {
     load();
   }, []);
 
-  // Auto-derive end year from start year
   const handleYearStartChange = (e) => {
     const start = e.target.value;
     setForm(p => ({ ...p, school_year_start: start, school_year_end: String(parseInt(start) + 1) }));
   };
 
-  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (form.sem1_end <= form.sem1_start) {
       Swal.fire({ icon: 'warning', title: 'Invalid 1st Semester',
@@ -281,7 +284,6 @@ function AcademicYearSection() {
     }
   };
 
-  // ── Promote ───────────────────────────────────────────────────────────────
   const handlePromote = async () => {
     const result = await Swal.fire({
       icon:             'warning',
@@ -308,7 +310,6 @@ function AcademicYearSection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      // REFRESH academic info after promotion
       const acadRes = await fetch('/api/settings/academic-year');
       setAcademicInfo(await acadRes.json());
 
@@ -330,7 +331,7 @@ function AcademicYearSection() {
   if (loading) return <div className="loading-state">Loading academic year settings…</div>;
 
   return (
-    <div className="settings-section">
+    <div className="settings-section academic-settings-section">
       <h2 className="section-title">ACADEMIC YEAR SETTINGS</h2>
       <p className="setting-description" style={{ marginBottom: 16 }}>
         Set the current school year and semester dates. The system auto-detects
@@ -356,7 +357,7 @@ function AcademicYearSection() {
           <div className="academic-status-divider" />
           <div className="academic-status-item">
             <span className="academic-label">Today</span>
-            <span className="academic-value">{academicInfo.today}</span>
+            <span className="academic-value">{formatToDMY(academicInfo.today)}</span>
           </div>
           {academicInfo.promotionDue && (
             <div className="promotion-warning">
@@ -447,12 +448,12 @@ function AcademicYearSection() {
       </div>
 
       {/* ── Year-level promotion ────────────────────────────────────────── */}
-      <div className="settings-section" style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #e9ecef' }}>
+      <div className="settings-section" style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid #e9ecef', marginBottom: "20px" }}>
         <h2 className="section-title">YEAR LEVEL PROMOTION</h2>
         <p className="setting-description" style={{ marginBottom: 12 }}>
           Run at the end of the school year. Regular students advance one year level;
           4th-year Regular students are automatically marked as <strong>Graduated</strong>.
-          Irregular, LOA, Dropout, and other statuses are <strong>not affected</strong>.
+          Irregular, LOA, Dropout and other statuses are <strong>not affected</strong>.
         </p>
 
         {academicInfo?.promotionDue && (
@@ -464,11 +465,11 @@ function AcademicYearSection() {
         <div className="save-settings">
           <button
             className="save-button"
-            style={{ background: 'linear-gradient(135deg, #1565c0, #0d47a1)' }}
+            style={{ background: 'linear-gradient(135deg, #3b6da6, #0d47a1)', marginBottom: "10px" }}
             onClick={handlePromote}
             disabled={promoting}
           >
-            {promoting ? 'Promoting…' : '🎓 Promote Regular Students'}
+            {promoting ? 'Promoting…' : 'Promote Regular Students'}
           </button>
         </div>
       </div>
@@ -477,16 +478,16 @@ function AcademicYearSection() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMBINED EXPORT
+// COMBINED EXPORT – now side by side
 // ─────────────────────────────────────────────────────────────────────────────
 
 function GeneralSettings() {
   return (
-    <>
+    <div className="general-settings-row">
        <LogoSettings />
       <GateSettingsSection />
       <AcademicYearSection />
-    </>
+    </div>
   );
 }
 

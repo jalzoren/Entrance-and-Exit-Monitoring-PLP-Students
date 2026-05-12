@@ -5,6 +5,8 @@ import '../componentscss/QRScanModal.css';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { useLogContext } from '../context/LogContext';
 import Swal from 'sweetalert2';
+import { playEntryExitSuccess, playErrorSound  } from '../../../backend/src/audioUtils';
+import { playEntryRecorded, playExitRecorded, playAlreadyEntered, playAlreadyExited, playNoEntryRecord } from '../../../backend/src/audioUtils';
 
 function QRScanModal({ onClose, mode = 'ENTRY' }) {
   const videoRef   = useRef(null);
@@ -61,7 +63,14 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
         });
       }
       
-      if (!res.ok) throw new Error(data.message || 'QR scan failed.');
+      if (!res.ok) {
+        const action = data.action;
+        if (action === 'ALREADY_ENTERED') playAlreadyEntered();
+        else if (action === 'ALREADY_EXITED') playAlreadyExited();
+        else if (action === 'NO_ENTRY') playNoEntryRecord();
+        else playErrorSound(data.message || 'QR scan failed.');
+        throw new Error(data.message || 'QR scan failed.');
+      }
 
       // Format the year level
       const formattedYearLevel = formatYearLevel(data.year_level);
@@ -84,7 +93,11 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
       
       console.log('📱 Adding to context:', logEntry);
       addLog(logEntry);
-
+      if (mode === 'ENTRY') {
+        playEntryRecorded();
+      } else {
+        playExitRecorded();
+      }
       showEntryExitAlert({
         action: data.action || mode,
         student: data.student,
@@ -97,6 +110,7 @@ function QRScanModal({ onClose, mode = 'ENTRY' }) {
 
     } catch (err) {
       console.error('❌ QR Scan Error:', err);
+      playErrorSound(err.message);
       setStatus({ type: 'error', message: err.message });
       scannedRef.current = false;
       if (rafRef.current) {
