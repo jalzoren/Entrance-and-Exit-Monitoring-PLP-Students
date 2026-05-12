@@ -122,6 +122,9 @@
   margin-bottom: 30px;
   padding-bottom: 20px;
   border-bottom: 1px solid #e9ecef;
+  background-color: #5487764a;
+  padding: 20px;
+  border-radius: 10px;
 }
 
 .settings-section:last-of-type {

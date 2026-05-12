@@ -12,6 +12,7 @@ import { FaArrowLeft } from "react-icons/fa";
 import { LuVideo, LuVideoOff } from "react-icons/lu";
 import ManualInputModal from "../components/ManualInputModal.jsx";
 import QRScanModal from "../components/QRScanModal.jsx";
+import { playEntryRecorded, playExitRecorded, playAlreadyEntered, playAlreadyExited, playNoEntryRecord, playEntryExitSuccess, playErrorSound  } from '../../../backend/src/audioUtils';
 
 function FaceRecognition({ mode = 'EXIT' }) {
   const videoRef        = useRef(null);
@@ -230,7 +231,13 @@ function FaceRecognition({ mode = 'EXIT' }) {
       if (!result.validated) {
         setCameraStatus('unauthorized');
         updateCameraStatus('unauthorized');
-
+        
+        // Play appropriate error sound based on message or action
+        if (result.message.includes('already entered')) playAlreadyEntered();
+        else if (result.message.includes('already exited')) playAlreadyExited();
+        else if (result.message.includes('No entry record')) playNoEntryRecord();
+        else playErrorSound(result.message);
+        
         await Swal.fire({
           html: `<div style="font-family:'Montserrat',sans-serif;">
             <p style="font-size:1rem;color:#333;margin:0;">${result.message}</p>
@@ -272,6 +279,7 @@ function FaceRecognition({ mode = 'EXIT' }) {
           student:    result.student,
           department: result.department,
         });
+        playEntryExitSuccess(mode, result.student); 
         setTimeout(restartScan, 3200);
       }, 1500);
 

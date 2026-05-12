@@ -19,6 +19,7 @@ const analyticsRoute = require('./routes/analytics');
 const { router: timeRouter } = require('./src/time');
 const settingsRoute = require('./routes/systemSettings');
 const notificationsRoute = require('./routes/notifications');
+const studentTabAnalytics = require('./routes/studentTabAnalytics');
 
 const PORT = process.env.PORT || 5000;
 
@@ -38,6 +39,7 @@ app.use('/api/qrscan', qrScanRoute);
 app.use('/api/visitor', visitorRoute);
 app.use('/api/visitor-exit', visitorExitRoute);
 app.use('/api/notifications', notificationsRoute);
+app.use('/api/analytics', studentTabAnalytics);
 
 // Start server
 app.listen(PORT, () => {

@@ -55,12 +55,12 @@
   border-radius: 8px;
   box-shadow: 0 2px 4px var(--color-shadow-soft);
   margin-left: 20px;
-
+  border-color: 2px solid #d97706 !important;
 }
 
 .notification_box{
     margin: 30px;
-
+  border-color: 2px solid #d97706 !important;
 }
 
 .notification_wrapper {
@@ -674,130 +674,198 @@
   box-shadow: 0 0 0 2px rgba(224, 168, 0, 0.25);
 }
 
-/* ====================== STUDENT DASHBOARD STATISTICS ====================== */
-
-.stats-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 20px;
-  margin: 25px 0 30px 0;
-  padding: 0 2rem;
+/* ═══════════════════════════════════════════════════════════════
+   COLLEGE ANALYTICS SECTION
+   ═══════════════════════════════════════════════════════════════ */
+ 
+.loading-charts {
+  text-align: center;
+  padding: 40px;
+  color: #888;
+  font-size: 14px;
 }
-
-.stat-card {
+ 
+.college-analytics-section {
+  margin: 20px 20px 24px;
+  padding: 20px 24px;
   background: white;
   border-radius: 12px;
-  padding: 24px 20px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e9ecef;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+}
+ 
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-primary-dark);
+  margin: 0 0 18px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--color-primary);
+}
+ 
+/* Two-column chart row — pie is narrower, bar is wider */
+.charts-row {
+  display: grid;
+  grid-template-columns: minmax(320px, 420px) minmax(360px, 1fr);
+  gap: 20px;
+  align-items: stretch;
+}
+ 
+.chart-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: #fff;
+  border: 1px solid #efefef;
+  border-radius: 14px;
+  padding: 22px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  min-height: 430px;
+}
+ 
+.chart-card-header {
+  margin-bottom: 16px;
+}
+ 
+.chart-card h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #172b4d;
+  text-align: left;
+}
+ 
+.chart-card-body {
+  flex: 1 1 auto;
+  min-height: 320px;
+}
+ 
+.chart-card-body .recharts-wrapper,
+.chart-card-body .recharts-surface,
+.chart-card-body svg {
+  width: 100% !important;
+  height: 100% !important;
+}
+ 
+.chart-card--pie {
+  flex: 0 0 420px;
+}
+ 
+.chart-card--bar {
+  flex: 1 1 0;
+  min-width: 420px;
+}
+ 
+/* ── Summary legend strip (lives inside bar chart card) ─────────────────── */
+.chart-summary-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 10px 4px 2px;
+  margin-top: 8px;
+  border-top: 1px solid #eee;
+}
+ 
+.summary-item {
   display: flex;
   align-items: center;
-  gap: 18px;
-  transition: all 0.3s ease;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #444;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
 }
-
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
-  border-color: var(--color-primary-dark, #548776);
+ 
+.summary-item.summary-total {
+  color: #1a5276;
 }
-
-.stat-icon {
-  font-size: 42px;
-  width: 70px;
-  height: 70px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 12px;
+ 
+.summary-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
   flex-shrink: 0;
 }
-
-.all-students .stat-icon {
-  background-color: #e3f2fd;
-  color: #1976d2;
+ 
+/* ── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .chart-card--pie {
+    flex: 0 0 280px;
+  }
 }
-
-.regular-students .stat-icon {
-  background-color: #e8f5e9;
-  color: #388e3c;
-}
-
-.irregular-students .stat-icon {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.stat-details {
-  flex: 1;
-}
-
-.stat-details h3 {
-  margin: 0 0 6px 0;
-  font-size: 15px;
-  font-weight: 600;
-  color: #555;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.stat-number {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 700;
-  color: #222;
-  line-height: 1;
-}
-
-.all-students .stat-number { color: #1976d2; }
-.regular-students .stat-number { color: #388e3c; }
-.irregular-students .stat-number { color: #f57c00; }
-
-/* Optional: Make cards slightly more vibrant */
-.stat-card.all-students {
-  border-left: 5px solid #1976d2;
-}
-
-.stat-card.regular-students {
-  border-left: 5px solid #388e3c;
-}
-
-.stat-card.irregular-students {
-  border-left: 5px solid #f57c00;
-}
-
-/* Responsive Adjustments */
+ 
 @media (max-width: 768px) {
-  .stats-container {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 16px;
-    margin: 20px 0 25px 0;
-    padding: 0 1rem;
+  .charts-row {
+    flex-direction: column;
   }
-
-  .stat-card {
-    padding: 20px 16px;
-    gap: 14px;
+ 
+  .chart-card--pie,
+  .chart-card--bar {
+    flex: unset;
+    width: 100%;
   }
-
-  .stat-icon {
-    font-size: 36px;
-    width: 60px;
-    height: 60px;
+ 
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
   }
-
-  .stat-number {
-    font-size: 28px;
+ 
+  .filter-select,
+  .search-input {
+    width: 100%;
+  }
+ 
+  .program-cell {
+    max-width: 120px;
+  }
+ 
+  .student-table {
+    font-size: 12px;
+  }
+ 
+  .student-table th,
+  .student-table td {
+    padding: 8px 10px;
   }
 }
-
+ 
 @media (max-width: 480px) {
-  .stats-container {
-    grid-template-columns: 1fr;
-    gap: 14px;
+  .college-analytics-section {
+    margin: 16px 12px;
+    padding: 16px;
+  }
+ 
+  .student-management {
+    padding: 10px;
+  }
+ 
+  .filter-select,
+  .search-input,
+  .action-button {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+ 
+  .student-table {
+    font-size: 11px;
+  }
+ 
+  .student-table th,
+  .student-table td {
+    padding: 6px 8px;
+  }
+ 
+  .page-number {
+    min-width: 32px;
+    height: 32px;
+    font-size: 13px;
   }
 }
-
+ 
 
 /* Face registration legend — sits between controls and table */
 .face-legend {
@@ -879,8 +947,8 @@
 }
  
 .stat-icon {
-  font-size: 36px;
-  width: 58px; height: 58px;
+  font-size: 30px;
+  width: 50px; height: 50px;
   display: flex; align-items: center; justify-content: center;
   border-radius: 10px;
   flex-shrink: 0;
@@ -892,27 +960,24 @@
                    text-transform: uppercase; letter-spacing: 0.4px; margin: 0 0 4px; }
  
 /* Individual card accents */
-.stat-card.all-students       { border-left: 5px solid #1976d2; }
 .stat-card.all-students       .stat-icon { background:#e3f2fd; color:#1976d2; }
 .stat-card.all-students       .stat-number { color:#1976d2; }
- 
-.stat-card.regular-students   { border-left: 5px solid #388e3c; }
+
 .stat-card.regular-students   .stat-icon { background:#e8f5e9; color:#388e3c; }
 .stat-card.regular-students   .stat-number { color:#388e3c; }
  
-.stat-card.irregular-students { border-left: 5px solid #f57c00; }
+
 .stat-card.irregular-students .stat-icon { background:#fff3e0; color:#f57c00; }
 .stat-card.irregular-students .stat-number { color:#f57c00; }
  
-.stat-card.loa-students       { border-left: 5px solid #0277bd; }
 .stat-card.loa-students       .stat-icon { background:#e1f5fe; color:#0277bd; }
 .stat-card.loa-students       .stat-number { color:#0277bd; }
  
-.stat-card.graduated-students { border-left: 5px solid #1565c0; }
+
 .stat-card.graduated-students .stat-icon { background:#e8eaf6; color:#1565c0; font-size:28px; }
 .stat-card.graduated-students .stat-number { color:#1565c0; }
  
-.stat-card.withdrawn-students { border-left: 5px solid #c62828; }
+
 .stat-card.withdrawn-students .stat-icon { background:#ffebee; color:#c62828; }
 .stat-card.withdrawn-students .stat-number { color:#c62828; }
  

@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { showEntryExitAlert } from '../components/ShowEntryExitAlerts.jsx';
 import { LuCircleCheckBig } from "react-icons/lu";
 import Swal from 'sweetalert2';
+import { playEntryRecorded, playExitRecorded, playAlreadyEntered, playAlreadyExited, playNoEntryRecord } from '../../../backend/src/audioUtils';
 
 function FaceScan({ mode = 'ENTRY' }) {
   const navigate   = useNavigate();
@@ -117,11 +118,17 @@ function FaceScan({ mode = 'ENTRY' }) {
               student:    data.student,
               department: data.department,
             });
+            if (data.action === 'ENTRY') {
+              playEntryRecorded(data.student);
+            } else if (data.action === 'EXIT') {
+              playExitRecorded(data.student);
+            }
             navigate(-1);
           }, 2000);
 
-        } else if (data.action === 'ALREADY_ENTERED' || data.action === 'ALREADY_EXITED') {
+        } else if (data.action === 'ALREADY_ENTERED') {
           clearInterval(intervalRef.current);
+          playAlreadyEntered();  // play your recorded error voice
           setScanStatus('warning');
           setStatusMsg(data.message);
           setRecognized({
@@ -132,6 +139,31 @@ function FaceScan({ mode = 'ENTRY' }) {
           setShowInfo(true);
           setTimeout(() => navigate(-1), 3000);
 
+        } else if (data.action === 'ALREADY_EXITED') {
+          clearInterval(intervalRef.current);
+          playAlreadyExited();
+          setScanStatus('warning');
+          setStatusMsg(data.message);
+          setRecognized({
+            name:       data.student,
+            student_id: data.student_id,
+            department: data.department,
+          });
+          setShowInfo(true);
+          setTimeout(() => navigate(-1), 3000);
+
+        } else if (data.action === 'NO_ENTRY') {
+          clearInterval(intervalRef.current);
+          playNoEntryRecord();
+          setScanStatus('warning');
+          setStatusMsg(data.message);
+          setRecognized({
+            name:       data.student,
+            student_id: data.student_id,
+            department: data.department,
+          });
+          setShowInfo(true);
+          setTimeout(() => navigate(-1), 3000);
         } else {
           setScanStatus('scanning');
         }
