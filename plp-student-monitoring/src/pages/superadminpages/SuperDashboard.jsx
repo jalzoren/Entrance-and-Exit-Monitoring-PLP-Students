@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
 import { useNavigate } from "react-router-dom";
+import GenerateReportFilter from "../../components/GenerateReportFilter";
+import GenerateReportPdf from "../../components/GenerateReportPdf";
+import { reportToXml, xmlToReport } from "../../utils/xmlReportUtils";
 import {
   ResponsiveContainer,
   AreaChart as ReAreaChart,
@@ -568,7 +571,7 @@ function UsersListModal({ isOpen, users, onClose, isLoading }) {
 // QUICK ACTIONS (updated)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QuickActionsSection({ onShowUsers, onShowSupport, onSystemSettings }) {
+function QuickActionsSection({ onShowUsers, onShowSupport, onSystemSettings, onGenerateReports }) {
   const actions = [
     {
       variant: "primary",
@@ -582,7 +585,7 @@ function QuickActionsSection({ onShowUsers, onShowSupport, onSystemSettings }) {
       icon: <FaChartBar />,
       title: "Generate Reports",
       desc: "Export analytics & summaries",
-      onClick: () => console.log("Generate Reports"),
+      onClick: onGenerateReports,
     },
     {
       variant: "info",
@@ -645,6 +648,11 @@ function SuperDashboard() {
   const [usersLoading,    setUsersLoading]    = useState(false);
   const [showSupportModal, setShowSupportModal] = useState(false);
   const navigate = useNavigate();
+  const [showReportFilter, setShowReportFilter] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [filteredReportData, setFilteredReportData] = useState(null);
+  const [appliedFilters, setAppliedFilters] = useState({});
+  const pdfRef = useRef(null);
 
   // Function to fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -668,6 +676,64 @@ function SuperDashboard() {
     setShowUsersModal(true);
     await fetchUsers();
   }, [fetchUsers]);
+
+  // Report generation handlers (reuse Analytics logic)
+  const handleApplyFilters = async (filters) => {
+    setAppliedFilters(filters);
+    try {
+      const reportParams = {};
+      if (filters.dateRange?.from) {
+        const parts = String(filters.dateRange.from).split('/');
+        reportParams.from = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : filters.dateRange.from;
+      }
+      if (filters.dateRange?.to) {
+        const parts = String(filters.dateRange.to).split('/');
+        reportParams.to = parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : filters.dateRange.to;
+      }
+      if (filters.collegeDepartment) reportParams.dept = filters.collegeDepartment;
+
+      const query = new URLSearchParams(reportParams).toString();
+      const res = await fetch(`/api/analytics/report?${query}`);
+      if (!res.ok) throw new Error(`report: HTTP ${res.status}`);
+      const reportData = await res.json();
+
+      const xmlString = reportToXml(reportData, reportParams);
+      const parsedData = xmlToReport(xmlString);
+
+      setFilteredReportData({
+        ...parsedData,
+        _xml: xmlString,
+        dateRange: filters.dateRange?.from && filters.dateRange?.to ? `${filters.dateRange.from} - ${filters.dateRange.to}` : parsedData.dateRange,
+        collegeData: reportData.collegeData ?? collegeData,
+        authData: reportData.authData ?? [],
+        trafficData: reportData.trafficChartData ?? trafficData,
+        visitorData: reportData.visitorData ?? [],
+        visitorLogs: reportData.visitorLogs ?? [],
+        metrics: metrics ?? {},
+        totalStudents: reportData.totalStudents ?? metrics?.totalStudents ?? 0,
+        currentOnCampus: reportData.currentOnCampus ?? metrics?.onCampus ?? 0,
+        totalEntries: reportData.totalEntries ?? 0,
+        studentLogs: reportData.studentLogs ?? [],
+        entryLogs: reportData.entryLogs ?? [],
+        exitLogs: reportData.exitLogs ?? [],
+      });
+
+      setShowPdfPreview(true);
+    } catch (err) {
+      console.error('[SuperDashboard] report fetch error:', err);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setShowReportFilter(false);
+    }
+  };
+
+  const handleDownloadPDF = () => pdfRef.current?.generatePDF();
+  
+
+  const handleClosePdfPreview = () => {
+    setShowPdfPreview(false);
+    setFilteredReportData(null);
+  };
 
   // Clock
   useEffect(() => {
@@ -791,7 +857,7 @@ function SuperDashboard() {
           <NotificationsPanel
             notifications={notifications}
           />
-          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} onSystemSettings={() => navigate('/systemsettings')} />
+          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} onSystemSettings={() => navigate('/systemsettings')} onGenerateReports={() => setShowReportFilter(true)} />
         </section>
 
         {/* ── QUICK GUIDE ── */}
@@ -871,6 +937,120 @@ function SuperDashboard() {
         isLoading={usersLoading}
         onClose={() => setShowUsersModal(false)}
       />
+
+      {/* Generate Report Filter (reuse Analytics modal) */}
+      {showReportFilter && (
+        <GenerateReportFilter
+          onClose={() => setShowReportFilter(false)}
+          onGenerate={handleApplyFilters}
+        />
+      )}
+
+      {/* PDF Preview Modal for generated report */}
+      {showPdfPreview && filteredReportData && (
+        <div
+          className="modal-overlay"
+          onClick={handleClosePdfPreview}
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0,0,0,0.7)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <div
+            className="pdf-preview-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              borderRadius: "12px",
+              width: "90%",
+              maxWidth: "1000px",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+              backgroundColor: "#fff",
+            }}
+          >
+            <div
+              className="pdf-preview-header"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "16px 20px",
+                borderBottom: "1px solid #e0e0e0",
+                backgroundColor: "#01311d",
+              }}
+            >
+              <h2 style={{ margin: 0, fontSize: "20px", color: "#fff" }}>
+                Report Preview
+              </h2>
+              <button
+                onClick={handleClosePdfPreview}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#fff",
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              className="pdf-preview-content"
+              style={{ flex: 1, overflowY: "auto", padding: "20px" }}
+            >
+              <GenerateReportPdf
+                ref={pdfRef}
+                reportData={filteredReportData}
+                filters={appliedFilters}
+              />
+            </div>
+            <div
+              className="pdf-preview-footer"
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "12px",
+                padding: "16px 20px",
+                borderTop: "1px solid #e0e0e0",
+              }}
+            >
+              <button
+                onClick={handleClosePdfPreview}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#f5f5f5",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                style={{
+                  padding: "10px 20px",
+                  backgroundColor: "#548772",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Contact Support Modal */}
       {showSupportModal && (
