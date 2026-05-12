@@ -289,7 +289,7 @@ function AcademicYearSection() {
         <p>This will:</p>
         <ul style="text-align:left;margin:8px 0;">
           <li>Increment year level for all <strong>Regular</strong> students (Year 1–3)</li>
-          <li>Mark <strong>4th-year Regular</strong> students as <strong>Graduated</strong></li>
+          <li><strong>4th-year Regular</strong> students will be <strong>ARCHIVED as Graduated</strong></li>
           <li>Leave Irregular, LOA, Dropout, etc. <strong>unchanged</strong></li>
         </ul>
         <p><strong>This action cannot be undone.</strong></p>
@@ -307,13 +307,18 @@ function AcademicYearSection() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
+      // REFRESH academic info after promotion
+      const acadRes = await fetch('/api/settings/academic-year');
+      setAcademicInfo(await acadRes.json());
+
       Swal.fire({
         icon:  'success',
         title: 'Promotion Complete',
-        html:  `<p><strong>${data.promoted}</strong> students promoted.<br/>
-                <strong>${data.graduated}</strong> students graduated.</p>`,
+        html:  `<p><strong>${data.promoted}</strong> students promoted to next year level.<br/>
+                <strong>${data.graduated}</strong> 4th-year students graduated and archived.</p>`,
         confirmButtonText: 'Done',
       });
+      
     } catch (err) {
       Swal.fire({ icon: 'error', title: 'Promotion Failed', text: err.message });
     } finally {

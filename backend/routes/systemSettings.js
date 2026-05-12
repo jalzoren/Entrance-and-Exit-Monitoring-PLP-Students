@@ -156,36 +156,57 @@ router.get('/academic-year', async (req, res) => {
 });
 
 // ── POST /api/settings/promote-students ──────────────────────────────────────
-// Increments year_level for all Regular students (run at end of school year)
 router.post('/promote-students', async (req, res) => {
+  let connection;
+  
   try {
-    // Only promote Regular students who are not already in Year 4+
-    const [result] = await db.query(`
-      UPDATE students
-      SET
-        year_level = year_level + 1,
-        updated_at = NOW()
-      WHERE status = 'Regular'
-        AND year_level < 4
+    connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    // FIRST: Get the IDs of current 4th year students (to archive later)
+    const [fourthYearStudents] = await connection.query(`
+      SELECT student_id FROM students
+      WHERE status = 'Regular' 
+        AND year_level = 4
+        AND is_archived = 0
     `);
 
-    // Graduate 4th year Regular students
-    const [graduate] = await db.query(`
+    // SECOND: Promote Year 1-3 students
+    const [promoted] = await connection.query(`
       UPDATE students
-      SET status = 'Graduated', updated_at = NOW()
-      WHERE status = 'Regular' AND year_level = 4
+      SET year_level = year_level + 1,
+          updated_at = NOW()
+      WHERE status = 'Regular' 
+        AND year_level IN (1, 2, 3)
+        AND is_archived = 0
     `);
 
-    console.log(`[Promotion] Promoted: ${result.affectedRows} | Graduated: ${graduate.affectedRows}`);
+    // THIRD: Archive ONLY the original 4th year students (NOT the newly promoted ones)
+    const [graduated] = await connection.query(`
+      UPDATE students
+      SET is_archived = 1,
+          archived_status = 'Graduated',
+          status = 'Graduated',
+          updated_at = NOW()
+      WHERE student_id IN (?)
+    `, [fourthYearStudents.map(s => s.student_id)]);
+
+    await connection.commit();
+
+    console.log(`[Promotion] Promoted: ${promoted.affectedRows} | Archived: ${graduated.affectedRows}`);
 
     res.json({
-      message:   'Student promotion complete.',
-      promoted:  result.affectedRows,
-      graduated: graduate.affectedRows,
+      message: 'Student promotion complete.',
+      promoted: promoted.affectedRows,
+      graduated: graduated.affectedRows,
     });
+
   } catch (err) {
+    if (connection) await connection.rollback();
     console.error('[promote-students]', err);
-    res.status(500).json({ message: 'Promotion failed.' });
+    res.status(500).json({ message: 'Promotion failed: ' + err.message });
+  } finally {
+    if (connection) connection.release();
   }
 });
 
