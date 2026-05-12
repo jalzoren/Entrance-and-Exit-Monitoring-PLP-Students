@@ -8,7 +8,6 @@ router.get('/', async (req, res) => {
     console.log('[notifications] Fetching all notifications...');
     
     // 1. Check for students without face registration
-    let dynamicNotifications = [];
     try {
       const [faceRegRows] = await db.query(`
         SELECT COUNT(DISTINCT s.student_id) AS count 
@@ -21,15 +20,49 @@ router.get('/', async (req, res) => {
       console.log(`[notifications] Unregistered students: ${unregiStudentCount}`);
       
       if (unregiStudentCount > 0) {
-        dynamicNotifications.push({
-          id: 0, // Special ID for dynamic notifications
-          type: 'warning',
-          icon: 'exclamation',
-          title: 'Action Required',
-          detail: `${unregiStudentCount} student${unregiStudentCount > 1 ? 's' : ''} need${unregiStudentCount === 1 ? 's' : ''} face registration.`,
-          created_at: new Date(),
-          is_read: 0,
-        });
+        const notificationDetail = `${unregiStudentCount} student${unregiStudentCount > 1 ? 's' : ''} need${unregiStudentCount === 1 ? 's' : ''} face registration.`;
+        
+        // Check if this notification already exists (to avoid duplicates)
+        const [existingNotif] = await db.query(`
+          SELECT id FROM notifications 
+          WHERE type = 'warning' AND title = 'Action Required' AND detail = ?
+          ORDER BY created_at DESC LIMIT 1
+        `, [notificationDetail]);
+        
+        // Only insert if no recent notification exists
+        if (existingNotif.length === 0) {
+          console.log('[notifications] Saving face registration alert to database...');
+          await db.query(`
+            INSERT INTO notifications (type, icon, title, detail, is_resolved, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+          `, ['warning', 'exclamation', 'Action Required', notificationDetail, 0]);
+        }
+      } else {
+        // All students have registered - mark old warnings as resolved
+        console.log('[notifications] All students registered - marking warnings as resolved...');
+        
+        // Mark old "Action Required" warnings as resolved
+        await db.query(`
+          UPDATE notifications 
+          SET is_resolved = 1 
+          WHERE type = 'warning' AND title = 'Action Required'
+        `);
+        
+        // Check if success notification already exists
+        const [existingSuccess] = await db.query(`
+          SELECT id FROM notifications 
+          WHERE type = 'success' AND title = 'Action Resolved'
+          ORDER BY created_at DESC LIMIT 1
+        `);
+        
+        // Only insert if no success notification exists
+        if (existingSuccess.length === 0) {
+          console.log('[notifications] Creating action resolved notification...');
+          await db.query(`
+            INSERT INTO notifications (type, icon, title, detail, is_resolved, created_at)
+            VALUES (?, ?, ?, ?, ?, NOW())
+          `, ['success', 'check', 'Action Resolved', 'All students have completed face registration.', 1]);
+        }
       }
     } catch (e) {
       console.log('[notifications] Face registration check failed:', e.message);
@@ -44,7 +77,7 @@ router.get('/', async (req, res) => {
         title,
         detail,
         created_at,
-        is_read
+        is_resolved
       FROM notifications
       ORDER BY created_at DESC
       LIMIT 10
@@ -52,18 +85,15 @@ router.get('/', async (req, res) => {
     
     console.log(`[notifications] Found ${rows.length} database notifications`);
     
-    // 3. Combine dynamic + database notifications
-    const allNotifications = [...dynamicNotifications, ...rows];
-    
-    // 4. Format response: convert is_read to unread flag
-    const notifications = allNotifications.map(n => ({
+    // 3. Format response: convert is_resolved to unread flag
+    const notifications = rows.map(n => ({
       id: n.id,
       type: n.type,           // 'warning', 'info', 'error', 'success'
       icon: n.icon,           // 'exclamation', 'calendar', 'check', etc.
       title: n.title,
       detail: n.detail,
       time: getTimeAgo(n.created_at),
-      unread: !n.is_read,
+      unread: !n.is_resolved,
     }));
     
     res.json({
