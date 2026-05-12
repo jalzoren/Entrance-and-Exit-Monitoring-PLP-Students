@@ -709,46 +709,60 @@ router.get('/report', async (req, res) => {
     console.log('[analytics/report] Department totals:', Array.from(departmentTotals.entries()));
 
     // ── STEP 2: Get logs within date range ──────────────────────────────────
-    let logsQuery = `
-      SELECT
-        eel.log_id, 
-        eel.student_id, 
-        eel.action, 
-        eel.log_time,
-        COALESCE(s.first_name, 'Unknown') AS first_name,
-        COALESCE(s.last_name, 'Unknown') AS last_name,
-        CASE 
-          WHEN eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') THEN 'College of Computer Studies'
-          WHEN eel.student_id = '24-00179' THEN 'College of Engineering'
-          WHEN eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') THEN 'College of Education'
-          WHEN eel.student_id IN ('23-00260', '23-00180', '23-00158') THEN 'College of Nursing'
-          WHEN eel.student_id IN ('24-01283', '23-00254', '23-00206') THEN 'College of International Hospitality Management'
-          WHEN eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') THEN 'College of Engineering'
-          ELSE COALESCE(d.dept_name, 'Unknown Department')
-        END AS college_department,
-        COALESCE(p.program_name, 'Unknown') AS program_name,
-        COALESCE(s.year_level, 'N/A') AS year_level,
-        a.method, 
-        a.auth_status, 
-        a.accuracy
-      FROM entry_exit_logs eel
-      LEFT JOIN students s ON s.student_id = eel.student_id
-      LEFT JOIN programs p ON s.program_id = p.id
-      LEFT JOIN departments d ON p.department_id = d.id
-      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
-      WHERE eel.log_time BETWEEN ? AND ?
-    `;
-    
-    const logParams = [rangeStart, rangeEnd];
-    
-    if (dept && dept !== 'all' && dept !== '') {
-      logsQuery += ' AND college_department = ?';
-      logParams.push(dept);
-    }
-    
-    logsQuery += ' ORDER BY eel.log_time DESC';
-    
-    const [logRows] = await db.query(logsQuery, logParams);
+    // ── STEP 2: Get logs within date range ──────────────────────────────────
+let logsQuery = `
+SELECT
+  eel.log_id, 
+  eel.student_id, 
+  eel.action, 
+  eel.log_time,
+  COALESCE(s.first_name, 'Unknown') AS first_name,
+  COALESCE(s.last_name, 'Unknown') AS last_name,
+  CASE 
+    WHEN eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') THEN 'College of Computer Studies'
+    WHEN eel.student_id = '24-00179' THEN 'College of Engineering'
+    WHEN eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') THEN 'College of Education'
+    WHEN eel.student_id IN ('23-00260', '23-00180', '23-00158') THEN 'College of Nursing'
+    WHEN eel.student_id IN ('24-01283', '23-00254', '23-00206') THEN 'College of International Hospitality Management'
+    WHEN eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') THEN 'College of Engineering'
+    ELSE COALESCE(d.dept_name, 'Unknown Department')
+  END AS college_department,
+  COALESCE(p.program_name, 'Unknown') AS program_name,
+  COALESCE(s.year_level, 'N/A') AS year_level,
+  a.method, 
+  a.auth_status, 
+  a.accuracy
+FROM entry_exit_logs eel
+LEFT JOIN students s ON s.student_id = eel.student_id
+LEFT JOIN programs p ON s.program_id = p.id
+LEFT JOIN departments d ON p.department_id = d.id
+LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+WHERE eel.log_time BETWEEN ? AND ?
+`;
+
+const logParams = [rangeStart, rangeEnd];
+
+// IMPORTANT: Apply department filter using the original condition, NOT the alias
+if (dept && dept !== 'all' && dept !== '') {
+// Use a subquery or repeat the CASE statement for filtering
+logsQuery += ` AND (
+  (eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') AND ? = 'College of Computer Studies')
+  OR (eel.student_id = '24-00179' AND ? = 'College of Engineering')
+  OR (eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') AND ? = 'College of Education')
+  OR (eel.student_id IN ('23-00260', '23-00180', '23-00158') AND ? = 'College of Nursing')
+  OR (eel.student_id IN ('24-01283', '23-00254', '23-00206') AND ? = 'College of International Hospitality Management')
+  OR (eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') AND ? = 'College of Engineering')
+  OR (COALESCE(d.dept_name, 'Unknown Department') = ?)
+)`;
+// Add the same department value for each placeholder
+for (let i = 0; i < 7; i++) {
+  logParams.push(dept);
+}
+}
+
+logsQuery += ' ORDER BY eel.log_time DESC';
+
+const [logRows] = await db.query(logsQuery, logParams);
     
     console.log('[analytics/report] Found logs:', logRows.length);
 
