@@ -689,24 +689,45 @@ function RegisterStudent({ onClose, onSuccess }) {
               </select>
             </div>
             
-            <div className="input-group">
-              <label>Year Level <span className="required">*</span></label>
-              <input
-                type="number"
-                placeholder="e.g 3"
-                value={yearLevel}
-                onChange={(e) => { 
-                  setYearLevel(e.target.value); 
-                  setFormErrors(prev => ({...prev, yearLevel: ""}));
-                }}
-                className={formErrors.yearLevel ? "input-error" : ""}
-                min="1"
-                max="5"
-                ref={yearLevelRef}
-                onKeyDown={(e) => handleEnter(e, statusRef)}
-                required
-              />
-              {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+            <div className='input-yearsec'> 
+              <div className="input-group">
+                <label>Year Level <span className="required">*</span></label>
+                <input
+                  type="number"
+                  placeholder="e.g 3"
+                  value={yearLevel}
+                  onChange={(e) => { 
+                    setYearLevel(e.target.value); 
+                    setFormErrors(prev => ({...prev, yearLevel: ""}));
+                  }}
+                  className={formErrors.yearLevel ? "input-error" : ""}
+                  min="1"
+                  max="5"
+                  ref={yearLevelRef}
+                  onKeyDown={(e) => handleEnter(e, statusRef)}
+                  required
+                />
+                {formErrors.yearLevel && <span className="field-error">{formErrors.yearLevel}</span>}
+              </div>
+
+              <div className="input-group">
+                <label>Section<span className="required">*</span></label>
+                <select 
+                  value={section} 
+                  onChange={(e) => setSection(e.target.value)} 
+                  ref={sectionRef} 
+                  onKeyDown={(e) => handleEnter(e, statusRef)}
+                >
+                  <option value="">Select Section</option>
+                  <option value="A">A</option>
+                  <option value="B">B</option>
+                  <option value="C">C</option>
+                  <option value="D">D</option>
+                  <option value="E">E</option>
+                  <option value="F">F</option>
+                </select>
+                {formErrors.section && <span className="field-error">{formErrors.section}</span>}
+              </div>
             </div>
           </div>
 

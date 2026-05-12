@@ -320,6 +320,11 @@ body {
   color: white;
 }
 
+.input-yearsec{
+  display: flex;
+  gap: 10px;
+}
+
 .form-actions {
   display: flex;
   justify-content: flex-end;
