@@ -22,7 +22,7 @@ import {
   FaUserPlus, FaUserEdit, FaUserMinus, FaGraduationCap,
   FaBuilding, FaLayerGroup, FaExclamationCircle,
   FaInfoCircle, FaSchool, FaDoorOpen,
-  FaEllipsisH,
+  FaEllipsisH, FaTimes,
 } from "react-icons/fa";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -567,7 +567,7 @@ function UsersListModal({ isOpen, users, onClose, isLoading }) {
 // QUICK ACTIONS (updated)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QuickActionsSection({ onShowUsers }) {
+function QuickActionsSection({ onShowUsers, onShowSupport }) {
   const actions = [
     {
       variant: "primary",
@@ -584,18 +584,18 @@ function QuickActionsSection({ onShowUsers }) {
       onClick: () => console.log("Generate Reports"),
     },
     {
-      variant: "warning",
+      variant: "info",
       icon: <FaCog />,
       title: "System Settings",
       desc: "Configure gate & academic year settings",
       onClick: () => console.log("System Settings"),
     },
     {
-      variant: "info",
-      icon: <FaDoorOpen />,
-      title: "Entry–Exit Records",
-      desc: "View all campus logs",
-      onClick: () => console.log("Entry-Exit Records"),
+      variant: "warning",
+      icon: <FaEnvelope />,
+      title: "Contact Support",
+      desc: "24/7 assistance",
+      onClick: onShowSupport,
     },
   ];
 
@@ -642,6 +642,7 @@ function SuperDashboard() {
   const [showUsersModal,  setShowUsersModal]  = useState(false);
   const [usersList,       setUsersList]       = useState([]);
   const [usersLoading,    setUsersLoading]    = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
 
   // Function to fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -788,7 +789,7 @@ function SuperDashboard() {
           <NotificationsPanel
             notifications={notifications}
           />
-          <QuickActionsSection onShowUsers={handleShowUsers} />
+          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} />
         </section>
 
         {/* ── QUICK GUIDE ── */}
@@ -868,6 +869,153 @@ function SuperDashboard() {
         isLoading={usersLoading}
         onClose={() => setShowUsersModal(false)}
       />
+
+      {/* Contact Support Modal */}
+      {showSupportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)',
+        }} onClick={() => setShowSupportModal(false)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'slideUp 0.3s ease',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.5rem',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+              background: 'linear-gradient(135deg, rgba(84, 135, 114, 0.05), rgba(217, 146, 1, 0.05))',
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '1.25rem',
+                color: '#123',
+                fontFamily: '"Montserrat", sans-serif',
+                fontWeight: 600,
+              }}>Contact Support</h2>
+              <button style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                color: '#999',
+                cursor: 'pointer',
+                padding: 0,
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease',
+              }} onClick={() => setShowSupportModal(false)} onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(0, 0, 0, 0.08)';
+                e.target.style.color = '#123';
+              }} onMouseLeave={(e) => {
+                e.target.style.background = 'none';
+                e.target.style.color = '#999';
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+              fontFamily: '"Montserrat", sans-serif',
+              fontSize: '0.95rem',
+              lineHeight: '1.6',
+              color: '#333',
+            }}>
+              <h3 style={{
+                margin: '0 0 1rem 0',
+                fontSize: '1.1rem',
+                color: '#123',
+                fontWeight: 600,
+              }}>PLP IT Helpdesk</h3>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>📞 Hotline:</strong> (+63) 2-1234-5678 ext. 1234
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>✉️ Email:</strong> ithelpdesk@plp.edu.ph
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>⏰ Operating Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>🚨 Emergency/After Hours:</strong> 0917-123-4567
+              </p>
+              <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
+              <h4 style={{
+                margin: '1rem 0 0.75rem 0',
+                fontSize: '1rem',
+                color: '#123',
+                fontWeight: 600,
+              }}>Specialized Support Contacts:</h4>
+              <ul style={{
+                margin: '0.75rem 0',
+                paddingLeft: '1.5rem',
+              }}>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>Facial Recognition Issues:</strong> fr_support@plp.edu.ph
+                </li>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>System Access/Login Problems:</strong> sysaccess@plp.edu.ph
+                </li>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>Reports & Analytics:</strong> analytics@plp.edu.ph
+                </li>
+              </ul>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              padding: '1.5rem',
+              borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+              background: 'rgba(0, 0, 0, 0.02)',
+              gap: '0.75rem',
+            }}>
+              <button style={{
+                background: '#548772',
+                color: '#fff',
+                border: 'none',
+                padding: '0.5rem 1.25rem',
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontFamily: '"Montserrat", sans-serif',
+              }} onClick={() => setShowSupportModal(false)} onMouseEnter={(e) => {
+                e.target.style.background = '#01311d';
+              }} onMouseLeave={(e) => {
+                e.target.style.background = '#548772';
+              }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
