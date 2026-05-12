@@ -635,16 +635,23 @@ function Students() {
         </div>
 
         {/* ── Archive buttons section ── */}
-        <div className="archive-buttons-section">
-          <h4 className="archive-section-title">Archive Students by Status:</h4>
-          <div className="archive-buttons-group">
-            {ARCHIVABLE_STATUSES.map(s => (
-              <button key={s} className="action-button archive-button" onClick={() => handleArchiveByStatus(s)}>
-                <FiArchive className="button-icon" /> Archive all {s} students
-              </button>
-            ))}
-          </div>
-        </div>
+  <div className="archive-buttons-section">
+    <h4 className="archive-section-title">Archive Students by Status:</h4>
+    <div className="archive-buttons-group">
+      <button className="action-button archive-button" onClick={() => handleArchiveByStatus("LOA")}>
+        <FiArchive className="button-icon" /> Archive all LOA students
+      </button>
+      <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Dropout")}>
+        <FiArchive className="button-icon" /> Archive all Dropout students
+      </button>
+      <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Kickout")}>
+        <FiArchive className="button-icon" /> Archive all Kickout students
+      </button>
+      <button className="action-button archive-button" onClick={() => handleArchiveByStatus("Transferred")}>
+        <FiArchive className="button-icon" /> Archive all Transferred students
+      </button>
+    </div>
+  </div>
 
         {/* ── Face legend ── */}
         <div className="face-legend">

@@ -1,9 +1,7 @@
-// ArchivedStudents.jsx
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { MdRestore } from 'react-icons/md';
-import { BsFillPeopleFill, BsPersonDash } from 'react-icons/bs';
 import '../../../css/GlobalModal.css';
 import '../../../css/SystemSettings.css';
 
@@ -27,7 +25,6 @@ function statusBadgeClass(status) {
 }
 
 // ─── Batch-year helper ────────────────────────────────────────────────────────
-// "23-00298"  →  "2023"
 function batchYearFromId(studentId) {
   const prefix = studentId?.split('-')[0];
   if (!prefix || prefix.length !== 2) return null;
@@ -45,7 +42,6 @@ function Archive() {
   const [error, setError] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showRestoreModal, setShowRestoreModal] = useState(false);
-  const [restoreReason, setRestoreReason] = useState('');
   const [restoreCollege, setRestoreCollege] = useState('');
   const [restoreProgram, setRestoreProgram] = useState('');
   const [restoreYearLevel, setRestoreYearLevel] = useState('');
@@ -53,7 +49,6 @@ function Archive() {
   const [restoring, setRestoring] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
-  // Stats calculation
   const stats = useMemo(() => ({
     total: archivedStudents.length,
     loa: archivedStudents.filter(s => s.status === 'LOA').length,
@@ -126,7 +121,6 @@ function Archive() {
   const handleRestoreClick = (student) => {
     setSelectedStudent(student);
     setShowRestoreModal(true);
-    setRestoreReason('');
     setRestoreCollege(student.college_department);
     setRestoreProgram(student.program_name || '');
     setRestoreYearLevel(student.year_level);
@@ -134,75 +128,71 @@ function Archive() {
   };
 
   const handleRestoreConfirm = async () => {
-    if (!restoreCollege) {
-      Swal.fire({
-        title: 'Validation Error',
-        text: 'Please select a college department.',
-        icon: 'error',
-        confirmButtonText: 'OK'
-      });
-      return;
-    }
-    if (!restoreYearLevel) {
-      Swal.fire({
-        title: 'Validation Error',
-        text: 'Please enter the year level.',
-        icon: 'error',
-        confirmButtonText: 'OK'
-      });
-      return;
-    }
-    if (!restoreStatus) {
-      Swal.fire({
-        title: 'Validation Error',
-        text: 'Please select a status.',
-        icon: 'error',
-        confirmButtonText: 'OK'
-      });
-      return;
-    }
+  if (!restoreCollege) {
+    Swal.fire({
+      title: 'Validation Error',
+      text: 'Please select a college department.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+    return;
+  }
+  if (!restoreYearLevel) {
+    Swal.fire({
+      title: 'Validation Error',
+      text: 'Please enter the year level.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+    return;
+  }
+  if (!restoreStatus) {
+    Swal.fire({
+      title: 'Validation Error',
+      text: 'Please select a status.',
+      icon: 'error',
+      confirmButtonText: 'OK'
+    });
+    return;
+  }
 
-    try {
-      setRestoring(true);
-      
-      // Send restore request to backend
-      await axios.put(`http://localhost:5000/api/students/${selectedStudent.student_id}`, {
-        first_name: selectedStudent.first_name,
-        last_name: selectedStudent.last_name,
-        middle_name: selectedStudent.middle_name || '',
-        extension_name: selectedStudent.extension_name || '',
-        college_department: restoreCollege,
-        program_name: restoreProgram,
-        year_level: restoreYearLevel,
-        status: restoreStatus
-      });
+  try {
+    setRestoring(true);
+    
+    await axios.put(`http://localhost:5000/api/students/${selectedStudent.student_id}`, {
+      first_name: selectedStudent.first_name,
+      last_name: selectedStudent.last_name,
+      middle_name: selectedStudent.middle_name || '',
+      extension_name: selectedStudent.extension_name || '',
+      program_id: selectedStudent.program_id,  // ← USE THE ORIGINAL PROGRAM ID
+      year_level: parseInt(restoreYearLevel),
+      status: restoreStatus
+    });
 
-      // Remove from archived list
-      setArchivedStudents((prev) => prev.filter((s) => s.student_id !== selectedStudent.student_id));
-      
-      Swal.fire({
-        title: 'Success',
-        html: `<p><strong>${selectedStudent.first_name} ${selectedStudent.last_name}</strong> has been restored successfully!</p>`,
-        icon: 'success',
-        confirmButtonText: 'Done'
-      });
+    setArchivedStudents((prev) => prev.filter((s) => s.student_id !== selectedStudent.student_id));
+    
+    Swal.fire({
+      title: 'Success',
+      html: `<p><strong>${selectedStudent.first_name} ${selectedStudent.last_name}</strong> has been restored successfully!</p>`,
+      icon: 'success',
+      confirmButtonText: 'Done'
+    });
 
-      setShowRestoreModal(false);
-      setSelectedStudent(null);
-      setRestoreReason('');
-      
-    } catch (err) {
-      console.error('Restore error:', err);
-      Swal.fire({
-        title: 'Restore Failed',
-        text: err.response?.data?.message || 'Something went wrong. Please try again.',
-        icon: 'error',
-        confirmButtonText: 'Try Again'
-      });
-    } finally {
-      setRestoring(false);
-    }
-  };
+    setShowRestoreModal(false);
+    setSelectedStudent(null);
+    
+  } catch (err) {
+    console.error('Restore error:', err);
+    Swal.fire({
+      title: 'Restore Failed',
+      text: err.response?.data?.message || err.message || 'Something went wrong. Please try again.',
+      icon: 'error',
+      confirmButtonText: 'Try Again'
+    });
+  } finally {
+    setRestoring(false);
+  }
+};
 
   return (
     <div className="archive-tab">
@@ -238,7 +228,6 @@ function Archive() {
           <option value="Kickout">Kickout</option>
           <option value="Graduated">Graduated</option>
           <option value="Transferred">Transferred</option>
-
         </select>
         <span className="result-count">Total: {filtered.length}</span>
       </div>
@@ -271,6 +260,8 @@ function Archive() {
             ) : paginated.length > 0 ? (
               paginated.map((student, idx) => {
                 const fullName = `${student.last_name || ''}, ${student.first_name || ''}`.trim();
+                const isGraduated = student.status === 'Graduated';
+                
                 return (
                   <tr key={student.student_id}>
                     <td>{(safePage - 1) * ROWS_PER_PAGE + idx + 1}</td>
@@ -293,8 +284,12 @@ function Archive() {
                       <button
                         className="btn-restore"
                         onClick={() => handleRestoreClick(student)}
-                        title="Restore student"
-                        disabled={restoring}
+                        title={isGraduated ? "Graduated students cannot be restored" : "Restore student"}
+                        disabled={isGraduated || restoring}
+                        style={{
+                          opacity: isGraduated ? 0.5 : 1,
+                          cursor: isGraduated ? 'not-allowed' : 'pointer'
+                        }}
                       >
                         <MdRestore /> Restore
                       </button>
@@ -372,13 +367,11 @@ function Archive() {
                   style={{ height: 'auto', padding: '10px' }}
                 >
                   <option value="">Select College Department</option>
-                  <option value="College of Nursing">College of Nursing</option>
-                  <option value="College of Engineering">College of Engineering</option>
-                  <option value="College of Education">College of Education</option>
-                  <option value="College of Computer Studies">College of Computer Studies</option>
-                  <option value="College of Arts and Science">College of Arts and Science</option>
-                  <option value="College of Business and Accountancy">College of Business and Accountancy</option>
-                  <option value="College of Hospitality Management">College of Hospitality Management</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.dept_name}>
+                      {dept.dept_name}
+                    </option>
+                  ))}
                 </select>
               </div>
 

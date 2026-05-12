@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer,
   AreaChart as ReAreaChart,
@@ -22,80 +23,14 @@ import {
   FaUserPlus, FaUserEdit, FaUserMinus, FaGraduationCap,
   FaBuilding, FaLayerGroup, FaExclamationCircle,
   FaInfoCircle, FaSchool, FaDoorOpen,
-  FaEllipsisH,
+  FaEllipsisH, FaTimes,
 } from "react-icons/fa";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIVITY_ICONS = {
-  user_add:       { icon: <FaUserPlus />,     color: "#2ecc71", label: "User Added" },
-  user_edit:      { icon: <FaUserEdit />,     color: "#3498db", label: "User Edited" },
-  user_archive:   { icon: <FaUserMinus />,    color: "#e74c3c", label: "User Archived" },
-  student_add:    { icon: <FaGraduationCap />,color: "#27ae60", label: "Student Added" },
-  student_edit:   { icon: <FaUserEdit />,     color: "#2980b9", label: "Student Edited" },
-  student_archive:{ icon: <FaGraduationCap />,color: "#c0392b", label: "Student Archived" },
-  dept_add:       { icon: <FaBuilding />,     color: "#8e44ad", label: "Dept. Added" },
-  dept_edit:      { icon: <FaBuilding />,     color: "#6c3483", label: "Dept. Edited" },
-  dept_archive:   { icon: <FaBuilding />,     color: "#922b21", label: "Dept. Archived" },
-  program_add:    { icon: <FaLayerGroup />,   color: "#e67e22", label: "Program Added" },
-  program_edit:   { icon: <FaLayerGroup />,   color: "#d35400", label: "Program Edited" },
-  program_archive:{ icon: <FaLayerGroup />,   color: "#a04000", label: "Program Archived" },
-  settings:       { icon: <FaCog />,          color: "#7f8c8d", label: "Settings Changed" },
-};
 
-const SAMPLE_ACTIVITIES = [
-  {
-    id: 1,
-    type: "user_add",
-    message: "Super Admin added User:",
-    subject: "Juan Dela Cruz",
-    time: "2 mins ago",
-  },
-  {
-    id: 2,
-    type: "settings",
-    message: "System Settings Updated:",
-    subject: "Gate Settings",
-    time: "1 hr ago",
-  },
-  {
-    id: 3,
-    type: "student_archive",
-    message: "Archived 300 4th year graduated students",
-    subject: "",
-    time: "3 hrs ago",
-  },
-  {
-    id: 4,
-    type: "student_add",
-    message: "New student enrolled:",
-    subject: "Maria Santos",
-    time: "5 hrs ago",
-  },
-  {
-    id: 5,
-    type: "dept_add",
-    message: "Department added:",
-    subject: "College of Architecture",
-    time: "Yesterday",
-  },
-  {
-    id: 6,
-    type: "program_edit",
-    message: "Program updated:",
-    subject: "BS Information Technology",
-    time: "Yesterday",
-  },
-  {
-    id: 7,
-    type: "user_edit",
-    message: "User profile edited:",
-    subject: "Admin Reyes",
-    time: "2 days ago",
-  },
-];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SERVICES
@@ -266,65 +201,366 @@ function NotificationsPanel({ notifications }) {
   );
 }
 
+
+
 // ─────────────────────────────────────────────────────────────────────────────
-// RECENT ACTIVITY PANEL
+// USERS LIST MODAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-function RecentActivityPanel({ activities }) {
-  return (
-    <div className="panel-card activity-panel">
-      {/* Header */}
-      <div className="panel-header">
-        <div className="panel-title-group">
-          <span className="panel-icon-wrap activity-icon-wrap">
-            <FaClipboardList />
-          </span>
-          <h3 className="panel-title">Recent Activity</h3>
+function UsersListModal({ isOpen, users, onClose, isLoading }) {
+  if (!isOpen) return null;
+
+  // Inline styles for modal overlay
+  const overlayStyle = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10000,
+    padding: '1rem',
+    backdropFilter: 'blur(2px)',
+  };
+
+  // Inline styles for modal container
+  const containerStyle = {
+    background: '#fff',
+    borderRadius: '12px',
+    boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+    width: '100%',
+    maxWidth: '900px',
+    maxHeight: '80vh',
+    display: 'flex',
+    flexDirection: 'column',
+    overflow: 'hidden',
+    animation: 'slideUp 0.3s ease',
+  };
+
+  // Inline styles for modal header
+  const headerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+    background: 'linear-gradient(135deg, rgba(84, 135, 114, 0.05), rgba(217, 146, 1, 0.05))',
+  };
+
+  const headerH2Style = {
+    margin: 0,
+    fontSize: '1.25rem',
+    color: '#123',
+    fontFamily: '"Montserrat", sans-serif',
+    fontWeight: 600,
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+  };
+
+  const closeButtonStyle = {
+    background: 'none',
+    border: 'none',
+    fontSize: '28px',
+    color: '#999',
+    cursor: 'pointer',
+    padding: 0,
+    width: '32px',
+    height: '32px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '6px',
+    transition: 'all 0.2s ease',
+    flexShrink: 0,
+  };
+
+  const [closeButtonHover, setCloseButtonHover] = React.useState(false);
+
+  // Inline styles for modal body
+  const bodyStyle = {
+    flex: 1,
+    overflowY: 'auto',
+    padding: '1.5rem',
+  };
+
+  const loadingEmptyStyle = {
+    textAlign: 'center',
+    padding: '3rem 1.5rem',
+    color: '#999',
+    fontFamily: '"Montserrat", sans-serif',
+    fontSize: '0.95rem',
+  };
+
+  const tableWrapperStyle = {
+    width: '100%',
+    overflowX: 'auto',
+  };
+
+  const tableStyle = {
+    width: '100%',
+    borderCollapse: 'collapse',
+    fontFamily: '"Montserrat", sans-serif',
+    fontSize: '0.9rem',
+  };
+
+  const theadStyle = {
+    background: 'rgba(0, 0, 0, 0.04)',
+    borderBottom: '2px solid rgba(0, 0, 0, 0.08)',
+  };
+
+  const thStyle = {
+    padding: '1rem',
+    textAlign: 'left',
+    fontWeight: 600,
+    color: '#123',
+    whiteSpace: 'nowrap',
+  };
+
+  const tbodyTrStyle = {
+    borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+    transition: 'background 0.15s ease',
+  };
+
+  const [hoveredRowId, setHoveredRowId] = React.useState(null);
+
+  const tdStyle = {
+    padding: '0.75rem 1rem',
+    color: '#555',
+    verticalAlign: 'middle',
+  };
+
+
+
+  const userNameStyle = {
+    ...tdStyle,
+    fontWeight: 500,
+    color: '#123',
+  };
+
+  const userEmailStyle = {
+    ...tdStyle,
+    color: '#666',
+    fontSize: '0.88rem',
+  };
+
+  const userRoleStyle = {
+    ...tdStyle,
+    textAlign: 'center',
+  };
+
+  const userStatusStyle = {
+    ...tdStyle,
+    textAlign: 'center',
+  };
+
+  // Role badge styles with variants
+  const getRoleBadgeStyle = (role) => {
+    const baseStyle = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.35rem 0.75rem',
+      borderRadius: '6px',
+      fontSize: '0.78rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    };
+
+    const roleLC = role?.toLowerCase() || 'user';
+
+    if (roleLC === 'super_admin' || roleLC === 'superadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(217, 146, 1, 0.15)',
+        color: '#d99201',
+        border: '1px solid rgba(217, 146, 1, 0.3)',
+      };
+    } else if (roleLC === 'eems_admin' || roleLC === 'eemsadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(84, 135, 114, 0.15)',
+        color: '#548772',
+        border: '1px solid rgba(84, 135, 114, 0.3)',
+      };
+    } else if (roleLC === 'eams_admin' || roleLC === 'eamsadmin') {
+      return {
+        ...baseStyle,
+        background: 'rgba(52, 152, 219, 0.15)',
+        color: '#3498db',
+        border: '1px solid rgba(52, 152, 219, 0.3)',
+      };
+    } else {
+      return {
+        ...baseStyle,
+        background: 'rgba(149, 165, 166, 0.15)',
+        color: '#7f8c8d',
+        border: '1px solid rgba(149, 165, 166, 0.3)',
+      };
+    }
+  };
+
+  // Status badge styles
+  const getStatusBadgeStyle = (isArchived) => {
+    const baseStyle = {
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '0.35rem 0.75rem',
+      borderRadius: '6px',
+      fontSize: '0.78rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+    };
+
+    if (isArchived) {
+      return {
+        ...baseStyle,
+        background: 'rgba(231, 76, 60, 0.15)',
+        color: '#e74c3c',
+        border: '1px solid rgba(231, 76, 60, 0.3)',
+      };
+    } else {
+      return {
+        ...baseStyle,
+        background: 'rgba(39, 174, 96, 0.15)',
+        color: '#27ae60',
+        border: '1px solid rgba(39, 174, 96, 0.3)',
+      };
+    }
+  };
+
+  // Footer styles
+  const footerStyle = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: '1.5rem',
+    borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+    background: 'rgba(0, 0, 0, 0.02)',
+  };
+
+  const userCountStyle = {
+    margin: 0,
+    fontSize: '0.9rem',
+    color: '#555',
+    fontFamily: '"Montserrat", sans-serif',
+  };
+
+  const btnCloseStyle = {
+    background: '#548772',
+    color: '#fff',
+    border: 'none',
+    padding: '0.5rem 1.25rem',
+    borderRadius: '6px',
+    fontSize: '0.9rem',
+    fontWeight: 500,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+    fontFamily: '"Montserrat", sans-serif',
+  };
+
+  return ReactDOM.createPortal(
+    <>
+      <style>
+        {`
+          @keyframes slideUp {
+            from {
+              transform: translateY(20px);
+              opacity: 0;
+            }
+            to {
+              transform: translateY(0);
+              opacity: 1;
+            }
+          }
+        `}
+      </style>
+      <div style={overlayStyle} onClick={onClose}>
+        <div style={containerStyle} onClick={(e) => e.stopPropagation()}>
+          <div style={headerStyle}>
+            <h2 style={headerH2Style}><FaUsers /> Users List</h2>
+            <button
+              style={{
+                ...closeButtonStyle,
+                background: closeButtonHover ? 'rgba(0, 0, 0, 0.08)' : 'none',
+                color: closeButtonHover ? '#123' : '#999',
+              }}
+              onClick={onClose}
+              onMouseEnter={() => setCloseButtonHover(true)}
+              onMouseLeave={() => setCloseButtonHover(false)}
+            >
+              ✕
+            </button>
+          </div>
+
+          <div style={bodyStyle}>
+            {isLoading ? (
+              <div style={loadingEmptyStyle}>Loading users...</div>
+            ) : users.length === 0 ? (
+              <div style={loadingEmptyStyle}>No users found.</div>
+            ) : (
+              <div style={tableWrapperStyle}>
+                <table style={tableStyle}>
+                  <thead style={theadStyle}>
+                    <tr>
+                      <th style={thStyle}>Name</th>
+                      <th style={thStyle}>Email</th>
+                      <th style={thStyle}>Role</th>
+                      <th style={thStyle}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr
+                        key={user.email}
+                        style={{
+                          ...tbodyTrStyle,
+                          background: hoveredRowId === user.email ? 'rgba(84, 135, 114, 0.04)' : 'transparent',
+                        }}
+                        onMouseEnter={() => setHoveredRowId(user.email)}
+                        onMouseLeave={() => setHoveredRowId(null)}
+                      >
+                        <td style={userNameStyle}>{user.fullname || "—"}</td>
+                        <td style={userEmailStyle}>{user.email || "—"}</td>
+                        <td style={userRoleStyle}>
+                          <span style={getRoleBadgeStyle(user.role)}>
+                            {user.role || "User"}
+                          </span>
+                        </td>
+                        <td style={userStatusStyle}>
+                          <span style={getStatusBadgeStyle(false)}>
+                            Active
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div style={footerStyle}>
+            <p style={userCountStyle}>Total Users: {users.length}</p>
+            <button
+              style={btnCloseStyle}
+              onClick={onClose}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#01311d';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = '#548772';
+              }}
+            >
+              Close
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* List */}
-      <ul className="activity-list">
-        {activities.map((a, idx) => {
-          const meta = ACTIVITY_ICONS[a.type] || ACTIVITY_ICONS.settings;
-          return (
-            <li key={a.id} className="activity-item">
-              {/* Timeline line */}
-              <div className="activity-timeline">
-                <span
-                  className="activity-dot"
-                  style={{ background: meta.color }}
-                >
-                  {meta.icon}
-                </span>
-                {idx < activities.length - 1 && (
-                  <span className="activity-line" />
-                )}
-              </div>
-              <div className="activity-body">
-                <p className="activity-message">
-                  {a.message}{" "}
-                  {a.subject && (
-                    <strong className="activity-subject">{a.subject}</strong>
-                  )}
-                </p>
-                <div className="activity-meta">
-                  <span
-                    className="activity-type-chip"
-                    style={{ borderColor: meta.color, color: meta.color }}
-                  >
-                    {meta.label}
-                  </span>
-                  <span className="activity-time">
-                    <FaClock /> {a.time}
-                  </span>
-                </div>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+    </>,
+    document.body
   );
 }
 
@@ -332,14 +568,14 @@ function RecentActivityPanel({ activities }) {
 // QUICK ACTIONS (updated)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function QuickActionsSection() {
+function QuickActionsSection({ onShowUsers, onShowSupport, onSystemSettings }) {
   const actions = [
     {
       variant: "primary",
       icon: <FaUsers />,
-      title: "Manage Users",
-      desc: "Add, edit & archive users",
-      onClick: () => console.log("Manage Users"),
+      title: "Show list of Users",
+      desc: "View all system users",
+      onClick: onShowUsers,
     },
     {
       variant: "success",
@@ -349,23 +585,23 @@ function QuickActionsSection() {
       onClick: () => console.log("Generate Reports"),
     },
     {
-      variant: "warning",
+      variant: "info",
       icon: <FaCog />,
       title: "System Settings",
       desc: "Configure gate & academic year settings",
-      onClick: () => console.log("System Settings"),
+      onClick: onSystemSettings,
     },
     {
-      variant: "info",
-      icon: <FaDoorOpen />,
-      title: "Entry–Exit Records",
-      desc: "View all campus logs",
-      onClick: () => console.log("Entry-Exit Records"),
+      variant: "warning",
+      icon: <FaEnvelope />,
+      title: "Contact Support",
+      desc: "24/7 assistance",
+      onClick: onShowSupport,
     },
   ];
 
   return (
-    <section className="quick-actions-section">
+    <section className="quick-actions-section-superadmin">
       <div className="section-header-wrapper">
         <h3>
           <FaBolt /> Quick Actions
@@ -404,6 +640,34 @@ function SuperDashboard() {
   const [notifications,   setNotifications]   = useState([]);
   const [trafficDays,     setTrafficDays]     = useState(7);
   const [chartKey,        setChartKey]        = useState(0);
+  const [showUsersModal,  setShowUsersModal]  = useState(false);
+  const [usersList,       setUsersList]       = useState([]);
+  const [usersLoading,    setUsersLoading]    = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
+  const navigate = useNavigate();
+
+  // Function to fetch users from backend
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const res = await fetch("http://localhost:5000/api/users");
+      if (!res.ok) throw new Error("Failed to fetch users");
+      const json = await res.json();
+      const data = json.data ?? json.users ?? json;
+      setUsersList(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error('[SuperDashboard] fetchUsers failed:', err.message);
+      setUsersList([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  // Handle opening users modal
+  const handleShowUsers = useCallback(async () => {
+    setShowUsersModal(true);
+    await fetchUsers();
+  }, [fetchUsers]);
 
   // Clock
   useEffect(() => {
@@ -522,41 +786,13 @@ function SuperDashboard() {
           />
         </section>
 
-        <section className="metrics-row">
-          <MetricCard
-            title="Archived Users"
-            value={formatNumber(metrics?.archivedUsers)}
-            tooltip="Shows the number of archived user accounts."
-          />
-          <MetricCard
-            title="Archived Students"
-            value={formatNumber(metrics?.archivedStudents)}
-            tooltip="Shows the number of archived students."
-          />
-          <MetricCard
-            title="Archived Departments"
-            value={formatNumber(metrics?.archivedDepartments)}
-            tooltip="Shows the number of archived departments."
-          />
-          <MetricCard
-            title="Archived Programs"
-            value={formatNumber(metrics?.archivedPrograms)}
-            tooltip="Shows the number of archived programs."
-          />
-        </section>
-
-        {/* ── NOTIFICATIONS + RECENT ACTIVITY ── */}
+        {/* ── NOTIFICATIONS + QUICK ACTIONS ── */}
         <section className="info-panels-row">
           <NotificationsPanel
             notifications={notifications}
           />
-          <RecentActivityPanel
-            activities={SAMPLE_ACTIVITIES}
-          />
+          <QuickActionsSection onShowUsers={handleShowUsers} onShowSupport={() => setShowSupportModal(true)} onSystemSettings={() => navigate('/systemsettings')} />
         </section>
-
-        {/* ── QUICK ACTIONS ── */}
-        <QuickActionsSection />
 
         {/* ── QUICK GUIDE ── */}
         <section className="quick-guide-section">
@@ -627,6 +863,161 @@ function SuperDashboard() {
         </footer>
 
       </div>
+
+      {/* Users List Modal */}
+      <UsersListModal 
+        isOpen={showUsersModal}
+        users={usersList}
+        isLoading={usersLoading}
+        onClose={() => setShowUsersModal(false)}
+      />
+
+      {/* Contact Support Modal */}
+      {showSupportModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)',
+        }} onClick={() => setShowSupportModal(false)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'slideUp 0.3s ease',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.5rem',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+              background: 'linear-gradient(135deg, rgba(84, 135, 114, 0.05), rgba(217, 146, 1, 0.05))',
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '1.25rem',
+                color: '#123',
+                fontFamily: '"Montserrat", sans-serif',
+                fontWeight: 600,
+              }}>Contact Support</h2>
+              <button style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                color: '#999',
+                cursor: 'pointer',
+                padding: 0,
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease',
+              }} onClick={() => setShowSupportModal(false)} onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(0, 0, 0, 0.08)';
+                e.target.style.color = '#123';
+              }} onMouseLeave={(e) => {
+                e.target.style.background = 'none';
+                e.target.style.color = '#999';
+              }}>
+                <FaTimes />
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+              fontFamily: '"Montserrat", sans-serif',
+              fontSize: '0.95rem',
+              lineHeight: '1.6',
+              color: '#333',
+            }}>
+              <h3 style={{
+                margin: '0 0 1rem 0',
+                fontSize: '1.1rem',
+                color: '#123',
+                fontWeight: 600,
+              }}>PLP IT Helpdesk</h3>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>📞 Hotline:</strong> (+63) 2-1234-5678 ext. 1234
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>✉️ Email:</strong> ithelpdesk@plp.edu.ph
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>⏰ Operating Hours:</strong> Monday - Friday, 8:00 AM - 5:00 PM
+              </p>
+              <p style={{ margin: '0.75rem 0' }}>
+                <strong>🚨 Emergency/After Hours:</strong> 0917-123-4567
+              </p>
+              <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
+              <h4 style={{
+                margin: '1rem 0 0.75rem 0',
+                fontSize: '1rem',
+                color: '#123',
+                fontWeight: 600,
+              }}>Specialized Support Contacts:</h4>
+              <ul style={{
+                margin: '0.75rem 0',
+                paddingLeft: '1.5rem',
+              }}>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>Facial Recognition Issues:</strong> fr_support@plp.edu.ph
+                </li>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>System Access/Login Problems:</strong> sysaccess@plp.edu.ph
+                </li>
+                <li style={{ margin: '0.5rem 0' }}>
+                  <strong>Reports & Analytics:</strong> analytics@plp.edu.ph
+                </li>
+              </ul>
+            </div>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              padding: '1.5rem',
+              borderTop: '1px solid rgba(0, 0, 0, 0.08)',
+              background: 'rgba(0, 0, 0, 0.02)',
+              gap: '0.75rem',
+            }}>
+              <button style={{
+                background: '#548772',
+                color: '#fff',
+                border: 'none',
+                padding: '0.5rem 1.25rem',
+                borderRadius: '6px',
+                fontSize: '0.9rem',
+                fontWeight: 500,
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                fontFamily: '"Montserrat", sans-serif',
+              }} onClick={() => setShowSupportModal(false)} onMouseEnter={(e) => {
+                e.target.style.background = '#01311d';
+              }} onMouseLeave={(e) => {
+                e.target.style.background = '#548772';
+              }}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

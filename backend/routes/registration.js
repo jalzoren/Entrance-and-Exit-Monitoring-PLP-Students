@@ -493,8 +493,8 @@ BULK ARCHIVE BY STATUS
 router.put("/students/archive-by-status", async (req, res) => {
   const { status } = req.body;
   
-  // Allowed archive statuses
-  const ARCHIVABLE_STATUSES = ["LOA", "Dropout", "Kickout", "Graduated", "Transferred"];
+  // Allowed archive statuses - REMOVED "Graduated" because promotion handles it
+  const ARCHIVABLE_STATUSES = ["LOA", "Dropout", "Kickout", "Transferred"];
   
   if (!status || !ARCHIVABLE_STATUSES.includes(status)) {
     return res.status(400).json({ 
@@ -540,6 +540,15 @@ router.put("/students/:student_id", async (req, res) => {
       });
     }
  
+    // Handle program_id - prevent NaN
+    let finalProgramId = null;
+    if (program_id !== null && program_id !== undefined && program_id !== '') {
+      const parsed = parseInt(program_id);
+      if (!isNaN(parsed)) {
+        finalProgramId = parsed;
+      }
+    }
+ 
     const [result] = await db.query(
       `UPDATE students
        SET first_name = ?, last_name = ?, middle_name = ?,
@@ -552,7 +561,7 @@ router.put("/students/:student_id", async (req, res) => {
         last_name?.trim().toUpperCase()     || null,
         middle_name?.trim().toUpperCase()   || null,
         extension_name?.trim()             || null,
-        parseInt(program_id),
+        finalProgramId,  // ← Use this instead of parseInt(program_id)
         year_level,
         section,
         status,
@@ -588,6 +597,7 @@ router.get("/archived-students", async (req, res) => {
         s.last_name,
         s.middle_name,
         s.extension_name,
+        s.program_id,  -- ← MAKE SURE THIS LINE EXISTS
         d.dept_name AS college_department,
         p.program_name,
         s.year_level,
