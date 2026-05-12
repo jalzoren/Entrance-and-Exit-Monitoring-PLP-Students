@@ -1147,10 +1147,8 @@ router.get('/visitor-logs', async (req, res) => {
   }
 });
 
-
 // ── GET /api/analytics/student-pairing ─────────────────────────────────────────
 // Fetches students with their entry and exit times paired together
-// Shows entry records even if exit hasn't happened yet
 router.get('/student-pairing', async (req, res) => {
   try {
     const { from, to, dept } = req.query;
@@ -1172,12 +1170,13 @@ router.get('/student-pairing', async (req, res) => {
     
     console.log(`[analytics/student-pairing] Date range: ${rangeStart} to ${rangeEnd}`);
     
-    // Get ALL entry logs (including those without matching exits yet)
-    let entryQuery = `
+    // Get ALL logs ordered by student and time
+    let logsQuery = `
       SELECT 
         eel.student_id,
-        eel.log_time as entry_time,
-        a.method as entry_method,
+        eel.log_time,
+        eel.action,
+        a.method as auth_method,
         s.first_name,
         s.last_name,
         s.middle_name,
@@ -1188,37 +1187,22 @@ router.get('/student-pairing', async (req, res) => {
       LEFT JOIN programs p ON s.program_id = p.id
       LEFT JOIN departments d ON p.department_id = d.id
       LEFT JOIN authentication a ON a.auth_id = eel.auth_id
-      WHERE eel.action = 'ENTRY'
-        AND eel.log_time BETWEEN ? AND ?
+      WHERE eel.log_time BETWEEN ? AND ?
     `;
     
     const queryParams = [rangeStart, rangeEnd];
     
     if (dept && dept !== 'all' && dept !== '') {
-      entryQuery += ` AND d.dept_name = ?`;
+      logsQuery += ` AND d.dept_name = ?`;
       queryParams.push(dept);
     }
     
-    entryQuery += ` ORDER BY eel.log_time DESC`; // Most recent first
+    logsQuery += ` ORDER BY eel.student_id, eel.log_time ASC`;
     
-    const [entryLogs] = await db.query(entryQuery, queryParams);
-    console.log(`[analytics/student-pairing] Found ${entryLogs.length} entry records`);
+    const [allLogs] = await db.query(logsQuery, queryParams);
+    console.log(`[analytics/student-pairing] Found ${allLogs.length} total logs`);
     
-    // Get ALL exit logs (including those that might be later)
-    const [exitLogs] = await db.query(`
-      SELECT 
-        eel.student_id,
-        eel.log_time as exit_time,
-        a.method as exit_method
-      FROM entry_exit_logs eel
-      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
-      WHERE eel.action = 'EXIT'
-        AND eel.log_time BETWEEN ? AND ?
-      ORDER BY eel.student_id, eel.log_time
-    `, [rangeStart, rangeEnd]);
-    console.log(`[analytics/student-pairing] Found ${exitLogs.length} exit records`);
-    
-    // Helper function for year suffix
+    // Helper functions
     function getYearSuffix(level) {
       const num = parseInt(level);
       if (isNaN(num)) return 'th';
@@ -1228,92 +1212,166 @@ router.get('/student-pairing', async (req, res) => {
       return 'th';
     }
     
-    // Format entry method
     function formatMethod(method) {
-      if (method === 'FACIAL') return 'Face Recognition';
-      if (method === 'MANUAL') return 'Manual Input';
-      if (method === 'QR') return 'QR Scan';
-      return 'Unknown';
+      if (!method) return 'Unknown';
+      const upperMethod = method.toUpperCase();
+      if (upperMethod === 'FACIAL') return 'Face Recognition';
+      if (upperMethod === 'MANUAL') return 'Manual Input';
+      if (upperMethod === 'QR') return 'QR Scan';
+      return method;
     }
     
-    // Group exit logs by student and sort by time
-    const exitMap = new Map();
-    exitLogs.forEach(exit => {
-      if (!exitMap.has(exit.student_id)) {
-        exitMap.set(exit.student_id, []);
-      }
-      exitMap.get(exit.student_id).push({
-        exit_time: exit.exit_time,
-        exit_method: exit.exit_method
-      });
-    });
-    
-    // Sort exits for each student by time
-    for (const [studentId, exits] of exitMap.entries()) {
-      exits.sort((a, b) => new Date(a.exit_time) - new Date(b.exit_time));
-      exitMap.set(studentId, exits);
-    }
-    
-    // Pair entries with exits - show ALL entries, even without exit
-    const pairedRecords = [];
-    const exitIndexMap = new Map(); // Track which exit index to use per student
-    
-    for (const entry of entryLogs) {
-      const studentExits = exitMap.get(entry.student_id) || [];
-      let currentIndex = exitIndexMap.get(entry.student_id) || 0;
-      
-      let matchedExit = null;
-      
-      // Find the next exit that occurs after this entry
-      while (currentIndex < studentExits.length) {
-        const potentialExit = studentExits[currentIndex];
-        if (new Date(potentialExit.exit_time) > new Date(entry.entry_time)) {
-          matchedExit = potentialExit;
-          currentIndex++;
-          break;
-        }
-        currentIndex++;
-      }
-      
-      exitIndexMap.set(entry.student_id, currentIndex);
-      
-      // Format student name
-      const lastName = entry.last_name?.trim() || '';
-      const firstName = entry.first_name?.trim() || '';
-      const middleName = entry.middle_name?.trim() || '';
-      let fullName = entry.student_id;
+    function formatStudentName(student) {
+      const lastName = student.last_name?.trim() || '';
+      const firstName = student.first_name?.trim() || '';
+      const middleName = student.middle_name?.trim() || '';
       
       if (lastName && (firstName || middleName)) {
-        fullName = `${lastName}, ${[firstName, middleName].filter(Boolean).join(' ')}`;
+        return `${lastName}, ${[firstName, middleName].filter(Boolean).join(' ')}`;
       } else if (firstName || middleName || lastName) {
-        fullName = [firstName, middleName, lastName].filter(Boolean).join(' ');
+        return [firstName, middleName, lastName].filter(Boolean).join(' ');
+      }
+      return student.student_id;
+    }
+    
+    // Process logs using a queue-based approach
+    const studentMap = new Map();
+    
+    for (const log of allLogs) {
+      const studentId = log.student_id;
+      
+      if (!studentMap.has(studentId)) {
+        studentMap.set(studentId, {
+          studentId: studentId,
+          name: formatStudentName(log),
+          department: log.department || 'Not Specified',
+          yearLevel: log.year_level ? `${log.year_level}${getYearSuffix(log.year_level)} Year` : 'N/A',
+          entryQueue: [], // Queue of entries without exits
+          sessions: []
+        });
       }
       
-      const entryTimeDate = new Date(entry.entry_time);
-      const isCurrentlyInside = !matchedExit;
+      const student = studentMap.get(studentId);
+      const logTime = new Date(log.log_time);
+      const logMethod = formatMethod(log.auth_method);
+      const formattedTime = logTime.toLocaleString('en-PH', { hour12: true });
       
-      pairedRecords.push({
-        no: pairedRecords.length + 1,
-        studentId: entry.student_id,
-        name: fullName,
-        department: entry.department || 'Not Specified',
-        yearLevel: entry.year_level ? `${entry.year_level}${getYearSuffix(entry.year_level)} Year` : 'N/A',
-        entryTime: entryTimeDate.toLocaleString('en-PH', { hour12: true }),
-        entryMethod: formatMethod(entry.entry_method),
-        exitTime: matchedExit ? new Date(matchedExit.exit_time).toLocaleString('en-PH', { hour12: true }) : 'Still Inside',
-        exitMethod: matchedExit ? formatMethod(matchedExit.exit_method) : '—',
-        status: isCurrentlyInside ? 'Inside Campus' : 'Left Campus'
+      if (log.action === 'ENTRY') {
+        // Add entry to queue
+        student.entryQueue.push({
+          time: formattedTime,
+          method: logMethod,
+          rawTime: logTime
+        });
+        
+      } else if (log.action === 'EXIT') {
+        // Try to find the most recent unmatched entry BEFORE this exit
+        let matchedEntry = null;
+        let matchedIndex = -1;
+        
+        // Find the latest entry that occurred BEFORE this exit
+        for (let i = student.entryQueue.length - 1; i >= 0; i--) {
+          if (student.entryQueue[i].rawTime < logTime) {
+            matchedEntry = student.entryQueue[i];
+            matchedIndex = i;
+            break;
+          }
+        }
+        
+        if (matchedEntry) {
+          // Found matching entry - create a session
+          student.sessions.push({
+            entryTime: matchedEntry.time,
+            entryMethod: matchedEntry.method,
+            exitTime: formattedTime,
+            exitMethod: logMethod,
+            status: 'Left Campus'
+          });
+          // Remove the matched entry from queue
+          student.entryQueue.splice(matchedIndex, 1);
+        } else {
+          // Exit without matching entry (exit occurred before any entry in this period)
+          student.sessions.push({
+            entryTime: '—',
+            entryMethod: '—',
+            exitTime: formattedTime,
+            exitMethod: logMethod,
+            status: 'Exit Only'
+          });
+        }
+      }
+    }
+    
+    // After processing all logs, any remaining entries in queue are still inside
+    for (const [studentId, student] of studentMap.entries()) {
+      for (const entry of student.entryQueue) {
+        student.sessions.push({
+          entryTime: entry.time,
+          entryMethod: entry.method,
+          exitTime: '—',
+          exitMethod: '—',
+          status: 'Inside Campus'
+        });
+      }
+      
+      // Sort sessions by entry time (or exit time if no entry)
+      student.sessions.sort((a, b) => {
+        const timeA = a.entryTime !== '—' ? a.entryTime : a.exitTime;
+        const timeB = b.entryTime !== '—' ? b.entryTime : b.exitTime;
+        return timeA.localeCompare(timeB);
       });
     }
     
-    console.log(`[analytics/student-pairing] Successfully paired ${pairedRecords.length} records`);
-    const stillInside = pairedRecords.filter(r => r.status === 'Inside Campus').length;
-    console.log(`[analytics/student-pairing] ${stillInside} students still inside campus`);
+    // Build final records with session numbers
+    const pairedRecords = [];
+    
+    for (const [studentId, student] of studentMap.entries()) {
+      student.sessions.forEach((session, idx) => {
+        pairedRecords.push({
+          studentId: student.studentId,
+          name: student.name,
+          department: student.department,
+          yearLevel: student.yearLevel,
+          sessionNumber: idx + 1,
+          entryTime: session.entryTime,
+          entryMethod: session.entryMethod,
+          exitTime: session.exitTime,
+          exitMethod: session.exitMethod,
+          status: session.status
+        });
+      });
+    }
+    
+    // Sort by student name then session number
+    pairedRecords.sort((a, b) => {
+      if (a.name === b.name) {
+        return a.sessionNumber - b.sessionNumber;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    
+    // Add sequential numbering
+    pairedRecords.forEach((record, index) => {
+      record.no = index + 1;
+    });
+    
+    const stats = {
+      completed: pairedRecords.filter(r => r.status === 'Left Campus').length,
+      inside: pairedRecords.filter(r => r.status === 'Inside Campus').length,
+      exitOnly: pairedRecords.filter(r => r.status === 'Exit Only').length
+    };
+    
+    console.log(`[analytics/student-pairing] Total sessions: ${pairedRecords.length}`);
+    console.log(`[analytics/student-pairing] - Completed: ${stats.completed}`);
+    console.log(`[analytics/student-pairing] - Inside: ${stats.inside}`);
+    console.log(`[analytics/student-pairing] - Exit only: ${stats.exitOnly}`);
     
     res.json({
       success: true,
       totalRecords: pairedRecords.length,
-      stillInsideCount: stillInside,
+      completedCount: stats.completed,
+      stillInsideCount: stats.inside,
+      exitOnlyCount: stats.exitOnly,
       dateRange: `${rangeStart.slice(0,10)} to ${rangeEnd.slice(0,10)}`,
       records: pairedRecords
     });
