@@ -32,6 +32,7 @@ async function getGateStatus(mode) {
     return {
       open: true,
       warning: false,
+      withinWindow: true,
       message: `Gate is open (${start} – ${end})`,
       windowStart: start,
       windowEnd: end,
@@ -42,6 +43,7 @@ async function getGateStatus(mode) {
     return {
       open: true,
       warning: true,
+      withinWindow: false,
       message: `Outside allowed ${mode === 'ENTRY' ? 'entry' : 'exit'} window (${start} – ${end}). Entry/exit allowed but flagged.`,
       windowStart: start,
       windowEnd: end,
@@ -51,6 +53,7 @@ async function getGateStatus(mode) {
   return {
     open: false,
     warning: false,
+    withinWindow: false,
     message: `The ${mode === 'ENTRY' ? 'entry' : 'exit'} gate is currently closed (allowed hours: ${start} – ${end}).`,
     windowStart: start,
     windowEnd: end,

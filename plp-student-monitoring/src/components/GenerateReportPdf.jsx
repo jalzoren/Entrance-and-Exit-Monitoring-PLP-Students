@@ -101,10 +101,14 @@ const GenerateReportPdf = forwardRef(
     // FIXED: Process sessions to handle multiple entries/exits per student
     const processSessions = (entries, exits) => {
       // Create copies with proper timestamp parsing
+      const gateIsClosedAtReport = reportData?.gateStatus?.withinWindow === false;
+
       const allEntryLogs = entries
         .map((log) => ({
           ...log,
           type: "entry",
+          warning: log.gateWindowWarning || false,
+          warningReason: log.gateWindowReason || log.warningReason || null,
           timestamp: new Date(
             log.dateTime ||
               log.date ||
@@ -119,6 +123,8 @@ const GenerateReportPdf = forwardRef(
         .map((log) => ({
           ...log,
           type: "exit",
+          warning: log.gateWindowWarning || false,
+          warningReason: log.gateWindowReason || log.warningReason || null,
           timestamp: new Date(
             log.dateTime ||
               log.date ||
@@ -148,7 +154,7 @@ const GenerateReportPdf = forwardRef(
             department:
               log.department || log.collegeDept || log.college || "N/A",
             yearLevel: log.yearLevel || log.year || "N/A",
-            section: log.section || log.section_name || "N/A",  // ← ADD THIS LINE
+            section: log.section || log.section_name || "N/A",
             pendingEntry: null,
             sessions: [],
           });
@@ -161,58 +167,78 @@ const GenerateReportPdf = forwardRef(
         const method = log.method || log.authMethod || "Face Recognition";
 
         if (log.type === "entry") {
-          // If there's a pending entry without exit, save it first
           if (student.pendingEntry) {
-            student.sessions.push({
-              entryTime: student.pendingEntry.time,
-              entryMethod: student.pendingEntry.method,
-              exitTime: "—",
-              exitMethod: "—",
-              status: "Inside Campus (No Exit)",
-            });
-          }
-          // Start new pending entry
+          const pendingReason = (student.pendingEntry.warningReason || '').toLowerCase();
+          const isClosedWarning = pendingReason.includes('still inside') || pendingReason.includes('gate closed');
+          const status = student.pendingEntry.warning
+            ? "Have entered/Exit beyond gate closing hours"
+            : isClosedWarning || gateIsClosedAtReport
+              ? "Still Inside (Gate closed – no exit recorded)"
+              : "Inside Campus (No Exit)";
+
+          student.sessions.push({
+            entryTime: student.pendingEntry.time,
+            entryMethod: student.pendingEntry.method,
+            exitTime: "—",
+            exitMethod: "—",
+            status,
+          });
+        }
+
           student.pendingEntry = {
             time: formattedTime,
             method: method,
             rawTime: log.timestamp,
+            warning: log.warning,
+            warningReason: log.warningReason,
           };
         } else if (log.type === "exit") {
           if (
             student.pendingEntry &&
             student.pendingEntry.rawTime < log.timestamp
           ) {
-            // Pair with pending entry
+            const status = (student.pendingEntry.warning || log.warning)
+              ? "Have entered/Exit beyond gate closing hours"
+              : "Completed";
+
             student.sessions.push({
               entryTime: student.pendingEntry.time,
               entryMethod: student.pendingEntry.method,
               exitTime: formattedTime,
               exitMethod: method,
-              status: "Completed",
+              status,
             });
             student.pendingEntry = null;
           } else {
-            // Exit without matching entry
+            const status = log.warning
+              ? "Have entered/Exit beyond gate closing hours"
+              : "Exit Only";
+
             student.sessions.push({
               entryTime: "—",
               entryMethod: "—",
               exitTime: formattedTime,
               exitMethod: method,
-              status: "Exit Only",
+              status,
             });
           }
         }
       });
 
-      // Add any remaining pending entries (student still inside)
       for (const [studentId, student] of studentMap.entries()) {
         if (student.pendingEntry) {
+          const status = student.pendingEntry.warning
+            ? "Have entered/Exit beyond gate closing hours"
+            : gateIsClosedAtReport
+              ? "Still Inside (Gate closed – no exit recorded)"
+              : "Still Inside Campus";
+
           student.sessions.push({
             entryTime: student.pendingEntry.time,
             entryMethod: student.pendingEntry.method,
             exitTime: "—",
             exitMethod: "—",
-            status: "Still Inside Campus",
+            status,
           });
         }
       }
@@ -226,7 +252,7 @@ const GenerateReportPdf = forwardRef(
             name: student.name,
             department: student.department,
             yearLevel: student.yearLevel,
-            section: student.section,  // ← ADD THIS LINE
+            section: student.section,
             sessionNumber: idx + 1,
             entryTime: session.entryTime,
             entryMethod: session.entryMethod,
@@ -429,20 +455,26 @@ const GenerateReportPdf = forwardRef(
 
     // Process visitor sessions (pair entries with exits)
     const processVisitorSessions = (entries, exits) => {
+      const gateIsClosedAtReport = reportData?.gateStatus?.withinWindow === false;
+
       const allEntries = entries.map(log => ({
         ...log,
-        timestamp: new Date(log.dateTime || log.log_time || log.timestamp)
+        timestamp: new Date(log.dateTime || log.log_time || log.timestamp),
+        type: 'entry',
+        warning: log.gateWindowWarning || false,
+        warningReason: log.gateWindowReason || null,
       })).filter(log => !isNaN(log.timestamp.getTime()));
       
       const allExits = exits.map(log => ({
         ...log,
-        timestamp: new Date(log.dateTime || log.log_time || log.timestamp)
+        timestamp: new Date(log.dateTime || log.log_time || log.timestamp),
+        type: 'exit',
+        warning: log.gateWindowWarning || false,
+        warningReason: log.gateWindowReason || null,
       })).filter(log => !isNaN(log.timestamp.getTime()));
       
       // Combine and sort
-      const allLogs = [...allEntries.map(l => ({ ...l, type: 'entry' })), 
-                      ...allExits.map(l => ({ ...l, type: 'exit' }))]
-        .sort((a, b) => a.timestamp - b.timestamp);
+      const allLogs = [...allEntries, ...allExits].sort((a, b) => a.timestamp - b.timestamp);
       
       const visitorMap = new Map();
       
@@ -466,26 +498,45 @@ const GenerateReportPdf = forwardRef(
         
         if (log.type === 'entry') {
           if (visitor.pendingEntry) {
+            const status = visitor.pendingEntry.warning
+              ? 'Have entered/Exit beyond gate closing hours'
+              : gateIsClosedAtReport
+                ? 'Still Inside (Gate closed – no exit recorded)'
+                : 'Still Inside (No Exit)';
+
             visitor.sessions.push({
               entryTime: visitor.pendingEntry.time,
               exitTime: '—',
-              status: 'Still Inside (No Exit)'
+              status
             });
           }
-          visitor.pendingEntry = { time: formattedTime, rawTime: log.timestamp };
+          visitor.pendingEntry = {
+            time: formattedTime,
+            rawTime: log.timestamp,
+            warning: log.warning,
+            warningReason: log.warningReason,
+          };
         } else if (log.type === 'exit') {
           if (visitor.pendingEntry && visitor.pendingEntry.rawTime < log.timestamp) {
+            const status = visitor.pendingEntry.warning || log.warning
+              ? 'Have entered/Exit beyond gate closing hours'
+              : 'Completed';
+
             visitor.sessions.push({
               entryTime: visitor.pendingEntry.time,
               exitTime: formattedTime,
-              status: 'Completed'
+              status
             });
             visitor.pendingEntry = null;
           } else {
+            const status = log.warning
+              ? 'Have entered/Exit beyond gate closing hours'
+              : 'Exit Only';
+
             visitor.sessions.push({
               entryTime: '—',
               exitTime: formattedTime,
-              status: 'Exit Only'
+              status
             });
           }
         }
@@ -494,15 +545,20 @@ const GenerateReportPdf = forwardRef(
       // Add remaining pending entries
       for (const [visitorId, visitor] of visitorMap.entries()) {
         if (visitor.pendingEntry) {
+          const status = visitor.pendingEntry.warning
+            ? 'Have entered/Exit beyond gate closing hours'
+            : gateIsClosedAtReport
+              ? 'Still Inside (Gate closed – no exit recorded)'
+              : 'Still Inside';
+
           visitor.sessions.push({
             entryTime: visitor.pendingEntry.time,
             exitTime: '—',
-            status: 'Still Inside'
+            status
           });
         }
       }
       
-      // Flatten sessions
       const allSessions = [];
       for (const [visitorId, visitor] of visitorMap.entries()) {
         visitor.sessions.forEach((session, idx) => {
@@ -1060,7 +1116,7 @@ return (
                         <td className="pdf-td-time-exit">{session.exitTime}</td>
                         <td className="pdf-td-method">{session.exitMethod}</td>
                         <td className="pdf-td-status">
-                          <span className={`status-badge ${session.status === "Still Inside Campus" ? "status-inside" : session.status === "Completed" ? "status-completed" : "status-exit-only"}`}>
+                          <span className={`status-badge ${session.status.startsWith("Still Inside") ? "status-inside" : session.status === "Completed" ? "status-completed" : "status-exit-only"}`}>
                             {session.status}
                           </span>
                         </td>
@@ -1088,7 +1144,7 @@ return (
                         <>
                           &nbsp;|&nbsp;
                           <span className="text-green">
-                            Still Inside: {finalMergedLogs.filter((s) => s.status === "Still Inside Campus").length}
+                            Still Inside: {finalMergedLogs.filter((s) => s.status.startsWith("Still Inside")).length}
                           </span>
                           &nbsp;|&nbsp;
                           <span className="text-blue">
