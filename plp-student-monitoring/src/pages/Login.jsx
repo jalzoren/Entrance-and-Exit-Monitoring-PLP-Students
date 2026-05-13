@@ -2,7 +2,7 @@
 import { useState } from "react";
 import "../css/Login.css";
 import { useNavigate, Link } from "react-router-dom";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaEye, FaEyeSlash, FaArrowLeft } from "react-icons/fa";
 import { MdAdminPanelSettings, MdSecurity, MdSchool } from "react-icons/md";
 import Swal from 'sweetalert2';
 import { useAuth } from "../context/AuthContext";
@@ -75,6 +75,10 @@ export default function Login() {
 
   return (
     <div className="login-container">
+      {/* Back Button - positioned similarly to FaceRecognition component */}
+      <button className="login-back-button" onClick={() => navigate('/')}>
+        <FaArrowLeft /> Back
+      </button>
 
       <div className="login-wrapper">
         <div className="login-header-container">
