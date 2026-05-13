@@ -1,4 +1,4 @@
-// routes/recognize.js (Optimized version with rate limiting)
+// routes/recognize.js (Complete version with ALL failures logged)
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
@@ -26,8 +26,8 @@ async function shouldLogFailure(studentId, mode, failureReason) {
   const lastLog = failureCache.get(cacheKey);
   const now = Date.now();
   
-  // Only log once per minute for same failure type
-  if (lastLog && (now - lastLog) < 60000) {
+  // Only log once per 10 seconds for same failure type (reduced from 60 seconds)
+  if (lastLog && (now - lastLog) < 10000) {
     return false;
   }
   
@@ -35,16 +35,10 @@ async function shouldLogFailure(studentId, mode, failureReason) {
   return true;
 }
 
-// Optimized logging function
+// Complete logging function - logs ALL failures including NO_FACE_DETECTED
 async function logAuthentication(data) {
   try {
-    // Don't log NO_FACE_DETECTED at all (too noisy)
-    if (data.failure_reason === 'NO_FACE_DETECTED') {
-      console.log('[Skipped] NO_FACE_DETECTED not logged to save space');
-      return null;
-    }
-    
-    // Rate limit other failures
+    // Rate limit failures (but don't skip any type completely)
     if (data.auth_status === 'FAILED') {
       const shouldLog = await shouldLogFailure(
         data.student_id, 
@@ -57,6 +51,7 @@ async function logAuthentication(data) {
       }
     }
     
+    // INSERT ALL records (including NO_FACE_DETECTED)
     const [result] = await pool.query(
       `INSERT INTO authentication 
       (student_id, method, auth_status, failure_reason, confidence, quality_score, action, processing_time_ms, timestamp)
@@ -79,7 +74,7 @@ async function logAuthentication(data) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/recognize (Optimized)
+// POST /api/recognize (Complete logging version)
 // ─────────────────────────────────────────────────────────────────────────────
 router.post("/recognize", async (req, res) => {
   const startTime = Date.now();
@@ -105,17 +100,42 @@ router.post("/recognize", async (req, res) => {
     }
 
     // ── Step 1: Send image to Python FastAPI ────────────────────
-    const pyResponse = await axios.post("http://127.0.0.1:8000/generate-embedding", {
-      images: [image]
-    });
+    let pyResponse;
+    try {
+      pyResponse = await axios.post("http://127.0.0.1:8000/generate-embedding", {
+        images: [image]
+      });
+    } catch (pyError) {
+      console.error("Python service error:", pyError.message);
+      await logAuthentication({
+        auth_status: 'FAILED',
+        failure_reason: 'PYTHON_SERVICE_ERROR',
+        action: mode,
+        processing_time_ms: Date.now() - startTime
+      });
+      
+      return res.status(503).json({
+        recognized: false,
+        message: "Face recognition service unavailable"
+      });
+    }
 
     const data = pyResponse.data;
 
+    // ── Step 2: Handle NO_FACE_DETECTED (NOW LOGGED) ─────────────
     if (!data.success || data.embeddings.length === 0) {
-      console.log("No faces detected");
+      console.log("No faces detected - logging failure");
       
-      // Don't log NO_FACE_DETECTED - too noisy!
-      // Just return response without database write
+      // ALWAYS log NO_FACE_DETECTED (with rate limiting)
+      await logAuthentication({
+        student_id: null,
+        auth_status: 'FAILED',
+        failure_reason: 'NO_FACE_DETECTED',
+        confidence: null,
+        quality_score: null,
+        action: mode,
+        processing_time_ms: Date.now() - startTime
+      });
       
       return res.json({ 
         recognized: false,
@@ -127,12 +147,12 @@ router.post("/recognize", async (req, res) => {
     const capturedQuality = data.quality_scores[0] || 0.5;
     console.log("Captured embedding quality:", capturedQuality);
 
-    // ── Step 2: Fetch all stored embeddings ─────────────────────
+    // ── Step 3: Fetch all stored embeddings ─────────────────────
     const [rows] = await pool.query(
       "SELECT student_id, face_embedding, face_position, quality FROM student_face_embeddings"
     );
 
-    // ── Step 3: Compare embeddings ──────────────────────────────
+    // ── Step 4: Compare embeddings ──────────────────────────────
     let matchedStudent = null;
     let maxSimilarity = 0;
     let bestMatchPosition = null;
@@ -148,22 +168,28 @@ router.post("/recognize", async (req, res) => {
       }
     }
 
-    // ── Step 4: Handle no match (rate limited) ───────────────────
+    // ── Step 5: Handle no match (ALWAYS LOG) ───────────────────
     if (!matchedStudent) {
       const confidencePercent = parseFloat((maxSimilarity * 100).toFixed(2));
-      let failureReason = maxSimilarity > 0 && maxSimilarity <= 0.55 ? 'LOW_CONFIDENCE' : 'NO_MATCH_FOUND';
+      let failureReason = 'NO_MATCH_FOUND';
       
-      // Only log if confidence is above 30% (meaningful attempt)
-      if (maxSimilarity > 0.3) {
-        await logAuthentication({
-          auth_status: 'FAILED',
-          failure_reason: failureReason,
-          confidence: confidencePercent,
-          quality_score: capturedQuality,
-          action: mode,
-          processing_time_ms: Date.now() - startTime
-        });
+      // Determine more specific failure reason
+      if (maxSimilarity > 0 && maxSimilarity <= 0.55) {
+        failureReason = 'LOW_CONFIDENCE';
+      } else if (maxSimilarity === 0) {
+        failureReason = 'NO_SIMILARITY';
       }
+      
+      // ALWAYS log the failure (removed the 0.3 threshold)
+      await logAuthentication({
+        student_id: null,
+        auth_status: 'FAILED',
+        failure_reason: failureReason,
+        confidence: confidencePercent,
+        quality_score: capturedQuality,
+        action: mode,
+        processing_time_ms: Date.now() - startTime
+      });
       
       return res.json({ 
         recognized: false,
@@ -174,7 +200,7 @@ router.post("/recognize", async (req, res) => {
 
     console.log(`Match found: ${matchedStudent} with ${(maxSimilarity*100).toFixed(1)}%`);
 
-    // ── Step 5: Get PH time and check logs ──────────────────────
+    // ── Step 6: Get PH time and check logs ──────────────────────
     const { now, dayStart, dayEnd } = await getTodayPhRange(pool);
     
     const [lastLogRows] = await pool.query(
@@ -187,7 +213,7 @@ router.post("/recognize", async (req, res) => {
     const lastAction = lastLogRows.length ? lastLogRows[0].action : null;
     const confidencePercent = parseFloat((maxSimilarity * 100).toFixed(2));
 
-    // ── Step 6: Business logic validation ────────────────────────
+    // ── Step 7: Business logic validation ────────────────────────
     if ((mode === 'ENTRY' && lastAction === 'ENTRY') ||
         (mode === 'EXIT' && lastAction === 'EXIT') ||
         (mode === 'EXIT' && !lastAction)) {
@@ -212,7 +238,7 @@ router.post("/recognize", async (req, res) => {
       return res.json({ recognized: true, validated: false, message });
     }
 
-    // ── Step 7: SUCCESS - Always log successful attempts ─────────
+    // ── Step 8: SUCCESS - Always log successful attempts ─────────
     const finalAction = mode || (lastAction === 'ENTRY' ? 'EXIT' : 'ENTRY');
     
     // Fetch student details
@@ -263,6 +289,15 @@ router.post("/recognize", async (req, res) => {
 
   } catch (err) {
     console.error("Recognition Error:", err);
+    
+    // Log unexpected errors
+    await logAuthentication({
+      auth_status: 'FAILED',
+      failure_reason: 'SYSTEM_ERROR',
+      action: req.body.mode || 'UNKNOWN',
+      processing_time_ms: Date.now() - startTime
+    }).catch(console.error);
+    
     return res.status(500).json({ 
       recognized: false, 
       message: "Internal server error" 
@@ -271,7 +306,67 @@ router.post("/recognize", async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/recognition/stats/summary - Get summary stats without heavy queries
+// GET /api/recognition/all - Get ALL authentication records
+// ─────────────────────────────────────────────────────────────────────────────
+router.get("/recognition/all", async (req, res) => {
+  try {
+    const { limit = 100, offset = 0, status, failure_reason } = req.query;
+    
+    let query = `
+      SELECT 
+        auth_id,
+        student_id,
+        method,
+        auth_status,
+        action,
+        failure_reason,
+        confidence,
+        processing_time_ms,
+        quality_score,
+        timestamp
+      FROM authentication
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (status) {
+      query += ` AND auth_status = ?`;
+      params.push(status);
+    }
+    
+    if (failure_reason) {
+      query += ` AND failure_reason = ?`;
+      params.push(failure_reason);
+    }
+    
+    query += ` ORDER BY timestamp DESC LIMIT ? OFFSET ?`;
+    params.push(parseInt(limit), parseInt(offset));
+    
+    const [rows] = await pool.query(query, params);
+    
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM authentication`,
+      []
+    );
+    
+    res.json({
+      success: true,
+      data: rows,
+      pagination: {
+        total: countResult[0].total,
+        limit: parseInt(limit),
+        offset: parseInt(offset)
+      }
+    });
+  } catch (err) {
+    console.error("Error fetching records:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/recognition/stats/summary - Get summary stats
 // ─────────────────────────────────────────────────────────────────────────────
 router.get("/recognition/stats/summary", async (req, res) => {
   try {
@@ -286,7 +381,22 @@ router.get("/recognition/stats/summary", async (req, res) => {
         AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     `);
     
-    res.json(summary[0]);
+    // Add failure breakdown
+    const [failureBreakdown] = await pool.query(`
+      SELECT 
+        failure_reason,
+        COUNT(*) as count
+      FROM authentication
+      WHERE auth_status = 'FAILED'
+        AND timestamp >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      GROUP BY failure_reason
+      ORDER BY count DESC
+    `);
+    
+    res.json({
+      ...summary[0],
+      failure_breakdown: failureBreakdown
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
