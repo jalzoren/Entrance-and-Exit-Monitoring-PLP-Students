@@ -236,7 +236,7 @@ function GenerateReportFilter({ onClose, onGenerate }) {
         <div className="modal-body">
 
           {/* Report Type: Students or Visitors */}
-          <div className="modal-field modal-full-width">
+          <div className="modal-field ">
             <label className="modal-label">Report Type</label>
             <div style={{ display: 'flex', gap: '20px' }}>
               {reportTypeOptions.map(opt => (
@@ -282,84 +282,92 @@ function GenerateReportFilter({ onClose, onGenerate }) {
             </div>
           </div>
 
+          
           {/* Student-specific filters */}
           {filters.reportType === 'students' && (
             <>
-              {/* Department Filter */}
-              <div className="modal-field modal-full-width">
-                <label className="modal-label">College Department</label>
-                <select
-                  value={filters.collegeDepartment}
-                  onChange={e => setField('collegeDepartment', e.target.value)}
-                  className="modal-select"
-                  disabled={loadingDepts}
-                >
-                  {loadingDepts ? (
-                    <option value="">Loading departments…</option>
-                  ) : (
-                    departmentOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))
-                  )}
-                </select>
-              </div>
 
-              {/* Program Filter - FROM YOUR PROGRAMS TABLE */}
-              <div className="modal-field modal-full-width">
-                <label className="modal-label">Program</label>
-                <select
-                  value={filters.program}
-                  onChange={e => setField('program', e.target.value)}
-                  className="modal-select"
-                  disabled={!filters.collegeDepartment || loadingPrograms}
-                >
-                  {loadingPrograms ? (
-                    <option value="">Loading programs…</option>
-                  ) : (
-                    programOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))
-                  )}
-                </select>
-                {filters.collegeDepartment && !loadingPrograms && programOptions.length <= 1 && (
-                  <small style={{ color: '#999', marginTop: '4px', display: 'block', fontSize: '11px' }}>
-                    No programs found for this department
-                  </small>
-                )}
-              </div>
+              <div className='modal-grid-2'>
+                {/* Department Filter */}
+                <div className="modal-field">
+                  <label className="modal-label">College Department</label>
+                  <select
+                    value={filters.collegeDepartment}
+                    onChange={e => setField('collegeDepartment', e.target.value)}
+                    className="modal-select"
+                    disabled={loadingDepts}
+                  >
+                    {loadingDepts ? (
+                      <option value="">Loading departments…</option>
+                    ) : (
+                      departmentOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
 
-              {/* Year Level Filter */}
-              <div className="modal-field modal-full-width">
-                <label className="modal-label">Year Level</label>
-                <select
-                  value={filters.yearLevel}
-                  onChange={e => setField('yearLevel', e.target.value)}
-                  className="modal-select"
-                >
-                  {yearLevelOptions.map(opt => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Section Filter */}
-              <div className="modal-field modal-full-width">
-                <label className="modal-label">Section</label>
-                <select
-                  value={filters.section}
-                  onChange={e => setField('section', e.target.value)}
-                  className="modal-select"
-                  disabled={!filters.program || loadingSections}
-                >
-                  {loadingSections ? (
-                    <option value="">Loading sections…</option>
-                  ) : (
-                    sectionOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))
+                {/* Program Filter - FROM YOUR PROGRAMS TABLE */}
+                <div className="modal-field">
+                  <label className="modal-label">Program</label>
+                  <select
+                    value={filters.program}
+                    onChange={e => setField('program', e.target.value)}
+                    className="modal-select"
+                    disabled={!filters.collegeDepartment || loadingPrograms}
+                  >
+                    {loadingPrograms ? (
+                      <option value="">Loading programs…</option>
+                    ) : (
+                      programOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))
+                    )}
+                  </select>
+                  {filters.collegeDepartment && !loadingPrograms && programOptions.length <= 1 && (
+                    <small style={{ color: '#999', marginTop: '4px', display: 'block', fontSize: '11px' }}>
+                      No programs found for this department
+                    </small>
                   )}
-                </select>
+                </div>
               </div>
+              
+              
+              <div className='modal-grid-2'>
+                {/* Year Level Filter */}
+                <div className="modal-field">
+                  <label className="modal-label">Year Level</label>
+                  <select
+                    value={filters.yearLevel}
+                    onChange={e => setField('yearLevel', e.target.value)}
+                    className="modal-select"
+                  >
+                    {yearLevelOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Section Filter */}
+                <div className="modal-field">
+                  <label className="modal-label">Section</label>
+                  <select
+                    value={filters.section}
+                    onChange={e => setField('section', e.target.value)}
+                    className="modal-select"
+                    disabled={!filters.program || loadingSections}
+                  >
+                    {loadingSections ? (
+                      <option value="">Loading sections…</option>
+                    ) : (
+                      sectionOptions.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+              
             </>
           )}
 

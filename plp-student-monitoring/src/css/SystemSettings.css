@@ -687,6 +687,7 @@ input:checked + .slider:before {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
+  margin: 10px;
 }
 
 .modal-field {
@@ -804,6 +805,12 @@ input:checked + .slider:before {
 .modal-btn-save:hover {
   background-color: var(--color-primary);
   transform: translateY(-1px);
+}
+
+.modal-depart-program{
+  display: flex;
+  flex-direction: column;
+
 }
 
 /* ═══════════════════════════════════════════════════════════
