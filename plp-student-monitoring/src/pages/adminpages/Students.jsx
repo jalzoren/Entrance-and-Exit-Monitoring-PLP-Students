@@ -32,6 +32,20 @@ const STATUS_OPTIONS = [
   { value: "Transferred", label: "Transferred" },
 ];
 
+const getCollegeColor = (collegeAbbrev) => {
+  const colorMap = {
+    "CAS": "#9b59b6",     // College of Arts and Sciences - Purple
+    "CBA": "#f1c40f",     // College of Business and Accountancy - Yellow
+    "CCS": "#95a5a6",     // College of Computer Studies - Gray
+    "COED": "#3498db",     // College of Education - Blue
+    "COE": "#e67e22",     // College of Engineering - Orange
+    "CIHM": "#e74c3c",    // College of International Hospitality Management - Red
+    "LAW": "#8B4513",     // College of Law - Brown
+    "CON": "#fd79a8",     // College of Nursing - Pink
+  };
+  return colorMap[collegeAbbrev] || "#95a5a6"; // Default gray if college not found
+};
+
 const ALL_STATUSES = [
   "Regular", "Irregular", "LOA", "Dropout", "Kickout", "Graduated", "Transferred", "Inactive",
 ];
@@ -432,6 +446,53 @@ function Students() {
     return pages;
   };
 
+  const CustomLegend = ({ payload }) => {
+  // Split the payload into two columns
+  const midPoint = Math.ceil(payload.length / 2);
+  const leftColumn = payload.slice(0, midPoint);
+  const rightColumn = payload.slice(midPoint);
+  
+  return (
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      gap: '40px',
+      marginTop: '20px',
+      width: '100%'
+    }}>
+      {/* Left Column */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+        {leftColumn.map((entry, index) => (
+          <div key={`legend-left-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              backgroundColor: entry.color,
+              borderRadius: '2px'
+            }} />
+            <span style={{ fontSize: '12px', color: '#333' }}>{entry.value}</span>
+          </div>
+        ))}
+      </div>
+      
+      {/* Right Column */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
+        {rightColumn.map((entry, index) => (
+          <div key={`legend-right-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{
+              width: '12px',
+              height: '12px',
+              backgroundColor: entry.color,
+              borderRadius: '2px'
+            }} />
+            <span style={{ fontSize: '12px', color: '#333' }}>{entry.value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
@@ -477,31 +538,40 @@ function Students() {
               </div>
               <div className="chart-card-body">
                 <ResponsiveContainer width="100%" height={320}>
-                  <PieChart>
-                    <Pie
-                      data={collegeStatusData}
-                      dataKey="total"
-                      nameKey="collegeAbbrev"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={95}
-                      labelLine={false}
-                      label={({ collegeAbbrev, percent }) =>
-                        `${collegeAbbrev}: ${(percent * 100).toFixed(0)}%`
-                      }
-                    >
-                    {collegeStatusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={`hsl(${(index * 45) % 360}, 70%, 50%)`} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(value, name, props) =>
-                      [`${value} students`, props.payload.college]
-                    }
-                    cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }}
-                  />
-                  <Legend layout="horizontal" verticalAlign="bottom" align="center" iconType="square" iconSize="5px" />
-                </PieChart>
+                <PieChart>
+  <Pie
+    data={collegeStatusData}
+    dataKey="total"
+    nameKey="collegeAbbrev"
+    cx="50%"
+    cy="50%"
+    outerRadius={95}
+    labelLine={false}
+    label={({ collegeAbbrev, percent }) =>
+      `${collegeAbbrev}: ${(percent * 100).toFixed(0)}%`
+    }
+  >
+    {collegeStatusData.map((entry, index) => (
+      <Cell 
+        key={`cell-${index}`} 
+        fill={getCollegeColor(entry.collegeAbbrev)}
+        stroke="#fff"
+        strokeWidth={2}
+      />
+    ))}
+  </Pie>
+  <Tooltip
+    formatter={(value, name, props) =>
+      [`${value} students`, props.payload.college]
+    }
+    cursor={{ fill: 'rgba(0, 0, 0, 0.04)' }}
+  />
+  <Legend 
+    content={<CustomLegend />}
+    verticalAlign="bottom"
+    align="center"
+  />
+</PieChart>
               </ResponsiveContainer>
             </div>
           </div>

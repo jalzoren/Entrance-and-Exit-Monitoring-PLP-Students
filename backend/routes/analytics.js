@@ -616,13 +616,14 @@ router.get('/records', async (req, res) => {
   }
 });
 
-// ── GET /api/analytics/report?from=YYYY-MM-DD&to=YYYY-MM-DD&dept= ────────────
-// ── GET /api/analytics/report?from=YYYY-MM-DD&to=YYYY-MM-DD&dept= ────────────
+// ── GET /api/analytics/report ────────────────────────────────────────────────
 router.get('/report', async (req, res) => {
   try {
-    const { from, to, dept } = req.query;
+    const { 
+      from, to, dept, program, yearLevel, section, reportType, actionType 
+    } = req.query;
     
-    console.log('[analytics/report] Raw input - from:', from, 'to:', to, 'dept:', dept);
+    console.log('[analytics/report] Raw input:', { from, to, dept, program, yearLevel, section, reportType, actionType });
     
     // Parse dates correctly (handle DD/MM/YYYY format from frontend)
     let rangeStart, rangeEnd;
@@ -633,7 +634,6 @@ router.get('/report', async (req, res) => {
       if (from.includes('/')) {
         const fromParts = from.split('/');
         fromDate = `${fromParts[2]}-${fromParts[1]}-${fromParts[0]}`;
-        console.log('[analytics/report] Converted from:', from, '→', fromDate);
       } else {
         fromDate = from;
       }
@@ -641,7 +641,6 @@ router.get('/report', async (req, res) => {
       if (to.includes('/')) {
         const toParts = to.split('/');
         toDate = `${toParts[2]}-${toParts[1]}-${toParts[0]}`;
-        console.log('[analytics/report] Converted to:', to, '→', toDate);
       } else {
         toDate = to;
       }
@@ -654,120 +653,176 @@ router.get('/report', async (req, res) => {
       rangeEnd = dayEnd;
     }
 
-    console.log('[analytics/report] Final range:', rangeStart, '→', rangeEnd, '| dept:', dept ?? 'all');
+    console.log('[analytics/report] Final range:', rangeStart, '→', rangeEnd);
 
-    // ── STEP 1: Get ALL departments from entry_exit_logs (directly) ──────────
-    // Get unique departments from logs within date range
-    const [departmentsFromLogs] = await db.query(`
-      SELECT DISTINCT 
-        CASE 
-          WHEN eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') THEN 'College of Computer Studies'
-          WHEN eel.student_id = '24-00179' THEN 'College of Engineering'
-          WHEN eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') THEN 'College of Education'
-          WHEN eel.student_id IN ('23-00260', '23-00180', '23-00158') THEN 'College of Nursing'
-          WHEN eel.student_id IN ('24-01283', '23-00254', '23-00206') THEN 'College of International Hospitality Management'
-          WHEN eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') THEN 'College of Engineering'
-          ELSE 'Unknown Department'
-        END AS college_department,
-        COUNT(DISTINCT eel.student_id) AS student_count
-      FROM entry_exit_logs eel
-      WHERE eel.log_time BETWEEN ? AND ?
-      GROUP BY college_department
-    `, [rangeStart, rangeEnd]);
+    // ── FOR VISITOR REPORTS ─────────────────────────────────────────────────
+    if (reportType === 'visitors') {
+      let visitorQuery = `
+        SELECT 
+          vl.id,
+          vl.full_name,
+          vl.email,
+          vl.visit_reason,
+          vl.other_reason,
+          vl.action,
+          vl.log_time,
+          vl.qr_token
+        FROM visitor_logs vl
+        WHERE vl.log_time BETWEEN ? AND ?
+      `;
+      
+      const visitorParams = [rangeStart, rangeEnd];
+      
+      if (actionType && actionType !== 'both') {
+        visitorQuery += ' AND vl.action = ?';
+        visitorParams.push(actionType.toUpperCase());
+      }
+      
+      visitorQuery += ' ORDER BY vl.log_time DESC';
+      
+      const [visitorRows] = await db.query(visitorQuery, visitorParams);
+      
+      const visitorLogs = visitorRows.map((row, i) => ({
+        no: i + 1,
+        dateTime: new Date(row.log_time).toLocaleString('en-PH', { hour12: true }),
+        name: row.full_name,
+        email: row.email || 'N/A',
+        reason: row.visit_reason === 'Other' ? row.other_reason : row.visit_reason,
+        action: row.action === 'ENTRY' ? 'Entrance' : 'Exit',
+        qrToken: row.qr_token || 'N/A'
+      }));
+      
+      const entryLogs = visitorLogs.filter(log => log.action === 'Entrance');
+      const exitLogs = visitorLogs.filter(log => log.action === 'Exit');
+      
+      return res.json({
+        generatedAt: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
+        dateRange: `${rangeStart.slice(0,10)} to ${rangeEnd.slice(0,10)}`,
+        totalVisitors: visitorRows.length,
+        currentOnCampus: 0,
+        totalEntries: entryLogs.length,
+        totalExits: exitLogs.length,
+        visitorLogs: visitorLogs,
+        entryLogs: entryLogs,
+        exitLogs: exitLogs,
+        collegeData: [],
+        authData: [],
+        methodData: [],
+        trafficChartData: [],
+        studentLogs: []
+      });
+    }
+
+    // ── FOR STUDENT REPORTS ─────────────────────────────────────────────────
     
-    // Get students from students table
-    const [studentsFromTable] = await db.query(`
+    // STEP 1: Get students with all filters
+    let studentsQuery = `
       SELECT 
         s.student_id,
-        COALESCE(d.dept_name, 'Unknown Department') AS college_department
+        s.year_level,
+        s.section,
+        COALESCE(d.dept_name, 'Unknown Department') AS college_department,
+        COALESCE(p.program_name, 'Unknown') AS program_name
       FROM students s
       LEFT JOIN programs p ON s.program_id = p.id
       LEFT JOIN departments d ON p.department_id = d.id
-      WHERE s.status != 'Inactive' OR s.status IS NULL
-    `);
+      WHERE (s.status != 'Inactive' OR s.status IS NULL)
+    `;
     
-    // Calculate department totals from BOTH sources
+    const studentParams = [];
+    
+    if (dept && dept !== 'all' && dept !== '') {
+      studentsQuery += ' AND d.dept_name = ?';
+      studentParams.push(dept);
+    }
+    if (program && program !== '') {
+      studentsQuery += ' AND p.program_name = ?';
+      studentParams.push(program);
+    }
+    if (yearLevel && yearLevel !== '') {
+      studentsQuery += ' AND s.year_level = ?';
+      studentParams.push(parseInt(yearLevel));
+    }
+    if (section && section !== '') {
+      studentsQuery += ' AND s.section = ?';
+      studentParams.push(section);
+    }
+    
+    const [students] = await db.query(studentsQuery, studentParams);
+    
+    // Calculate department totals
     const departmentTotals = new Map();
-    const studentSet = new Set();
-    
-    // Add from students table
-    studentsFromTable.forEach(student => {
-      const deptName = student.college_department || 'Unknown Department';
+    students.forEach(student => {
+      const deptName = student.college_department;
       departmentTotals.set(deptName, (departmentTotals.get(deptName) || 0) + 1);
-      studentSet.add(student.student_id);
     });
     
-    // Add from logs department counts (for departments not already counted)
-    departmentsFromLogs.forEach(dept => {
-      if (!departmentTotals.has(dept.college_department)) {
-        departmentTotals.set(dept.college_department, parseInt(dept.student_count));
-      }
-    });
-    
-    const totalStudentsCount = studentSet.size;
+    const totalStudentsCount = students.length;
     
     console.log('[analytics/report] Department totals:', Array.from(departmentTotals.entries()));
 
-    // ── STEP 2: Get logs within date range ──────────────────────────────────
-    // ── STEP 2: Get logs within date range ──────────────────────────────────
-let logsQuery = `
-SELECT
-  eel.log_id, 
-  eel.student_id, 
-  eel.action, 
-  eel.log_time,
-  COALESCE(s.first_name, 'Unknown') AS first_name,
-  COALESCE(s.last_name, 'Unknown') AS last_name,
-  CASE 
-    WHEN eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') THEN 'College of Computer Studies'
-    WHEN eel.student_id = '24-00179' THEN 'College of Engineering'
-    WHEN eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') THEN 'College of Education'
-    WHEN eel.student_id IN ('23-00260', '23-00180', '23-00158') THEN 'College of Nursing'
-    WHEN eel.student_id IN ('24-01283', '23-00254', '23-00206') THEN 'College of International Hospitality Management'
-    WHEN eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') THEN 'College of Engineering'
-    ELSE COALESCE(d.dept_name, 'Unknown Department')
-  END AS college_department,
-  COALESCE(p.program_name, 'Unknown') AS program_name,
-  COALESCE(s.year_level, 'N/A') AS year_level,
-  a.method, 
-  a.auth_status, 
-  a.accuracy
-FROM entry_exit_logs eel
-LEFT JOIN students s ON s.student_id = eel.student_id
-LEFT JOIN programs p ON s.program_id = p.id
-LEFT JOIN departments d ON p.department_id = d.id
-LEFT JOIN authentication a ON a.auth_id = eel.auth_id
-WHERE eel.log_time BETWEEN ? AND ?
-`;
-
-const logParams = [rangeStart, rangeEnd];
-
-// IMPORTANT: Apply department filter using the original condition, NOT the alias
-if (dept && dept !== 'all' && dept !== '') {
-// Use a subquery or repeat the CASE statement for filtering
-logsQuery += ` AND (
-  (eel.student_id LIKE '23-00%' AND eel.student_id IN ('23-00298', '23-00174', '23-00251', '23-00201', '23-01023', '23-00306', '23-01158', '23-00269', '23-00898', '23-01078') AND ? = 'College of Computer Studies')
-  OR (eel.student_id = '24-00179' AND ? = 'College of Engineering')
-  OR (eel.student_id IN ('24-00295', '23-01082', '23-00173', '23-00160', '23-00257') AND ? = 'College of Education')
-  OR (eel.student_id IN ('23-00260', '23-00180', '23-00158') AND ? = 'College of Nursing')
-  OR (eel.student_id IN ('24-01283', '23-00254', '23-00206') AND ? = 'College of International Hospitality Management')
-  OR (eel.student_id IN ('23-00283', '23-00221', '23-01083', '23-01041') AND ? = 'College of Engineering')
-  OR (COALESCE(d.dept_name, 'Unknown Department') = ?)
-)`;
-// Add the same department value for each placeholder
-for (let i = 0; i < 7; i++) {
-  logParams.push(dept);
-}
-}
-
-logsQuery += ' ORDER BY eel.log_time DESC';
-
-const [logRows] = await db.query(logsQuery, logParams);
+    // STEP 2: Get logs with filters
+    let logsQuery = `
+      SELECT
+        eel.log_id, 
+        eel.student_id, 
+        eel.action, 
+        eel.log_time,
+        COALESCE(s.first_name, 'Unknown') AS first_name,
+        COALESCE(s.last_name, 'Unknown') AS last_name,
+        COALESCE(d.dept_name, 'Unknown Department') AS college_department,
+        COALESCE(p.program_name, 'Unknown') AS program_name,
+        COALESCE(s.year_level, 'N/A') AS year_level,
+        COALESCE(s.section, 'N/A') AS section,
+        a.method, 
+        a.auth_status, 
+        a.accuracy
+      FROM entry_exit_logs eel
+      LEFT JOIN students s ON s.student_id = eel.student_id
+      LEFT JOIN programs p ON s.program_id = p.id
+      LEFT JOIN departments d ON p.department_id = d.id
+      LEFT JOIN authentication a ON a.auth_id = eel.auth_id
+      WHERE eel.log_time BETWEEN ? AND ?
+    `;
+    
+    const logParams = [rangeStart, rangeEnd];
+    
+    // Add all filters to logs query
+    if (dept && dept !== 'all' && dept !== '') {
+      logsQuery += ' AND d.dept_name = ?';
+      logParams.push(dept);
+    }
+    if (program && program !== '') {
+      logsQuery += ' AND p.program_name = ?';
+      logParams.push(program);
+    }
+    if (yearLevel && yearLevel !== '') {
+      logsQuery += ' AND s.year_level = ?';
+      logParams.push(parseInt(yearLevel));
+    }
+    if (section && section !== '') {
+      logsQuery += ' AND s.section = ?';
+      logParams.push(section);
+    }
+    if (actionType && actionType !== 'both') {
+      logsQuery += ' AND eel.action = ?';
+      logParams.push(actionType.toUpperCase());
+    }
+    
+    logsQuery += ' ORDER BY eel.log_time DESC';
+    
+    const [logRows] = await db.query(logsQuery, logParams);
     
     console.log('[analytics/report] Found logs:', logRows.length);
 
-    // ── STEP 3: Calculate current students on campus ─────────────────────────
+    // STEP 3: Calculate current students on campus
     const studentLastActions = new Map();
+    const studentDeptMap = new Map();
+    
+    // First, get department for each student from students table
+    students.forEach(student => {
+      studentDeptMap.set(student.student_id, student.college_department);
+    });
     
     logRows.forEach(log => {
       const studentId = log.student_id;
@@ -778,7 +833,7 @@ const [logRows] = await db.query(logsQuery, logParams);
         studentLastActions.set(studentId, {
           action: log.action,
           time: logTime,
-          department: log.college_department,
+          department: studentDeptMap.get(studentId) || log.college_department,
           student: log
         });
       }
@@ -791,11 +846,13 @@ const [logRows] = await db.query(logsQuery, logParams);
       if (value.action === 'ENTRY') {
         currentOnCampus++;
         const dept = value.department;
-        departmentPresence.set(dept, (departmentPresence.get(dept) || 0) + 1);
+        if (dept) {
+          departmentPresence.set(dept, (departmentPresence.get(dept) || 0) + 1);
+        }
       }
     });
 
-    // ── STEP 4: Build collegeData array for ALL departments ──────────────────
+    // STEP 4: Build collegeData array
     const allDepartments = Array.from(departmentTotals.keys()).sort();
     
     const collegeDataArray = [];
@@ -812,9 +869,7 @@ const [logRows] = await db.query(logsQuery, logParams);
         totalEnrolled: totalEnrolled,
         totalStudents: totalEnrolled,
         percentagePresent: totalEnrolled > 0 ? (presentNow / totalEnrolled) * 100 : 0,
-        percentageOfCampus: 0,
-        presentNowFormatted: presentNow.toLocaleString(),
-        totalEnrolledFormatted: totalEnrolled.toLocaleString()
+        percentageOfCampus: 0
       });
     }
     
@@ -824,9 +879,7 @@ const [logRows] = await db.query(logsQuery, logParams);
       percentageOfCampus: totalPresentOnCampus > 0 ? (d.presentNow / totalPresentOnCampus) * 100 : 0
     })).sort((a, b) => b.presentNow - a.presentNow);
 
-    console.log('[analytics/report] Final college data:', finalCollegeData.map(d => ({ name: d.name, totalEnrolled: d.totalEnrolled, presentNow: d.presentNow })));
-
-    // ── STEP 5: Build method distribution and auth data ──────────────────────
+    // STEP 5: Build method distribution and auth data
     const methodMap = new Map();
     const authSuccessMap = new Map();
     
@@ -855,17 +908,15 @@ const [logRows] = await db.query(logsQuery, logParams);
       percentage: logRows.length > 0 ? (count / logRows.length) * 100 : 0
     }));
     
-    // Build auth data for success rates
     const authData = Array.from(authSuccessMap, ([method, stats], i) => ({
       id: i + 1,
       method: method,
       attempts: stats.attempts,
       success: stats.success,
-      successRate: stats.attempts > 0 ? Math.round((stats.success / stats.attempts) * 100) : 0,
-      successRateFormatted: stats.attempts > 0 ? `${Math.round((stats.success / stats.attempts) * 100)}% (${stats.success}/${stats.attempts})` : '0%'
+      successRate: stats.attempts > 0 ? Math.round((stats.success / stats.attempts) * 100) : 0
     }));
 
-    // ── STEP 6: Build traffic chart data ─────────────────────────────────────
+    // STEP 6: Build traffic chart data
     const trafficMap = new Map();
     logRows.forEach(r => {
       const date = new Date(r.log_time).toLocaleDateString('en-CA');
@@ -886,22 +937,22 @@ const [logRows] = await db.query(logsQuery, logParams);
     const lowestDay = trafficChartData.length
       ? trafficChartData.reduce((a, b) => b.entrance < a.entrance ? b : a) : null;
 
-    // ── STEP 7: Build student logs for detailed report ───────────────────────
+    // STEP 7: Build student logs
     const studentLogs = logRows.map((r, i) => ({
       no: i + 1,
       dateTime: new Date(r.log_time).toLocaleString('en-PH', { hour12: true }),
       studentId: r.student_id,
       name: `${r.last_name}, ${r.first_name}`,
       department: r.college_department,
-      program: r.program_name || 'N/A',
+      program: r.program_name,
       yearLevel: r.year_level,
+      section: r.section,
       action: r.action === 'ENTRY' ? 'Entrance' : 'Exit',
       method: r.method === 'FACIAL' ? 'Facial Recognition'
             : r.method === 'MANUAL' ? 'Manual Input'
             : r.method === 'QR' ? 'QR Scan'
             : 'Unknown',
-      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A',
-      timestamp: r.log_time
+      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A'
     }));
     
     const entryLogs = studentLogs.filter(log => log.action === 'Entrance');
@@ -932,6 +983,7 @@ const [logRows] = await db.query(logsQuery, logParams);
     res.status(500).json({ message: 'Failed to generate report data.', error: err.message });
   }
 });
+
 
 router.get('/visitor-stats', async (req, res) => {
   try {
@@ -1399,4 +1451,112 @@ router.get('/student-pairing', async (req, res) => {
     });
   }
 });
+
+// GET /api/programs?department=xxx
+// ============================================================
+// ADD THESE ENDPOINTS TO YOUR BACKEND
+// ============================================================
+
+// GET /api/departments - Fetch all active department
+
+// GET /api/programs - Fetch programs filtered by department// GET /api/programs - Fetch programs filtered by department
+// Replace your /programs route with this debug version
+router.get('/programs', async (req, res) => {
+  try {
+    const { department } = req.query;
+    console.log('[api/programs] ========== START ==========');
+    console.log('[api/programs] Received department parameter:', department);
+    
+    // First, check what departments exist
+    const [allDepts] = await db.query(`SELECT id, dept_name FROM departments`);
+    console.log('[api/programs] All departments in DB:', allDepts);
+    
+    // First, get the department_id from the department name
+    let deptId = null;
+    if (department && department !== '') {
+      const [deptRows] = await db.query(
+        `SELECT id FROM departments WHERE dept_name = ?`,
+        [department]
+      );
+      console.log('[api/programs] Department query result:', deptRows);
+      
+      if (deptRows.length > 0) {
+        deptId = deptRows[0].id;
+        console.log('[api/programs] Found department_id:', deptId);
+      } else {
+        console.log('[api/programs] Department NOT found in DB for:', department);
+        return res.json([]);
+      }
+    }
+    
+    // Now fetch programs using department_id
+    let query = `
+      SELECT 
+        p.id, 
+        p.program_code, 
+        p.program_name, 
+        p.program_type,
+        p.department_id
+      FROM programs p
+      WHERE (p.program_status = 'Active' OR p.program_status IS NULL)
+    `;
+    
+    const params = [];
+    
+    if (deptId) {
+      query += ` AND p.department_id = ?`;
+      params.push(deptId);
+    }
+    
+    query += ` ORDER BY p.program_name`;
+    
+    console.log('[api/programs] Executing SQL:', query);
+    console.log('[api/programs] With params:', params);
+    
+    const [rows] = await db.query(query, params);
+    console.log('[api/programs] Found programs:', rows.length, rows);
+    res.json(rows);
+  } catch (err) {
+    console.error('[api/programs] ERROR:', err);
+    res.status(500).json([]);
+  }
+});
+
+// GET /api/sections - Fetch sections filtered by program and year level
+router.get('/sections', async (req, res) => {
+  try {
+    const { program, yearLevel } = req.query;
+    console.log('[api/sections] Received - program:', program, 'yearLevel:', yearLevel);
+    
+    let query = `
+      SELECT DISTINCT 
+        s.section,
+        s.year_level
+      FROM students s
+      LEFT JOIN programs p ON s.program_id = p.id
+      WHERE s.section IS NOT NULL AND s.section != ''
+    `;
+    
+    const params = [];
+    
+    if (program && program !== '') {
+      query += ` AND p.program_name = ?`;
+      params.push(program);
+    }
+    if (yearLevel && yearLevel !== '') {
+      query += ` AND s.year_level = ?`;
+      params.push(parseInt(yearLevel));
+    }
+    
+    query += ` ORDER BY s.section`;
+    
+    const [rows] = await db.query(query, params);
+    console.log('[api/sections] Found:', rows.length, 'sections');
+    res.json(rows);
+  } catch (err) {
+    console.error('[api/sections] ERROR:', err);
+    res.status(500).json([]);
+  }
+});
+
 module.exports = router;

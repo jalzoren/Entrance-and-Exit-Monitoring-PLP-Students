@@ -33,32 +33,36 @@ function GenerateReportFilter({ onClose, onGenerate }) {
   ];
 
   // Fetch departments
-  useEffect(() => {
-    const fetchDepartments = async () => {
-      try {
-        const response = await fetch('/api/departments?status=Active');
-        if (!response.ok) throw new Error('Failed to fetch departments');
-        const data = await response.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setDepartmentOptions([
-            { value: '', label: 'All Departments' },
-            ...data.map(dept => ({
-              value: dept.dept_name || dept.name,
-              label: dept.dept_name || dept.name,
-            }))
-          ]);
-        } else {
-          setDepartmentOptions(defaultDeptOptions());
-        }
-      } catch (err) {
-        console.error('Error fetching departments:', err);
-        setDepartmentOptions(defaultDeptOptions());
-      } finally {
-        setLoadingDepts(false);
+  // Replace the department fetch section
+useEffect(() => {
+  const fetchDepartments = async () => {
+    try {
+      const response = await fetch('/api/departments?status=Active');
+      if (!response.ok) throw new Error('Failed to fetch departments');
+      const data = await response.json();
+      if (Array.isArray(data) && data.length > 0) {
+        setDepartmentOptions([
+          { value: '', label: 'All Departments' },
+          ...data.map(dept => ({
+            value: dept.dept_name,
+            label: dept.dept_name,
+          }))
+        ]);
+      } else {
+        // Show empty instead of defaults
+        setDepartmentOptions([{ value: '', label: 'No departments found' }]);
       }
-    };
-    fetchDepartments();
-  }, []);
+    } catch (err) {
+      console.error('Error fetching departments:', err);
+      setDepartmentOptions([{ value: '', label: 'Error loading departments' }]);
+    } finally {
+      setLoadingDepts(false);
+    }
+  };
+  fetchDepartments();
+}, []);
+
+// Also update defaultDeptOptions function - you can delete it or keep as backup
 
   // Fetch programs when department changes
   useEffect(() => {
@@ -71,7 +75,7 @@ function GenerateReportFilter({ onClose, onGenerate }) {
       setLoadingPrograms(true);
       try {
         // Fetch programs from your programs table
-        const response = await fetch(`/api/programs?department=${encodeURIComponent(filters.collegeDepartment)}`);
+        const response = await fetch(`/api/analytics/programs?department=${encodeURIComponent(filters.collegeDepartment)}`);
         if (!response.ok) throw new Error('Failed to fetch programs');
         const data = await response.json();
         
@@ -112,7 +116,7 @@ function GenerateReportFilter({ onClose, onGenerate }) {
         if (filters.program) params.append('program', filters.program);
         if (filters.yearLevel) params.append('yearLevel', filters.yearLevel);
         
-        const response = await fetch(`/api/sections?${params.toString()}`);
+        const response = await fetch(`/api/analytics/sections?${params.toString()}`);
         if (!response.ok) throw new Error('Failed to fetch sections');
         const data = await response.json();
         
@@ -122,6 +126,7 @@ function GenerateReportFilter({ onClose, onGenerate }) {
             ...data.map(section => ({
               value: section.section || section.section_name,
               label: section.section || section.section_name,
+              key: `${section.section}_${index}` 
             }))
           ]);
         } else {
@@ -420,20 +425,6 @@ function GenerateReportFilter({ onClose, onGenerate }) {
       </div>
     </div>
   );
-}
-
-// Default department list when API is unavailable
-function defaultDeptOptions() {
-  return [
-    { value: '', label: 'All Departments' },
-    { value: 'College of Nursing', label: 'College of Nursing' },
-    { value: 'College of Engineering', label: 'College of Engineering' },
-    { value: 'College of Education', label: 'College of Education' },
-    { value: 'College of Computer Studies', label: 'College of Computer Studies' },
-    { value: 'College of Arts and Science', label: 'College of Arts and Science' },
-    { value: 'College of Business and Accountancy', label: 'College of Business and Accountancy' },
-    { value: 'College of Hospitality Management', label: 'College of Hospitality Management' },
-  ];
 }
 
 export default GenerateReportFilter;
