@@ -1,16 +1,232 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import "../../css/RealTimeMonitor.css";
 import '../../css/Monitor.css';
-import { useLogContext } from "../../context/LogContext";
-import { useCameraContext } from "../../context/CameraContext";
-import { 
-  exportLogsToXML, 
-  downloadXML
-} from "../../utils/xmlUtils";
-import * as XLSX from 'xlsx';
+import { reportToXml, xmlToReport, downloadXml } from '../../utils/xmlReportUtils';
+
+// Helper function to get Philippine date range for today
+const getTodayPhilippineRange = () => {
+  const now = new Date();
+  // Convert to Philippine time (UTC+8)
+  const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+  
+  const year = phTime.getFullYear();
+  const month = String(phTime.getMonth() + 1).padStart(2, '0');
+  const day = String(phTime.getDate()).padStart(2, '0');
+  
+  const dayStart = `${year}-${month}-${day} 00:00:00`;
+  const dayEnd = `${year}-${month}-${day} 23:59:59`;
+  
+  return { dayStart, dayEnd };
+};
+
+// API Service - fetch logs from the analytics routes using XML
+const MonitorService = {
+  async fetchAllLogs(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+      if (filters.dept) params.set('dept', filters.dept);
+      if (filters.actionType) params.set('actionType', filters.actionType);
+      
+      const res = await fetch(`/api/analytics/report?${params.toString()}`);
+      if (!res.ok) throw new Error(`Failed to fetch logs: HTTP ${res.status}`);
+      
+      const data = await res.json();
+      
+      // Transform the report data into log entries
+      const logs = [];
+      const uniqueKeys = new Set();
+      
+      // Add entry logs if available (primary source)
+      if (data.entryLogs && Array.isArray(data.entryLogs)) {
+        data.entryLogs.forEach(log => {
+          let formattedTime = log.time;
+          let formattedDate = log.date;
+          let timestamp = log.timestamp;
+          
+          if (!formattedTime && timestamp) {
+            const date = new Date(timestamp);
+            formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            formattedDate = date.toLocaleDateString('en-US');
+          }
+          
+          const uniqueKey = `${log.studentId}_${timestamp}_ENTERED`;
+          if (!uniqueKeys.has(uniqueKey)) {
+            uniqueKeys.add(uniqueKey);
+            logs.push({
+              id: log.id || `entry_${Date.now()}_${Math.random()}`,
+              studentId: log.studentId,
+              name: log.name,
+              collegeDept: log.collegeDept || log.department,
+              yearLevel: log.yearLevel,
+              action: "ENTERED",
+              method: log.method || 'Manual Input',
+              time: formattedTime || '--:--:--',
+              date: formattedDate || '----/--/--',
+              timestamp: timestamp || new Date().getTime(),
+              failed: false
+            });
+          }
+        });
+      }
+      
+      // Add exit logs if available (primary source)
+      if (data.exitLogs && Array.isArray(data.exitLogs)) {
+        data.exitLogs.forEach(log => {
+          let formattedTime = log.time;
+          let formattedDate = log.date;
+          let timestamp = log.timestamp;
+          
+          if (!formattedTime && timestamp) {
+            const date = new Date(timestamp);
+            formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            formattedDate = date.toLocaleDateString('en-US');
+          }
+          
+          const uniqueKey = `${log.studentId}_${timestamp}_EXITED`;
+          if (!uniqueKeys.has(uniqueKey)) {
+            uniqueKeys.add(uniqueKey);
+            logs.push({
+              id: log.id || `exit_${Date.now()}_${Math.random()}`,
+              studentId: log.studentId,
+              name: log.name,
+              collegeDept: log.collegeDept || log.department,
+              yearLevel: log.yearLevel,
+              action: "EXITED",
+              method: log.method || 'Manual Input',
+              time: formattedTime || '--:--:--',
+              date: formattedDate || '----/--/--',
+              timestamp: timestamp || new Date().getTime(),
+              failed: false
+            });
+          }
+        });
+      }
+      
+      // Add failed attempts if available
+      if (data.failedAttempts && Array.isArray(data.failedAttempts)) {
+        data.failedAttempts.forEach(log => {
+          let formattedTime = log.time;
+          let formattedDate = log.date;
+          let timestamp = log.timestamp;
+          
+          if (!formattedTime && timestamp) {
+            const date = new Date(timestamp);
+            formattedTime = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            formattedDate = date.toLocaleDateString('en-US');
+          }
+          
+          const uniqueKey = `failed_${log.name}_${timestamp}`;
+          if (!uniqueKeys.has(uniqueKey)) {
+            uniqueKeys.add(uniqueKey);
+            logs.push({
+              id: log.id || `failed_${Date.now()}_${Math.random()}`,
+              name: log.name || 'Unknown',
+              action: 'FAILED',
+              method: log.method || 'Unknown',
+              time: formattedTime || '--:--:--',
+              date: formattedDate || '----/--/--',
+              timestamp: timestamp || new Date().getTime(),
+              failed: true
+            });
+          }
+        });
+      }
+      
+      // Sort logs in DESCENDING order (newest first) for display
+      logs.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeB - timeA;
+      });
+      
+      // Calculate current students inside from the logs
+      const studentsInsideList = calculateStudentsInsideFromLogs(logs);
+      const studentsInside = studentsInsideList.length;
+      
+      console.log(`Fetched ${logs.length} unique logs (newest to oldest)`);
+      console.log(`Calculated ${studentsInside} students inside from logs`);
+      
+      return { logs, studentsInside, studentsInsideList };
+    } catch (err) {
+      console.error('[MonitorService.fetchAllLogs] ERROR:', err.message);
+      return { logs: [], studentsInside: 0, studentsInsideList: [] };
+    }
+  },
+  
+  async fetchMetrics() {
+    try {
+      const res = await fetch('/api/analytics/metrics');
+      if (!res.ok) throw new Error(`metrics: HTTP ${res.status}`);
+      const data = await res.json();
+      console.log('[MonitorService.fetchMetrics] Response:', data);
+      return data;
+    } catch (err) {
+      console.error('[MonitorService.fetchMetrics] ERROR:', err.message);
+      return { totalStudents: 0, onCampus: 0 };
+    }
+  },
+  
+  async exportToXml(filters = {}) {
+    try {
+      const params = new URLSearchParams();
+      if (filters.from) params.set('from', filters.from);
+      if (filters.to) params.set('to', filters.to);
+      if (filters.dept) params.set('dept', filters.dept);
+      if (filters.actionType) params.set('actionType', filters.actionType);
+      
+      const res = await fetch(`/api/analytics/report?${params.toString()}`);
+      if (!res.ok) throw new Error(`Failed to fetch report: HTTP ${res.status}`);
+      
+      const data = await res.json();
+      const xmlString = reportToXml(data, filters);
+      
+      const date = new Date().toISOString().slice(0, 10);
+      downloadXml(xmlString, `eems-logs-${date}.xml`);
+      
+      return xmlString;
+    } catch (err) {
+      console.error('[MonitorService.exportToXml] ERROR:', err.message);
+      throw err;
+    }
+  }
+};
+
+// Helper function to calculate students inside from logs
+function calculateStudentsInsideFromLogs(logs) {
+  const insideMap = new Map();
+  
+  // Sort logs chronologically (oldest to newest) for accurate entry/exit tracking
+  const sortedLogs = [...logs].sort((a, b) => {
+    const timeA = a.timestamp || 0;
+    const timeB = b.timestamp || 0;
+    return timeA - timeB;
+  });
+
+  for (const log of sortedLogs) {
+    if (!log.failed && log.action) {
+      if (log.action === "ENTERED") {
+        insideMap.set(log.studentId, {
+          studentId: log.studentId,
+          name: log.name,
+          department: log.collegeDept,
+          yearLevel: log.yearLevel,
+          entryTime: log.time,
+          entryTimestamp: log.timestamp,
+          entryDate: log.date
+        });
+      } else if (log.action === "EXITED") {
+        insideMap.delete(log.studentId);
+      }
+    }
+  }
+
+  return Array.from(insideMap.values());
+}
 
 function LogEntry({ log, animDelay }) {
-  // Format student info display
   const getStudentInfo = () => {
     if (log.failed) {
       return <span className="rtm-log-name failed">Unknown Person</span>;
@@ -29,26 +245,45 @@ function LogEntry({ log, animDelay }) {
     );
   };
 
+  const getDisplayDateTime = () => {
+    if (log.date && log.time) {
+      return `${log.date} ${log.time}`;
+    }
+    if (log.timestamp) {
+      const date = new Date(log.timestamp);
+      return date.toLocaleString();
+    }
+    return log.time || '--:--:--';
+  };
+
+  const getActionClass = () => {
+    if (log.action === "ENTERED") return "entered";
+    if (log.action === "EXITED") return "exited";
+    return "";
+  };
+
   return (
-    <div>
+    <div className="rtm-log-item-wrapper">
       {log.failed ? (
         <div className="rtm-log-entry failed" style={{ animationDelay: `${animDelay}s` }}>
-          <span className="rtm-log-time">[{log.time || '--:--:--'}]</span> — Failed Authentication Attempt
+          <span className="rtm-log-time">[{getDisplayDateTime()}]</span>
+          <span className="rtm-log-message">Failed Authentication Attempt</span>
           {log.name && log.name !== "Unknown" && (
             <span className="rtm-log-attempt"> (Attempted: {log.name})</span>
           )}
         </div>
       ) : (
-        <div className={`rtm-log-entry success ${(log.action || '').toLowerCase()}`} style={{ animationDelay: `${animDelay}s` }}>
-          <span className="rtm-log-time">[{log.time || '--:--:--'}]</span>{" "}
-          {getStudentInfo()}{" "}
-          <span className={`rtm-log-action ${(log.action || '').toLowerCase()}`}>
-            {log.action === "ENTRY" ? "entered" : log.action === "EXIT" ? "exited" : log.action}
-          </span>{" "}
+        <div className={`rtm-log-entry success ${getActionClass()}`} style={{ animationDelay: `${animDelay}s` }}>
+          <span className="rtm-log-time">[{getDisplayDateTime()}]</span>
+          <div className="rtm-log-info">
+            {getStudentInfo()}
+          </div>
+          <span className={`rtm-log-action ${getActionClass()}`}>
+            {log.action}
+          </span>
           <span className="rtm-log-method">via {log.method || 'Unknown'}</span>
         </div>
       )}
-      <div className="rtm-log-divider" />
     </div>
   );
 }
@@ -65,7 +300,7 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
         </div>
         <div className="modal-body">
           <div className="students-count-badge">
-            Total Students Inside: <span className="count-number">{studentsCount}</span>
+            Total Students Inside (Today): <span className="count-number">{studentsCount}</span>
           </div>
           {studentsInsideList.length === 0 ? (
             <div className="no-students-message">
@@ -109,368 +344,129 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
 }
 
 export default function Monitor() {
-  const { 
-    logs: contextLogs, 
-    studentsInside, 
-    addLog, 
-    getAllLogs,
-    getStatistics,
-    getLogsByDateRange,
-    syncStudentCount,
-    refreshLogs  // Make sure this exists in your context
-  } = useLogContext();
-  
-  const { 
-    cameraStatus, 
-    detectedFace, 
-    isCameraActive, 
-    videoStream,
-    videoRef: contextVideoRef
-  } = useCameraContext();
-  
+  const [allLogs, setAllLogs] = useState([]);
+  const [studentsInsideCount, setStudentsInsideCount] = useState(0);
+  const [studentsInsideList, setStudentsInsideList] = useState([]);
   const [activeFilter, setActiveFilter] = useState('all');
   const [filteredLogs, setFilteredLogs] = useState([]);
   const [showStudentsModal, setShowStudentsModal] = useState(false);
-  const [studentsInsideList, setStudentsInsideList] = useState([]);
-  const [lastLogCount, setLastLogCount] = useState(0);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const logRef = useRef(null);
-  const localVideoRef = useRef(null);
-  const [streamAttached, setStreamAttached] = useState(false);
   const refreshIntervalRef = useRef(null);
+  const prevLogsLengthRef = useRef(0);
+  const isMountedRef = useRef(true);
+  const autoScrollRef = useRef(true);
 
-  // Calculate counts for each filter
-  const totalLogsCount = contextLogs.length;
-  const entranceCount = contextLogs.filter(log => !log.failed && log.action === "ENTRY").length;
-  const exitCount = contextLogs.filter(log => !log.failed && log.action === "EXIT").length;
-  const failedCount = contextLogs.filter(log => log.failed === true).length;
+  const totalLogsCount = allLogs.length;
+  const enteredCount = allLogs.filter(log => !log.failed && log.action === "ENTERED").length;
+  const exitedCount = allLogs.filter(log => !log.failed && log.action === "EXITED").length;
+  const failedCount = allLogs.filter(log => log.failed === true).length;
 
-  // Calculate students currently inside based on logs
-  const calculateStudentsInside = useCallback(() => {
-    const insideMap = new Map();
-    const sortedLogs = [...contextLogs].sort((a, b) => {
-      const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0);
-      const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0);
-      return timeA - timeB;
-    });
-
-    for (const log of sortedLogs) {
-      if (!log.failed && log.action) {
-        if (log.action === "ENTRY") {
-          insideMap.set(log.studentId, {
-            studentId: log.studentId,
-            name: log.name,
-            department: log.collegeDept,
-            yearLevel: log.yearLevel,
-            entryTime: log.time,
-            entryTimestamp: log.timestamp
-          });
-        } else if (log.action === "EXIT") {
-          insideMap.delete(log.studentId);
-        }
-      }
+  const scrollToTop = () => {
+    if (logRef.current && autoScrollRef.current) {
+      logRef.current.scrollTop = 0;
     }
-
-    return Array.from(insideMap.values());
-  }, [contextLogs]);
-
-  // Update students inside list when logs change
-  useEffect(() => {
-    const inside = calculateStudentsInside();
-    setStudentsInsideList(inside);
-  }, [contextLogs, calculateStudentsInside]);
-
-  // Function to manually refresh data
-  const performRefresh = useCallback(async () => {
-    if (isRefreshing) return;
-    
-    setIsRefreshing(true);
-    console.log("Performing auto-refresh...", new Date().toLocaleTimeString());
-    
-    try {
-      // Call refresh function from context if available
-      if (refreshLogs && typeof refreshLogs === 'function') {
-        await refreshLogs();
-      } else if (getAllLogs && typeof getAllLogs === 'function') {
-        // Alternative: fetch fresh logs
-        const freshLogs = await getAllLogs();
-        console.log("Refreshed logs count:", freshLogs?.length || 0);
-      }
-      
-      // Sync student count if available
-      if (syncStudentCount && typeof syncStudentCount === 'function') {
-        await syncStudentCount();
-      }
-      
-      // Update last refresh time
-      setLastRefresh(new Date());
-      
-      // Check if new logs were added
-      const currentCount = contextLogs.length;
-      if (currentCount !== lastLogCount) {
-        setLastLogCount(currentCount);
-        console.log(`New logs detected! Count changed from ${lastLogCount} to ${currentCount}`);
-      }
-      
-    } catch (error) {
-      console.error("Error during auto-refresh:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [refreshLogs, getAllLogs, syncStudentCount, contextLogs.length, lastLogCount, isRefreshing]);
-
-  // Auto-refresh setup - runs every 5 seconds
-  useEffect(() => {
-    // Initial refresh on mount
-    performRefresh();
-    
-    // Set up interval for auto-refresh every 5 seconds
-    refreshIntervalRef.current = setInterval(() => {
-      performRefresh();
-    }, 5000); // 5000ms = 5 seconds
-    
-    // Cleanup on unmount
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-    };
-  }, [performRefresh]);
-
-  // Use the video stream from context
-  useEffect(() => {
-    if (localVideoRef.current && videoStream && !streamAttached) {
-      try {
-        console.log("Monitor: Attaching video stream from FaceRecognition");
-        localVideoRef.current.srcObject = videoStream;
-        setStreamAttached(true);
-        
-        localVideoRef.current.style.transform = 'scaleX(-1)';
-        localVideoRef.current.style.webkitTransform = 'scaleX(-1)';
-        
-        const playPromise = localVideoRef.current.play();
-        if (playPromise !== undefined) {
-          playPromise.then(() => {
-            console.log("Monitor: Video playing with mirror effect");
-          }).catch((err) => {
-            console.log("Video autoplay prevented:", err);
-          });
-        }
-      } catch (err) {
-        console.error("Error attaching stream:", err);
-      }
-    }
-  }, [videoStream, streamAttached]);
+  };
 
   // Filter logs based on active filter
   useEffect(() => {
     let filtered = [];
     
     if (activeFilter === 'all') {
-      filtered = [...contextLogs];
-    } else if (activeFilter === 'entrance') {
-      filtered = contextLogs.filter(log => !log.failed && log.action === "ENTRY");
-    } else if (activeFilter === 'exit') {
-      filtered = contextLogs.filter(log => !log.failed && log.action === "EXIT");
+      filtered = [...allLogs];
+    } else if (activeFilter === 'entered') {
+      filtered = allLogs.filter(log => !log.failed && log.action === "ENTERED");
+    } else if (activeFilter === 'exited') {
+      filtered = allLogs.filter(log => !log.failed && log.action === "EXITED");
     } else if (activeFilter === 'failed') {
-      filtered = contextLogs.filter(log => log.failed === true);
+      filtered = allLogs.filter(log => log.failed === true);
     }
     
+    // Keep descending order (newest first)
     const sortedFiltered = filtered.sort((a, b) => {
-      const timeA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0);
-      const timeB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0);
-      return timeB - timeA; // Newest first
+      const timeA = a.timestamp || 0;
+      const timeB = b.timestamp || 0;
+      return timeB - timeA;
     });
     
     setFilteredLogs(sortedFiltered);
-  }, [contextLogs, activeFilter]);
+    
+    setTimeout(scrollToTop, 100);
+  }, [allLogs, activeFilter]);
 
-  // Auto-scroll to top when new log is added (since we show newest first)
+  // Auto-scroll to top when new logs are added
   useEffect(() => {
-    if (logRef.current && filteredLogs.length > 0) {
-      logRef.current.scrollTop = 0;
+    const currentLength = filteredLogs.length;
+    const prevLength = prevLogsLengthRef.current;
+    
+    if (currentLength > prevLength) {
+      scrollToTop();
     }
+    
+    prevLogsLengthRef.current = currentLength;
   }, [filteredLogs.length]);
 
-  const handleFilterChange = (filter) => {
-    setActiveFilter(filter);
-    if (logRef.current) {
-      logRef.current.scrollTop = 0;
-    }
-  };
-
-  // Export logs to Excel
-  const exportToExcel = () => {
+  const fetchLogs = useCallback(async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    console.log("Fetching logs from API...", new Date().toLocaleTimeString());
+    
     try {
-      const excelData = filteredLogs.map((log, index) => ({
-        '#': index + 1,
-        'Date & Time': log.time || 'N/A',
-        'Full Date': log.timestamp ? new Date(log.timestamp).toLocaleString() : log.date || 'N/A',
-        'Name': log.failed ? 'Failed Attempt' : (log.name || 'Unknown'),
-        'Student ID': log.failed ? 'N/A' : (log.studentId || 'N/A'),
-        'Department': log.collegeDept || 'N/A',
-        'Year Level': log.yearLevel || 'N/A',
-        'Action': log.failed ? 'FAILED' : (log.action || 'N/A'),
-        'Method': log.method || 'N/A',
-        'Status': log.failed ? 'Failed' : 'Success'
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(excelData);
-      const colWidths = [
-        { wch: 5 }, { wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 15 }, 
-        { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }, { wch: 10 }
-      ];
-      ws['!cols'] = colWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Entry-Exit Logs');
-
-      const summaryData = [
-        { 'Metric': 'Total Logs', 'Value': totalLogsCount },
-        { 'Metric': 'Total Entries', 'Value': entranceCount },
-        { 'Metric': 'Total Exits', 'Value': exitCount },
-        { 'Metric': 'Failed Attempts', 'Value': failedCount },
-        { 'Metric': 'Students Currently Inside', 'Value': studentsInside },
-        { 'Metric': 'Filter Applied', 'Value': activeFilter === 'all' ? 'All Logs' : activeFilter === 'entrance' ? 'Entrance Only' : activeFilter === 'exit' ? 'Exit Only' : 'Failed Attempts Only' },
-        { 'Metric': 'Export Date', 'Value': new Date().toLocaleString() }
-      ];
+      // Use TODAY's Philippine date range to match Analytics
+      const { dayStart, dayEnd } = getTodayPhilippineRange();
+      const fromDate = dayStart.split(' ')[0];
+      const toDate = dayEnd.split(' ')[0];
       
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
-
-      const fileName = `entry_exit_logs_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      console.log(`Fetching logs for date range: ${fromDate} to ${toDate}`);
       
-      console.log('Excel export successful');
+      const { logs, studentsInside, studentsInsideList: insideList } = await MonitorService.fetchAllLogs({
+        from: fromDate,
+        to: toDate
+      });
+      
+      // Also fetch metrics from API for consistency with Analytics
+      const metrics = await MonitorService.fetchMetrics();
+      const apiStudentsInside = metrics.onCampus || 0;
+      
+      console.log(`Monitor calculated: ${studentsInside} students inside`);
+      console.log(`Analytics API says: ${apiStudentsInside} students inside`);
+      
+      // Use the API value for consistency with Analytics dashboard
+      const finalCount = apiStudentsInside;
+      
+      if (isMountedRef.current) {
+        setAllLogs(logs);
+        setStudentsInsideCount(finalCount);
+        setStudentsInsideList(insideList);
+        setLastRefresh(new Date());
+        console.log(`Fetched ${logs.length} logs for today, ${finalCount} students inside (from API)`);
+      }
+      
     } catch (error) {
-      console.error('Error exporting to Excel:', error);
-      alert('Failed to export to Excel. Please try again.');
+      console.error("Error fetching logs:", error);
+    } finally {
+      if (isMountedRef.current) {
+        setIsRefreshing(false);
+      }
     }
-  };
+  }, [isRefreshing]);
 
-  // Export end of day report
-  const exportEndOfDayReport = () => {
+  const handleExportXml = async () => {
     try {
-      const today = new Date();
-      const todayStart = new Date(today);
-      todayStart.setHours(0, 0, 0, 0);
-      const todayEnd = new Date(today);
-      todayEnd.setHours(23, 59, 59, 999);
+      const { dayStart, dayEnd } = getTodayPhilippineRange();
+      const fromDate = dayStart.split(' ')[0];
+      const toDate = dayEnd.split(' ')[0];
       
-      let todayLogs = [];
-      if (getLogsByDateRange && typeof getLogsByDateRange === 'function') {
-        todayLogs = getLogsByDateRange(todayStart, todayEnd);
-      } else {
-        // Fallback: filter by date string
-        const todayStr = today.toISOString().split('T')[0];
-        todayLogs = contextLogs.filter(log => {
-          const logDate = log.date ? log.date.split(' ')[0] : '';
-          return logDate === todayStr;
-        });
-      }
+      await MonitorService.exportToXml({
+        from: fromDate,
+        to: toDate,
+        actionType: activeFilter === 'all' ? undefined : 
+                    activeFilter === 'entered' ? 'entry' : 
+                    activeFilter === 'exited' ? 'exit' : undefined
+      });
       
-      if (todayLogs.length === 0) {
-        alert('No logs recorded today to export.');
-        return;
-      }
-
-      const reportData = todayLogs.map((log, index) => ({
-        '#': index + 1,
-        'Time': log.time || 'N/A',
-        'Date': log.date || 'N/A',
-        'Name': log.failed ? 'Failed Attempt' : (log.name || 'Unknown'),
-        'Student ID': log.failed ? 'N/A' : (log.studentId || 'N/A'),
-        'Department': log.collegeDept || 'N/A',
-        'Year Level': log.yearLevel || 'N/A',
-        'Action': log.failed ? 'FAILED' : (log.action || 'N/A'),
-        'Method': log.method || 'N/A'
-      }));
-
-      const ws = XLSX.utils.json_to_sheet(reportData);
-      ws['!cols'] = [
-        { wch: 5 }, { wch: 12 }, { wch: 12 }, { wch: 25 }, { wch: 15 }, 
-        { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 15 }
-      ];
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, `End_of_Day_${new Date().toISOString().split('T')[0]}`);
-
-      const dailyEntries = todayLogs.filter(log => !log.failed && log.action === "ENTRY").length;
-      const dailyExits = todayLogs.filter(log => !log.failed && log.action === "EXIT").length;
-      const dailyFailed = todayLogs.filter(log => log.failed).length;
-
-      const summaryData = [
-        { 'Metric': 'Report Date', 'Value': new Date().toLocaleDateString() },
-        { 'Metric': 'Total Logs Today', 'Value': todayLogs.length },
-        { 'Metric': 'Entries Today', 'Value': dailyEntries },
-        { 'Metric': 'Exits Today', 'Value': dailyExits },
-        { 'Metric': 'Failed Attempts Today', 'Value': dailyFailed },
-        { 'Metric': 'Net Change', 'Value': dailyEntries - dailyExits },
-        { 'Metric': 'Students Inside (End of Day)', 'Value': studentsInside },
-        { 'Metric': 'Report Generated', 'Value': new Date().toLocaleString() }
-      ];
-      
-      const wsSummary = XLSX.utils.json_to_sheet(summaryData);
-      XLSX.utils.book_append_sheet(wb, wsSummary, 'Daily_Summary');
-
-      const fileName = `end_of_day_report_${new Date().toISOString().split('T')[0]}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      
-      console.log('End of day report exported successfully');
-    } catch (error) {
-      console.error('Error exporting end of day report:', error);
-      alert('Failed to export end of day report. Please try again.');
-    }
-  };
-
-  // Export logs to XML
-  const exportToXML = () => {
-    try {
-      if (typeof exportLogsToXML === 'function') {
-        const xmlContent = exportLogsToXML(
-          filteredLogs, 
-          totalLogsCount, 
-          studentsInside, 
-          entranceCount, 
-          exitCount, 
-          failedCount,
-          true
-        );
-        downloadXML(xmlContent);
-      } else {
-        // Fallback XML generation
-        const logsXML = filteredLogs.map(log => `
-  <log>
-    <time>${escapeXml(log.time || '')}</time>
-    <date>${escapeXml(log.date || '')}</date>
-    <name>${escapeXml(log.failed ? 'Failed Attempt' : (log.name || 'Unknown'))}</name>
-    <studentId>${escapeXml(log.failed ? 'N/A' : (log.studentId || 'N/A'))}</studentId>
-    <department>${escapeXml(log.collegeDept || 'N/A')}</department>
-    <yearLevel>${escapeXml(log.yearLevel || 'N/A')}</yearLevel>
-    <action>${escapeXml(log.failed ? 'FAILED' : (log.action || 'N/A'))}</action>
-    <method>${escapeXml(log.method || 'N/A')}</method>
-    <status>${log.failed ? 'Failed' : 'Success'}</status>
-  </log>`).join('');
-        
-        const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
-<eems_report>
-  <summary>
-    <totalLogs>${totalLogsCount}</totalLogs>
-    <totalEntries>${entranceCount}</totalEntries>
-    <totalExits>${exitCount}</totalExits>
-    <failedAttempts>${failedCount}</failedAttempts>
-    <studentsInside>${studentsInside}</studentsInside>
-    <filterApplied>${activeFilter}</filterApplied>
-    <exportDate>${new Date().toISOString()}</exportDate>
-  </summary>
-  <logs>${logsXML}
-  </logs>
-</eems_report>`;
-        
-        downloadXML(xmlContent);
-      }
       console.log('XML export successful');
     } catch (error) {
       console.error('Error exporting to XML:', error);
@@ -478,24 +474,44 @@ export default function Monitor() {
     }
   };
 
-  // Helper function to escape XML special characters
-  const escapeXml = (str) => {
-    if (!str) return '';
-    return str.replace(/[<>&'"]/g, function(c) {
-      switch (c) {
-        case '<': return '&lt;';
-        case '>': return '&gt;';
-        case '&': return '&amp;';
-        case "'": return '&apos;';
-        case '"': return '&quot;';
-        default: return c;
+  // Setup refresh interval - only once on mount
+  useEffect(() => {
+    isMountedRef.current = true;
+    
+    // Initial fetch
+    fetchLogs();
+    
+    // Set up interval for every 5 seconds
+    refreshIntervalRef.current = setInterval(() => {
+      if (isMountedRef.current) {
+        fetchLogs();
       }
-    });
+    }, 5000);
+    
+    // Cleanup on unmount
+    return () => {
+      isMountedRef.current = false;
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleFilterChange = (filter) => {
+    setActiveFilter(filter);
+    autoScrollRef.current = true;
   };
 
-  // Manual refresh button handler
   const handleManualRefresh = () => {
-    performRefresh();
+    fetchLogs();
+  };
+
+  const handleScroll = () => {
+    if (logRef.current) {
+      const isAtTop = logRef.current.scrollTop <= 50;
+      autoScrollRef.current = isAtTop;
+    }
   };
 
   return (
@@ -507,16 +523,15 @@ export default function Monitor() {
 
       <div className="rtm-wrapper">
         <div className="rtm-card">
-          {/* Horizontal subheader */}
           <div className="rtm-subheader-horizontal">
             <div className="rtm-student-count">
-              Students Currently Inside: 
-              <span className="rtm-student-count-num">{studentsInside || 0}</span>
+              Students Currently Inside (Today): 
+              <span className="rtm-student-count-num">{studentsInsideCount}</span>
               <button 
                 className="view-students-btn"
                 onClick={() => setShowStudentsModal(true)}
               >
-                View List
+                View List ({studentsInsideList.length})
               </button>
             </div>
             
@@ -528,16 +543,16 @@ export default function Monitor() {
                 All Logs ({totalLogsCount})
               </button>
               <button
-                className={`rtm-filter-btn ${activeFilter === 'entrance' ? 'active' : ''}`}
-                onClick={() => handleFilterChange('entrance')}
+                className={`rtm-filter-btn ${activeFilter === 'entered' ? 'active' : ''}`}
+                onClick={() => handleFilterChange('entered')}
               >
-                Entrance Only ({entranceCount})
+                Entered Only ({enteredCount})
               </button>
               <button
-                className={`rtm-filter-btn ${activeFilter === 'exit' ? 'active' : ''}`}
-                onClick={() => handleFilterChange('exit')}
+                className={`rtm-filter-btn ${activeFilter === 'exited' ? 'active' : ''}`}
+                onClick={() => handleFilterChange('exited')}
               >
-                Exit Only ({exitCount})
+                Exited Only ({exitedCount})
               </button>
               <button
                 className={`rtm-filter-btn ${activeFilter === 'failed' ? 'active' : ''}`}
@@ -549,33 +564,15 @@ export default function Monitor() {
 
             <div className="rtm-export-buttons">
               <button
-                onClick={exportToExcel}
-                className="rtm-filter-btn export-excel"
-              >
-                Export Excel
-              </button>
-            
-              {/* XML Export Button */}
-              <button
-                onClick={exportToXML}
-                className="rtm-filter-btn export-xml"
-              >
-                Export XML
-              </button>
-              <button
                 onClick={handleManualRefresh}
                 className="rtm-filter-btn refresh-btn"
                 disabled={isRefreshing}
-                style={{
-                  cursor: isRefreshing ? 'not-allowed' : 'pointer'
-                }}
               >
                 {isRefreshing ? 'Refreshing...' : '⟳ Refresh'}
               </button>
             </div>
           </div>
 
-          {/* Auto-refresh status indicator */}
           <div className="rtm-auto-refresh-status">
             <span className={`refresh-indicator ${isRefreshing ? 'refreshing' : ''}`}></span>
             <span className="refresh-text">
@@ -588,31 +585,31 @@ export default function Monitor() {
           </div>
 
           <div className="rtm-body">
-            {/* Log panel */}
-            <div className="rtm-log-panel" ref={logRef}>
-              {filteredLogs.length === 0 ? (
-                <div className="rtm-empty-state">
-                  {activeFilter === 'entrance' ? 'No entrance records yet' : 
-                   activeFilter === 'exit' ? 'No exit records yet' : 
-                   activeFilter === 'failed' ? 'No failed attempts recorded' : 
-                   'No activity logs to display'}
-                </div>
-              ) : (
-                filteredLogs.map((log, i) => (
-                  <LogEntry key={log.id || i} log={log} animDelay={i < 7 ? i * 0.06 : 0} />
-                ))
-              )}
+            <div className="rtm-log-panel" ref={logRef} onScroll={handleScroll}>
+              <div className="logs-container">
+                {filteredLogs.length === 0 ? (
+                  <div className="rtm-empty-state">
+                    {activeFilter === 'entered' ? 'No entered records today' : 
+                     activeFilter === 'exited' ? 'No exited records today' : 
+                     activeFilter === 'failed' ? 'No failed attempts recorded' : 
+                     'No activity logs to display for today'}
+                  </div>
+                ) : (
+                  filteredLogs.map((log, i) => (
+                    <LogEntry key={log.id || i} log={log} animDelay={0} />
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Students Inside Modal */}
       <StudentsInsideModal 
         isOpen={showStudentsModal}
         onClose={() => setShowStudentsModal(false)}
         studentsInsideList={studentsInsideList}
-        studentsCount={studentsInsideList.length}
+        studentsCount={studentsInsideCount}
       />
     </div>
   );

@@ -1642,4 +1642,32 @@ router.get('/sections', async (req, res) => {
   }
 });
 
+// Add to your analytics routes
+app.get('/api/analytics/current-students', async (req, res) => {
+  try {
+    // Query students who have entered but not exited
+    // This should match the logic used in your metrics endpoint
+    const currentStudents = await db.query(`
+      SELECT DISTINCT ON (student_id) 
+        student_id, name, department, year_level, timestamp as entry_time
+      FROM logs 
+      WHERE action = 'ENTERED' 
+      AND NOT EXISTS (
+        SELECT 1 FROM logs l2 
+        WHERE l2.student_id = logs.student_id 
+        AND l2.action = 'EXITED' 
+        AND l2.timestamp > logs.timestamp
+      )
+      ORDER BY student_id, timestamp DESC
+    `);
+    
+    res.json({
+      onCampus: currentStudents.rows.length,
+      students: currentStudents.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
