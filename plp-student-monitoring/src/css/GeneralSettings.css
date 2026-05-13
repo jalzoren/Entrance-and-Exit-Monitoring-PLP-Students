@@ -1,4 +1,6 @@
-
+.systemsettings{
+  background-color: var(--color-bg-main);
+}
 
 /* ── Gate status bar ─────────────────────────────────────────────────────── */
 .gate-status-bar {

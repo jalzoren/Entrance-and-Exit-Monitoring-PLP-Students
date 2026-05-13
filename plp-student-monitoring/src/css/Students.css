@@ -14,6 +14,10 @@
   --transition: 0.28s ease;
 }
 
+
+.students{
+  background-color: var(--color-bg-main);
+}
 .student-management {
   padding: 20px;
   max-width: 1400px;

@@ -56,7 +56,7 @@ function SystemSettings() {
   }, []);
 
   return (
-    <div>
+    <div className='systemsettings'>
       <header className="header-card">
         <h1>SYSTEM SETTINGS</h1>
         <p className="subtitle">Dashboard / System Settings</p>

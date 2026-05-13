@@ -238,11 +238,15 @@ router.post("/recognize", async (req, res) => {
       [matchedStudent, confidencePercent, capturedQuality, finalAction, Date.now() - startTime]
     );
 
+    const warningReason = gateStatus.warning
+      ? `${mode === 'ENTRY' ? 'Entry' : 'Exit'} beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
+      : null;
+
     // Log to entry_exit_logs
     await pool.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning)
-      VALUES (?, ?, ?, ?, ?)`,
-      [matchedStudent, authInsert.insertId, finalAction, now, gateStatus.warning ? 1 : 0]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [matchedStudent, authInsert.insertId, finalAction, now, gateStatus.warning ? 1 : 0, warningReason]
     );
 
     return res.json({
