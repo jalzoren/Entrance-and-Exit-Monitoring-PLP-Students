@@ -483,10 +483,14 @@ function AcademicYearSection() {
 
 function GeneralSettings() {
   return (
-    <div className="general-settings-row">
-       <LogoSettings />
-      <GateSettingsSection />
-      <AcademicYearSection />
+    <div className="general-settings-page">
+      <div className="general-settings-row top-row">
+        <GateSettingsSection />
+        <AcademicYearSection />
+      </div>
+      <div className="general-settings-row bottom-row">
+        <LogoSettings />
+      </div>
     </div>
   );
 }

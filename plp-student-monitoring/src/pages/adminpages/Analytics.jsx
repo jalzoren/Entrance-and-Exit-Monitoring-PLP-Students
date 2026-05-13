@@ -72,10 +72,22 @@ const AnalyticsService = {
   async fetchReport(filters = {}) {
     try {
       const params = new URLSearchParams();
+      
+      // Date range
       if (filters.from) params.set('from', filters.from);
       if (filters.to) params.set('to', filters.to);
+      
+      // Student filters
       if (filters.dept) params.set('dept', filters.dept);
-      const res = await fetch(`/api/analytics/report?${params}`);
+      if (filters.program) params.set('program', filters.program);
+      if (filters.yearLevel) params.set('yearLevel', filters.yearLevel);
+      if (filters.section) params.set('section', filters.section);
+      
+      // Report type and action type
+      if (filters.reportType) params.set('reportType', filters.reportType);
+      if (filters.actionType) params.set('actionType', filters.actionType);
+      
+      const res = await fetch(`/api/analytics/report?${params.toString()}`);
       if (!res.ok) throw new Error(`report: HTTP ${res.status}`);
       const data = await res.json();
       return data;
@@ -234,6 +246,8 @@ function Analytics() {
     setAppliedFilters(filters);
     try {
       const reportParams = {};
+      
+      // Date Range
       if (filters.dateRange?.from) {
         const parts = filters.dateRange.from.split('/');
         if (parts.length === 3) reportParams.from = `${parts[2]}-${parts[1]}-${parts[0]}`;
@@ -244,7 +258,20 @@ function Analytics() {
         if (parts.length === 3) reportParams.to = `${parts[2]}-${parts[1]}-${parts[0]}`;
         else reportParams.to = filters.dateRange.to;
       }
+      
+      // Student Filters
       if (filters.collegeDepartment) reportParams.dept = filters.collegeDepartment;
+      if (filters.program) reportParams.program = filters.program;
+      if (filters.yearLevel) reportParams.yearLevel = filters.yearLevel;
+      if (filters.section) reportParams.section = filters.section;
+      
+      // Report Type and Action Type
+      if (filters.reportType) reportParams.reportType = filters.reportType;
+      if (filters.actionType && filters.actionType !== 'both') {
+        reportParams.actionType = filters.actionType;
+      }
+  
+      console.log('[Analytics] Sending report params:', reportParams);
   
       const reportData = await AnalyticsService.fetchReport(reportParams);
       
@@ -261,20 +288,22 @@ function Analytics() {
         dateRange: filters.dateRange?.from && filters.dateRange?.to
           ? `${filters.dateRange.from} - ${filters.dateRange.to}`
           : parsedData.dateRange,
-        // FIXED: Use reportData.collegeData (from API) instead of state collegeData
-        collegeData: reportData.collegeData,  // ✅ THIS IS FIXED
-        authData: reportData.authData,        // ✅ Use from API
-        trafficData: reportData.trafficChartData || trafficData,  // ✅ Use from API
+        // Use data from API response
+        collegeData: reportData.collegeData,
+        authData: reportData.authData,
+        trafficData: reportData.trafficChartData || trafficData,
         visitorData: visitorData,
         visitorLogs: visitorLogs,
         metrics: metrics,
-        // Also pass these for the PDF
+        // Pass these for the PDF
         totalStudents: reportData.totalStudents,
         currentOnCampus: reportData.currentOnCampus,
         totalEntries: reportData.totalEntries,
         studentLogs: reportData.studentLogs,
         entryLogs: reportData.entryLogs,
         exitLogs: reportData.exitLogs,
+        // Store applied filters for the PDF to use
+        appliedFilters: filters
       });
       setShowPdfPreview(true);
     } catch (err) {
