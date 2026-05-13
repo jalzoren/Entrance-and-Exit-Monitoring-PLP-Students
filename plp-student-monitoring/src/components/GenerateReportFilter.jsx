@@ -1,4 +1,4 @@
-// GenerateReportFilter.jsx (CLEANED - only essential filters)
+// GenerateReportFilter.jsx (FULL VERSION with all filters)
 import React, { useState, useEffect } from 'react';
 import '../componentscss/GenerateReportFilter.css';
 import '../css/GlobalModal.css';
@@ -10,11 +10,27 @@ function GenerateReportFilter({ onClose, onGenerate }) {
     dateFrom:          null,
     dateTo:            null,
     collegeDepartment: '',
+    program:           '',
+    yearLevel:         '',
+    section:           '',
+    reportType:        'students', // 'students' or 'visitors'
     actionType:        'both',
   });
 
   const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [programOptions, setProgramOptions] = useState([]);
+  const [sectionOptions, setSectionOptions] = useState([]);
   const [loadingDepts, setLoadingDepts] = useState(true);
+  const [loadingPrograms, setLoadingPrograms] = useState(false);
+  const [loadingSections, setLoadingSections] = useState(false);
+
+  const yearLevelOptions = [
+    { value: '', label: 'All Year Levels' },
+    { value: '1', label: '1st Year' },
+    { value: '2', label: '2nd Year' },
+    { value: '3', label: '3rd Year' },
+    { value: '4', label: '4th Year' },
+  ];
 
   // Fetch departments
   useEffect(() => {
@@ -44,13 +60,100 @@ function GenerateReportFilter({ onClose, onGenerate }) {
     fetchDepartments();
   }, []);
 
+  // Fetch programs when department changes
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      if (!filters.collegeDepartment) {
+        setProgramOptions([]);
+        return;
+      }
+      
+      setLoadingPrograms(true);
+      try {
+        // Fetch programs from your programs table
+        const response = await fetch(`/api/programs?department=${encodeURIComponent(filters.collegeDepartment)}`);
+        if (!response.ok) throw new Error('Failed to fetch programs');
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+          setProgramOptions([
+            { value: '', label: 'All Programs' },
+            ...data.map(prog => ({
+              value: prog.program_name || prog.name,
+              label: prog.program_name || prog.name,
+            }))
+          ]);
+        } else {
+          setProgramOptions([{ value: '', label: 'All Programs' }]);
+        }
+      } catch (err) {
+        console.error('Error fetching programs:', err);
+        setProgramOptions([{ value: '', label: 'All Programs' }]);
+      } finally {
+        setLoadingPrograms(false);
+      }
+    };
+    
+    fetchPrograms();
+  }, [filters.collegeDepartment]);
+
+  // Fetch sections when program or year level changes
+  useEffect(() => {
+    const fetchSections = async () => {
+      if (!filters.program) {
+        setSectionOptions([]);
+        return;
+      }
+      
+      setLoadingSections(true);
+      try {
+        // Fetch sections from students table based on program and year level
+        const params = new URLSearchParams();
+        if (filters.program) params.append('program', filters.program);
+        if (filters.yearLevel) params.append('yearLevel', filters.yearLevel);
+        
+        const response = await fetch(`/api/sections?${params.toString()}`);
+        if (!response.ok) throw new Error('Failed to fetch sections');
+        const data = await response.json();
+        
+        if (Array.isArray(data) && data.length > 0) {
+          setSectionOptions([
+            { value: '', label: 'All Sections' },
+            ...data.map(section => ({
+              value: section.section || section.section_name,
+              label: section.section || section.section_name,
+            }))
+          ]);
+        } else {
+          setSectionOptions([{ value: '', label: 'All Sections' }]);
+        }
+      } catch (err) {
+        console.error('Error fetching sections:', err);
+        setSectionOptions([{ value: '', label: 'All Sections' }]);
+      } finally {
+        setLoadingSections(false);
+      }
+    };
+    
+    fetchSections();
+  }, [filters.program, filters.yearLevel]);
+
   // Lock body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = 'unset'; };
   }, []);
 
-  const setField = (field, value) => setFilters(prev => ({ ...prev, [field]: value }));
+  const setField = (field, value) => {
+    setFilters(prev => ({ 
+      ...prev, 
+      [field]: value,
+      // Reset dependent fields
+      ...(field === 'collegeDepartment' && { program: '', section: '' }),
+      ...(field === 'program' && { section: '' }),
+      ...(field === 'yearLevel' && { section: '' })
+    }));
+  };
 
   const handleGenerate = () => {
     const reportFilters = {
@@ -59,7 +162,11 @@ function GenerateReportFilter({ onClose, onGenerate }) {
         to:   filters.dateTo   ? filters.dateTo.toLocaleDateString('en-GB')   : '',
       },
       collegeDepartment: filters.collegeDepartment,
-      actionType:        filters.actionType,
+      program: filters.program,
+      yearLevel: filters.yearLevel,
+      section: filters.section,
+      reportType: filters.reportType,
+      actionType: filters.actionType,
     };
 
     console.log('[GenerateReportFilter] Generating with filters:', reportFilters);
@@ -69,7 +176,16 @@ function GenerateReportFilter({ onClose, onGenerate }) {
   };
 
   const handleCancel = () => {
-    setFilters({ dateFrom: null, dateTo: null, collegeDepartment: '', actionType: 'both' });
+    setFilters({ 
+      dateFrom: null, 
+      dateTo: null, 
+      collegeDepartment: '', 
+      program: '',
+      yearLevel: '',
+      section: '',
+      reportType: 'students',
+      actionType: 'both' 
+    });
     onClose();
   };
 
@@ -77,6 +193,11 @@ function GenerateReportFilter({ onClose, onGenerate }) {
     { value: 'both',  label: 'Both Entry & Exit' },
     { value: 'entry', label: 'Entry Only' },
     { value: 'exit',  label: 'Exit Only' },
+  ];
+
+  const reportTypeOptions = [
+    { value: 'students', label: 'Students' },
+    { value: 'visitors', label: 'Visitors' },
   ];
 
   const pickerCommon = {
@@ -90,6 +211,19 @@ function GenerateReportFilter({ onClose, onGenerate }) {
     popperClassName: 'report-datepicker-popper',
   };
 
+  // Get active filters count for display
+  const getActiveFilterCount = () => {
+    let count = 0;
+    if (filters.dateFrom || filters.dateTo) count++;
+    if (filters.collegeDepartment) count++;
+    if (filters.program) count++;
+    if (filters.yearLevel) count++;
+    if (filters.section) count++;
+    if (filters.reportType !== 'students') count++;
+    if (filters.actionType !== 'both') count++;
+    return count;
+  };
+
   return (
     <div className="modal-overlay" onClick={e => { if (e.target.classList.contains('modal-overlay')) onClose(); }}>
       <div className="modal-container" onClick={e => e.stopPropagation()}>
@@ -100,6 +234,24 @@ function GenerateReportFilter({ onClose, onGenerate }) {
         </div>
 
         <div className="modal-body">
+
+          {/* Report Type: Students or Visitors */}
+          <div className="modal-field modal-full-width">
+            <label className="modal-label">Report Type</label>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              {reportTypeOptions.map(opt => (
+                <label key={opt.value} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    value={opt.value}
+                    checked={filters.reportType === opt.value}
+                    onChange={() => setField('reportType', opt.value)}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
 
           {/* Date Range */}
           <div className="modal-grid-2">
@@ -130,29 +282,86 @@ function GenerateReportFilter({ onClose, onGenerate }) {
             </div>
           </div>
 
-          {/* Department Filter */}
-          <div className="modal-field modal-full-width">
-            <label className="modal-label">College Department</label>
-            <select
-              value={filters.collegeDepartment}
-              onChange={e => setField('collegeDepartment', e.target.value)}
-              className="modal-select"
-              disabled={loadingDepts}
-            >
-              {loadingDepts ? (
-                <option value="">Loading departments…</option>
-              ) : (
-                departmentOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))
-              )}
-            </select>
-            {filters.collegeDepartment && (
-              <small style={{ color:'#01311d', marginTop:'4px', display:'block', fontSize:'11px' }}>
-                ✓ Showing data for: <strong>{filters.collegeDepartment}</strong>
-              </small>
-            )}
-          </div>
+          {/* Student-specific filters */}
+          {filters.reportType === 'students' && (
+            <>
+              {/* Department Filter */}
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">College Department</label>
+                <select
+                  value={filters.collegeDepartment}
+                  onChange={e => setField('collegeDepartment', e.target.value)}
+                  className="modal-select"
+                  disabled={loadingDepts}
+                >
+                  {loadingDepts ? (
+                    <option value="">Loading departments…</option>
+                  ) : (
+                    departmentOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              {/* Program Filter - FROM YOUR PROGRAMS TABLE */}
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">Program</label>
+                <select
+                  value={filters.program}
+                  onChange={e => setField('program', e.target.value)}
+                  className="modal-select"
+                  disabled={!filters.collegeDepartment || loadingPrograms}
+                >
+                  {loadingPrograms ? (
+                    <option value="">Loading programs…</option>
+                  ) : (
+                    programOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))
+                  )}
+                </select>
+                {filters.collegeDepartment && !loadingPrograms && programOptions.length <= 1 && (
+                  <small style={{ color: '#999', marginTop: '4px', display: 'block', fontSize: '11px' }}>
+                    No programs found for this department
+                  </small>
+                )}
+              </div>
+
+              {/* Year Level Filter */}
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">Year Level</label>
+                <select
+                  value={filters.yearLevel}
+                  onChange={e => setField('yearLevel', e.target.value)}
+                  className="modal-select"
+                >
+                  {yearLevelOptions.map(opt => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Section Filter */}
+              <div className="modal-field modal-full-width">
+                <label className="modal-label">Section</label>
+                <select
+                  value={filters.section}
+                  onChange={e => setField('section', e.target.value)}
+                  className="modal-select"
+                  disabled={!filters.program || loadingSections}
+                >
+                  {loadingSections ? (
+                    <option value="">Loading sections…</option>
+                  ) : (
+                    sectionOptions.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))
+                  )}
+                </select>
+              </div>
+            </>
+          )}
 
           {/* Action Type Filter */}
           <div className="modal-field modal-full-width">
@@ -167,19 +376,23 @@ function GenerateReportFilter({ onClose, onGenerate }) {
               ))}
             </select>
             <small style={{ color:'#666', marginTop:'4px', display:'block', fontSize:'11px' }}>
-              {filters.actionType === 'entry' && '📋 PDF will show Entry Logs only'}
-              {filters.actionType === 'exit'  && '🚪 PDF will show Exit Logs only'}
-              {filters.actionType === 'both'  && '📋🚪 PDF will show both Entry and Exit Logs'}
+              {filters.actionType === 'entry' && '📋 Report will show Entry Logs only'}
+              {filters.actionType === 'exit'  && '🚪 Report will show Exit Logs only'}
+              {filters.actionType === 'both'  && '📋🚪 Report will show both Entry and Exit Logs'}
             </small>
           </div>
 
           {/* Active Filter Summary */}
-          {(filters.collegeDepartment || filters.dateFrom || filters.dateTo || filters.actionType !== 'both') && (
+          {getActiveFilterCount() > 0 && (
             <div style={{ marginTop:'12px', padding:'10px 14px', backgroundColor:'#f0f7f4', borderRadius:'6px', border:'1px solid #c8e6c9', fontSize:'11px', color:'#333' }}>
-              <strong style={{ color:'#01311d' }}>Active Filters:</strong>{' '}
+              <strong style={{ color:'#01311d' }}>Active Filters ({getActiveFilterCount()}):</strong>{' '}
               {[
                 filters.dateFrom && filters.dateTo && `${filters.dateFrom.toLocaleDateString('en-GB')} – ${filters.dateTo.toLocaleDateString('en-GB')}`,
+                filters.reportType !== 'students' && `Type: ${filters.reportType === 'visitors' ? 'Visitors' : 'Students'}`,
                 filters.collegeDepartment && `Dept: ${filters.collegeDepartment}`,
+                filters.program && `Program: ${filters.program}`,
+                filters.yearLevel && `Year: ${yearLevelOptions.find(y => y.value === filters.yearLevel)?.label}`,
+                filters.section && `Section: ${filters.section}`,
                 filters.actionType !== 'both' && `Action: ${filters.actionType === 'entry' ? 'Entry Only' : 'Exit Only'}`,
               ].filter(Boolean).join(' | ')}
             </div>
