@@ -23,6 +23,15 @@
   --report-input-focus-shadow: rgba(84, 135, 114, 0.1);
   --report-dropdown-arrow: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23548772' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
 }
+.modal-body1{
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem; 
+  overflow-y:scroll;
+  color: #01311d;
+}
 
 /* Overlay */
 .report-filter-overlay {

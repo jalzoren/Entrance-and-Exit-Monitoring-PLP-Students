@@ -241,7 +241,7 @@ useEffect(() => {
           <button className="modal-close" onClick={onClose}>✕</button>
         </div>
 
-        <div className="modal-body">
+        <div className="modal-body1">
 
           {/* Report Type: Students or Visitors */}
           <div className="modal-field ">

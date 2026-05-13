@@ -105,6 +105,15 @@
   opacity: 1;
 }
 
+.modal-body {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Montserrat', sans-serif;
+  font-size: 1rem; 
+  overflow-y:scroll;
+}
+
 .modal-instructions-title {
   font-size: 0.78rem;
   font-weight: 700;
