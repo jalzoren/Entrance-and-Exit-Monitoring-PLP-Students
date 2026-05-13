@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 13, 2026 at 11:50 AM
+-- Generation Time: May 13, 2026 at 12:14 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -322,7 +322,7 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`key`, `value`, `updated_at`) VALUES
-('block_outside_window', 'false', '2026-05-13 17:47:58'),
+('block_outside_window', 'true', '2026-05-13 18:11:10'),
 ('gate_entry_end', '15:00', '2026-05-13 17:47:58'),
 ('gate_entry_start', '07:00', '2026-05-13 15:23:00'),
 ('gate_exit_end', '15:00', '2026-05-13 17:47:58'),
@@ -472,7 +472,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=276;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -513,7 +513,7 @@ ALTER TABLE `authentication`
 --
 ALTER TABLE `entry_exit_logs`
   ADD CONSTRAINT `entry_exit_logs_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `entry_exit_logs_ibfk_2` FOREIGN KEY (`auth_id`) REFERENCES `authentication` (`auth_id`);
+  ADD CONSTRAINT `entry_exit_logs_ibfk_2` FOREIGN KEY (`auth_id`) REFERENCES `authentication` (`auth_id`) ON UPDATE CASCADE;
 
 --
 -- Constraints for table `programs`

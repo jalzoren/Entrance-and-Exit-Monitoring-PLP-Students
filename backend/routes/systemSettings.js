@@ -87,13 +87,21 @@ router.get('/gate-status', async (req, res) => {
     const exitOpen  = currentTime >= settings.gate_exit_start  &&
                       currentTime <= settings.gate_exit_end;
 
+    // Check if blocking is enabled
+    const blockOutsideEnabled = settings.block_outside_window === 'true';
+
     res.json({
       currentTime,
+      currentDateTime: now.toISOString(),
       entryOpen,
       exitOpen,
       entryWindow: `${settings.gate_entry_start} – ${settings.gate_entry_end}`,
       exitWindow:  `${settings.gate_exit_start} – ${settings.gate_exit_end}`,
-      blockOutside: settings.block_outside_window === 'true',
+      blockOutside: blockOutsideEnabled,
+      autoExitWillTrigger: !exitOpen && blockOutsideEnabled,
+      debugNote: !exitOpen && !blockOutsideEnabled 
+        ? 'Gate is outside window but block_outside_window is NOT enabled. Auto-exit requires block_outside_window=true.' 
+        : 'Check above for auto-exit readiness.'
     });
   } catch (err) {
     console.error('[gate-status]', err);
@@ -294,6 +302,59 @@ router.post('/logo/reset', async (req, res) => {
   } catch (err) {
     console.error('[logo RESET]', err);
     res.status(500).json({ message: 'Failed to reset logo' });
+  }
+});
+
+// ── POST /api/settings/force-gate-closure ──────────────────────────────────────
+// Force auto-exit for all unmatched entries (for testing/immediate closure)
+router.post('/force-gate-closure', async (req, res) => {
+  try {
+    const { dayStart, dayEnd } = await require('../src/time').getTodayPhRange(db);
+    const { getPhTime } = require('../src/time');
+
+    // Find all students with unmatched ENTRY logs
+    const [rows] = await db.query(
+      `SELECT DISTINCT eel.student_id
+       FROM entry_exit_logs eel
+       WHERE eel.action = 'ENTRY'
+         AND eel.log_time BETWEEN ? AND ?
+         AND eel.student_id NOT IN (
+           SELECT student_id FROM entry_exit_logs
+           WHERE action = 'EXIT' AND log_time BETWEEN ? AND ?
+         )`,
+      [dayStart, dayEnd, dayStart, dayEnd]
+    );
+
+    if (!rows.length) {
+      return res.json({ message: 'No unmatched entries found.', updated: 0 });
+    }
+
+    const now = await getPhTime();
+    const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
+
+    // Insert EXIT logs for all unmatched entries
+    const insertPromises = rows.map(async (row) => {
+      await db.query(
+        `INSERT INTO entry_exit_logs (student_id, action, log_time, gate_window_warning, gate_window_reason)
+         VALUES (?, 'EXIT', ?, 1, 'Force-closed: Gate closure forced by admin')`,
+        [row.student_id, exitTime]
+      );
+    });
+
+    await Promise.all(insertPromises);
+
+    console.log(`[force-gate-closure] Applied auto-exit to ${rows.length} students at ${exitTime}`);
+
+    res.json({
+      message: `Auto-exit applied to ${rows.length} unmatched student(s).`,
+      updated: rows.length,
+      exitTime,
+      studentIds: rows.map(r => r.student_id)
+    });
+
+  } catch (err) {
+    console.error('[force-gate-closure]', err);
+    res.status(500).json({ message: 'Failed to force gate closure: ' + err.message });
   }
 });
 
