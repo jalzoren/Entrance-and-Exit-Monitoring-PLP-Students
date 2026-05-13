@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 13, 2026 at 01:11 PM
+-- Generation Time: May 13, 2026 at 01:35 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -75,33 +75,14 @@ CREATE TABLE `authentication` (
 --
 
 INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, `action`, `accuracy`, `duration`, `timestamp`, `failure_reason`, `confidence`, `processing_time_ms`, `quality_score`) VALUES
-(293, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 17:44:39', NULL, 58.71, 833, 0.7906),
-(294, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 17:44:48', 'DUPLICATE_ENTRY', 56.24, 416, 0.9333),
-(295, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 17:45:06', NULL, 59.09, 437, 0.8774),
-(296, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:23', NULL, NULL, NULL, NULL),
-(297, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:31', NULL, NULL, NULL, NULL),
-(298, '23-00173', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:40', NULL, NULL, NULL, NULL),
-(299, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:49:10', NULL, NULL, NULL, NULL),
-(300, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:49:32', NULL, NULL, NULL, NULL),
-(301, NULL, '', '', NULL, NULL, NULL, '2026-05-13 10:23:31', NULL, NULL, NULL, NULL),
-(302, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:29', NULL, NULL, NULL, NULL),
-(303, '23-00173', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:35', NULL, NULL, NULL, NULL),
-(304, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:40', NULL, NULL, NULL, NULL),
-(305, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:29:40', NULL, NULL, NULL, NULL),
-(306, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 18:43:00', NULL, 56.42, 425, 0.9895),
-(307, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 18:43:21', NULL, 57.59, 424, 0.9973),
-(308, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 18:43:41', 'DUPLICATE_ENTRY', 57.63, 436, 1.0000),
-(309, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:47:54', NULL, NULL, NULL, NULL),
-(310, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:00', NULL, NULL, NULL, NULL),
-(311, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:07', NULL, NULL, NULL, NULL),
-(312, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:13', NULL, NULL, NULL, NULL),
-(313, NULL, '', '', NULL, NULL, NULL, '2026-05-13 10:50:06', NULL, NULL, NULL, NULL),
-(314, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:04:57', NULL, NULL, NULL, NULL),
-(315, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:05:28', NULL, NULL, NULL, NULL),
-(316, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:05:34', NULL, NULL, NULL, NULL),
-(317, NULL, '', '', NULL, NULL, NULL, '2026-05-13 11:07:57', NULL, NULL, NULL, NULL),
-(318, NULL, '', '', NULL, NULL, NULL, '2026-05-13 11:10:19', NULL, NULL, NULL, NULL),
-(319, NULL, '', '', NULL, NULL, NULL, '2026-05-13 11:10:58', NULL, NULL, NULL, NULL);
+(320, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:08', NULL, NULL, NULL, NULL),
+(321, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:12', NULL, NULL, NULL, NULL),
+(322, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:16', NULL, NULL, NULL, NULL),
+(323, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:42', NULL, NULL, NULL, NULL),
+(324, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:51', NULL, NULL, NULL, NULL),
+(325, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:31:55', NULL, NULL, NULL, NULL),
+(326, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 19:32:10', NULL, NULL, NULL, NULL),
+(327, NULL, '', '', NULL, NULL, NULL, '2026-05-13 19:34:24', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -153,36 +134,14 @@ CREATE TABLE `entry_exit_logs` (
 --
 
 INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `gate_window_warning`, `gate_window_reason`, `log_time`) VALUES
-(260, '23-00298', 293, 'ENTRY', 0, NULL, '2026-05-13 17:44:39'),
-(261, '23-00298', 295, 'EXIT', 0, NULL, '2026-05-13 17:45:06'),
-(262, '23-00174', 296, 'ENTRY', 0, NULL, '2026-05-13 17:46:23'),
-(263, '23-00295', 297, 'ENTRY', 0, NULL, '2026-05-13 17:46:31'),
-(264, '23-00173', 298, 'ENTRY', 0, NULL, '2026-05-13 17:46:40'),
-(265, '23-00298', 299, 'ENTRY', 1, 'Entry beyond gate hours (07:00–15:00)', '2026-05-13 17:49:10'),
-(266, '23-00298', 300, 'EXIT', 1, 'Exit beyond gate hours (07:00–15:00)', '2026-05-13 17:49:32'),
-(276, '23-00174', 301, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 10:23:31'),
-(277, '23-00295', 301, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 10:23:31'),
-(278, '23-00173', 301, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 10:23:31'),
-(279, '23-00174', 302, 'EXIT', 0, NULL, '2026-05-13 18:28:29'),
-(280, '23-00173', 303, 'EXIT', 0, NULL, '2026-05-13 18:28:35'),
-(281, '23-00295', 304, 'EXIT', 0, NULL, '2026-05-13 18:28:40'),
-(282, '23-00298', 305, 'ENTRY', 0, NULL, '2026-05-13 18:29:40'),
-(283, '23-00298', 306, 'EXIT', 0, NULL, '2026-05-13 18:43:00'),
-(284, '23-00298', 307, 'ENTRY', 0, NULL, '2026-05-13 18:43:21'),
-(285, '23-00298', 309, 'EXIT', 0, NULL, '2026-05-13 18:47:54'),
-(286, '23-00298', 310, 'ENTRY', 0, NULL, '2026-05-13 18:48:00'),
-(287, '23-00298', 311, 'EXIT', 0, NULL, '2026-05-13 18:48:07'),
-(288, '23-00174', 312, 'ENTRY', 0, NULL, '2026-05-13 18:48:13'),
-(289, '23-00174', 313, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 10:50:06'),
-(290, '23-00174', 314, 'EXIT', 0, NULL, '2026-05-13 19:04:57'),
-(291, '23-00174', 315, 'ENTRY', 0, NULL, '2026-05-13 19:05:28'),
-(292, '23-00295', 316, 'ENTRY', 0, NULL, '2026-05-13 19:05:34'),
-(293, '23-00295', 317, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:07:57'),
-(294, '23-00174', 317, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:07:57'),
-(295, '23-00174', 318, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:10:19'),
-(296, '23-00295', 318, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:10:19'),
-(297, '23-00174', 319, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:10:58'),
-(298, '23-00295', 319, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 11:10:58');
+(299, '23-00298', 320, 'ENTRY', 0, NULL, '2026-05-13 19:31:08'),
+(300, '23-00174', 321, 'ENTRY', 0, NULL, '2026-05-13 19:31:12'),
+(301, '23-00295', 322, 'ENTRY', 0, NULL, '2026-05-13 19:31:16'),
+(302, '23-00298', 323, 'EXIT', 0, NULL, '2026-05-13 19:31:42'),
+(303, '23-00174', 324, 'EXIT', 0, NULL, '2026-05-13 19:31:51'),
+(304, '23-00295', 325, 'EXIT', 0, NULL, '2026-05-13 19:31:55'),
+(305, '23-00174', 326, 'ENTRY', 0, NULL, '2026-05-13 19:32:10'),
+(306, '23-00174', 327, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 19:34:24');
 
 -- --------------------------------------------------------
 
@@ -364,10 +323,10 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`key`, `value`, `updated_at`) VALUES
-('block_outside_window', 'true', '2026-05-13 18:30:14'),
-('gate_entry_end', '17:00', '2026-05-13 19:06:19'),
+('block_outside_window', 'true', '2026-05-13 19:33:46'),
+('gate_entry_end', '16:00', '2026-05-13 19:32:56'),
 ('gate_entry_start', '07:00', '2026-05-13 15:23:00'),
-('gate_exit_end', '17:00', '2026-05-13 19:06:19'),
+('gate_exit_end', '16:00', '2026-05-13 19:32:56'),
 ('gate_exit_start', '07:00', '2026-05-13 15:23:00'),
 ('school_year_end', '2026', '2026-04-22 13:10:47'),
 ('school_year_start', '2025', '2026-04-22 13:10:47'),
@@ -502,7 +461,7 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=320;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=328;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -514,7 +473,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=299;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=307;
 
 --
 -- AUTO_INCREMENT for table `notifications`

@@ -330,7 +330,8 @@ router.post('/force-gate-closure', async (req, res) => {
     }
 
     const now = await getPhTime();
-    const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
+    const exitDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+    const exitTime = `${exitDate} ${now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour12: false })}`;
 
     // Create or get system authentication record for auto-exits
     const [systemAuthRows] = await db.query(

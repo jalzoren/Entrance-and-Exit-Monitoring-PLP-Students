@@ -97,7 +97,8 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
   }
 
   const now = await getPhTime(db);
-  const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
+  const exitDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+  const exitTime = `${exitDate} ${now.toLocaleTimeString('en-GB', { timeZone: 'Asia/Manila', hour12: false })}`;
 
   console.log(`[markUnexitedStudentsAsGateClosedWarning] Current time: ${exitTime}`);
 
