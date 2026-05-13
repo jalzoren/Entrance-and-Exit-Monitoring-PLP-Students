@@ -2,7 +2,8 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
-const { getTodayPhRange } = require('../src/time');
+const { getTodayPhRange, getPhTime } = require('../src/time');
+const { getGateStatus } = require('../src/gateUtils');
 
 const formatStudentName = (row) => {
   const lastName = row.last_name?.trim();
@@ -42,6 +43,68 @@ const formatVisitorReason = (reason, otherReason) => {
   }
 
   return reason || 'Not Specified';
+};
+
+const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => {
+  const gateStatus = await getGateStatus('EXIT');
+  
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate status: ${gateStatus.open ? 'OPEN' : 'CLOSED'}`);
+  console.log(`  Message: ${gateStatus.message}`);
+  console.log(`  Window: ${gateStatus.windowStart} – ${gateStatus.windowEnd}`);
+  
+  if (gateStatus.open) {
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate is OPEN - auto-exit skipped`);
+    return { updated: 0, gateStatus };
+  }
+
+  const { dayStart, dayEnd } = await getTodayPhRange(db);
+  
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Checking report range vs day range...`);
+  console.log(`  Report: ${rangeStart} → ${rangeEnd}`);
+  console.log(`  Day: ${dayStart} → ${dayEnd}`);
+
+  if (rangeStart > dayStart || rangeEnd < dayEnd) {
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Range does not cover full day - auto-exit skipped`);
+    return { updated: 0, gateStatus };
+  }
+
+  const [rows] = await db.query(
+    `SELECT eel.student_id, eel.log_id
+     FROM entry_exit_logs eel
+     JOIN (
+       SELECT student_id, MAX(log_time) AS max_log_time
+       FROM entry_exit_logs
+       WHERE log_time BETWEEN ? AND ?
+       GROUP BY student_id
+     ) latest ON latest.student_id = eel.student_id AND latest.max_log_time = eel.log_time
+     WHERE eel.action = 'ENTRY'
+       AND (eel.gate_window_warning <> 1 OR eel.gate_window_reason IS NULL OR LOWER(eel.gate_window_reason) NOT LIKE ?)`,
+    [dayStart, dayEnd, 'still inside (%']
+  );
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Found ${rows.length} unmatched ENTRY logs`);
+
+  if (!rows.length) {
+    return { updated: 0, gateStatus };
+  }
+
+  const now = await getPhTime(db);
+  const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
+
+  // Insert EXIT logs for unmatched entries
+  const insertPromises = rows.map(async (row) => {
+    await db.query(
+      `INSERT INTO entry_exit_logs (student_id, action, log_time, gate_window_warning, gate_window_reason)
+       VALUES (?, 'EXIT', ?, 1, 'Auto-exit: Gate closed – no exit recorded')`,
+      [row.student_id, exitTime]
+    );
+  });
+
+  await Promise.all(insertPromises);
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] ✅ Auto-exit created for ${rows.length} student(s)`);
+
+  return { updated: rows.length, gateStatus };
 };
 
 // ── GET /api/analytics/metrics ────────────────────────────────────────────────
@@ -655,6 +718,12 @@ router.get('/report', async (req, res) => {
 
     console.log('[analytics/report] Final range:', rangeStart, '→', rangeEnd);
 
+    const currentGateStatus = await getGateStatus('EXIT');
+    const { updated: gateClosedWarningsUpdated } = await markUnexitedStudentsAsGateClosedWarning(rangeStart, rangeEnd);
+    if (gateClosedWarningsUpdated > 0) {
+      console.log(`[analytics/report] Applied gate-closed warning to ${gateClosedWarningsUpdated} unmatched student entry log(s)`);
+    }
+
     // ── FOR VISITOR REPORTS ─────────────────────────────────────────────────
     if (reportType === 'visitors') {
       let visitorQuery = `
@@ -666,7 +735,9 @@ router.get('/report', async (req, res) => {
           other_reason,
           action,
           log_time,
-          qr_token
+          qr_token,
+        gate_window_warning,
+        gate_window_reason
         FROM visitor_logs vl
         WHERE log_time BETWEEN ? AND ?
       `;
@@ -689,7 +760,9 @@ router.get('/report', async (req, res) => {
         email: row.email || 'N/A',
         reason: row.reason === 'Other' ? row.other_reason : row.reason,
         action: row.action === 'ENTRY' ? 'Entrance' : 'Exit',
-        qrToken: row.qr_token || 'N/A'
+        qrToken: row.qr_token || 'N/A',
+        gateWindowWarning: row.gate_window_warning === 1,
+        gateWindowReason: row.gate_window_reason || null
       }));
       
       const entryLogs = visitorLogs.filter(log => log.action === 'Entrance');
@@ -709,7 +782,8 @@ router.get('/report', async (req, res) => {
         authData: [],
         methodData: [],
         trafficChartData: [],
-        studentLogs: []
+        studentLogs: [],
+        gateStatus: currentGateStatus
       });
     }
 
@@ -776,7 +850,9 @@ router.get('/report', async (req, res) => {
         COALESCE(s.section, 'N/A') AS section,
         a.method, 
         a.auth_status, 
-        a.accuracy
+        a.accuracy,
+        eel.gate_window_warning,
+        eel.gate_window_reason
       FROM entry_exit_logs eel
       LEFT JOIN students s ON s.student_id = eel.student_id
       LEFT JOIN programs p ON s.program_id = p.id
@@ -952,9 +1028,11 @@ router.get('/report', async (req, res) => {
             : r.method === 'MANUAL' ? 'Manual Input'
             : r.method === 'QR' ? 'QR Scan'
             : 'Unknown',
-      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A'
+      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A',
+      gateWindowWarning: r.gate_window_warning === 1,
+      gateWindowReason: r.gate_window_reason || null
     }));
-    
+
     const entryLogs = studentLogs.filter(log => log.action === 'Entrance');
     const exitLogs = studentLogs.filter(log => log.action === 'Exit');
 
@@ -971,11 +1049,12 @@ router.get('/report', async (req, res) => {
       trafficChartData: trafficChartData,
       trafficData: {
         highest: highestDay ? `${highestDay.date} (${highestDay.entrance} entries)` : 'N/A',
-        lowest: lowestDay ? `${lowestDay.date} (${lowestDay.entrance} entries)` : 'N/A',
+        lowest: lowestDay ? `${lowestDay.date} (${highestDay.entrance} entries)` : 'N/A',
       },
       studentLogs: studentLogs,
       entryLogs: entryLogs,
-      exitLogs: exitLogs
+      exitLogs: exitLogs,
+      gateStatus: currentGateStatus
     });
 
   } catch (err) {
@@ -1347,12 +1426,14 @@ router.get('/student-pairing', async (req, res) => {
         
         if (matchedEntry) {
           // Found matching entry - create a session
+          const isAutoExit = log.gate_window_reason && log.gate_window_reason.includes('Auto-exit');
+          const status = isAutoExit ? 'Auto Exit (Gate closed – no exit recorded)' : 'Left Campus';
           student.sessions.push({
             entryTime: matchedEntry.time,
             entryMethod: matchedEntry.method,
             exitTime: formattedTime,
             exitMethod: logMethod,
-            status: 'Left Campus'
+            status
           });
           // Remove the matched entry from queue
           student.entryQueue.splice(matchedIndex, 1);
@@ -1425,7 +1506,8 @@ router.get('/student-pairing', async (req, res) => {
     const stats = {
       completed: pairedRecords.filter(r => r.status === 'Left Campus').length,
       inside: pairedRecords.filter(r => r.status === 'Inside Campus').length,
-      exitOnly: pairedRecords.filter(r => r.status === 'Exit Only').length
+      exitOnly: pairedRecords.filter(r => r.status === 'Exit Only').length,
+      gateClosedNoExit: pairedRecords.filter(r => r.status === 'Auto Exit (Gate closed – no exit recorded)').length
     };
     
     console.log(`[analytics/student-pairing] Total sessions: ${pairedRecords.length}`);
@@ -1557,6 +1639,33 @@ router.get('/sections', async (req, res) => {
   } catch (err) {
     console.error('[api/sections] ERROR:', err);
     res.status(500).json([]);
+  }
+});
+
+router.get('/api/analytics/current-students', async (req, res) => {
+  try {
+    // Query students who have entered but not exited
+    // This should match the logic used in your metrics endpoint
+    const currentStudents = await db.query(`
+      SELECT DISTINCT ON (student_id) 
+        student_id, name, department, year_level, timestamp as entry_time
+      FROM logs 
+      WHERE action = 'ENTERED' 
+      AND NOT EXISTS (
+        SELECT 1 FROM logs l2 
+        WHERE l2.student_id = logs.student_id 
+        AND l2.action = 'EXITED' 
+        AND l2.timestamp > logs.timestamp
+      )
+      ORDER BY student_id, timestamp DESC
+    `);
+    
+    res.json({
+      onCampus: currentStudents.rows.length,
+      students: currentStudents.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
