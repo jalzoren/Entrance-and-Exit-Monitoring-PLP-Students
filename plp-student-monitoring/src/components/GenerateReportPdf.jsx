@@ -414,6 +414,122 @@ const GenerateReportPdf = forwardRef(
       return s.length > 0 ? s.join(" | ") : "No additional filters applied";
     };
 
+    // Check if we're in visitor mode
+    const isVisitorMode = filters?.reportType === 'visitors';
+
+    // Separate visitor entry and exit logs
+    const visitorEntryLogs = visitorLogsArray.filter(log => 
+      log.action === 'ENTRY' || log.action === 'Entrance' || log.action === 'entry'
+    );
+    const visitorExitLogs = visitorLogsArray.filter(log => 
+      log.action === 'EXIT' || log.action === 'Exit' || log.action === 'exit'
+    );
+
+    // Process visitor sessions (pair entries with exits)
+    const processVisitorSessions = (entries, exits) => {
+      const allEntries = entries.map(log => ({
+        ...log,
+        timestamp: new Date(log.dateTime || log.log_time || log.timestamp)
+      })).filter(log => !isNaN(log.timestamp.getTime()));
+      
+      const allExits = exits.map(log => ({
+        ...log,
+        timestamp: new Date(log.dateTime || log.log_time || log.timestamp)
+      })).filter(log => !isNaN(log.timestamp.getTime()));
+      
+      // Combine and sort
+      const allLogs = [...allEntries.map(l => ({ ...l, type: 'entry' })), 
+                      ...allExits.map(l => ({ ...l, type: 'exit' }))]
+        .sort((a, b) => a.timestamp - b.timestamp);
+      
+      const visitorMap = new Map();
+      
+      allLogs.forEach(log => {
+        const visitorId = log.visitorId || log.visitor_id || log.id;
+        if (!visitorId) return;
+        
+        if (!visitorMap.has(visitorId)) {
+          visitorMap.set(visitorId, {
+            visitorId: visitorId,
+            name: log.name || log.full_name || 'Unknown',
+            email: log.email || 'N/A',
+            reason: log.reason || log.visitReason || log.visit_reason || 'N/A',
+            pendingEntry: null,
+            sessions: []
+          });
+        }
+        
+        const visitor = visitorMap.get(visitorId);
+        const formattedTime = log.timestamp.toLocaleString('en-PH', { hour12: true });
+        
+        if (log.type === 'entry') {
+          if (visitor.pendingEntry) {
+            visitor.sessions.push({
+              entryTime: visitor.pendingEntry.time,
+              exitTime: '—',
+              status: 'Still Inside (No Exit)'
+            });
+          }
+          visitor.pendingEntry = { time: formattedTime, rawTime: log.timestamp };
+        } else if (log.type === 'exit') {
+          if (visitor.pendingEntry && visitor.pendingEntry.rawTime < log.timestamp) {
+            visitor.sessions.push({
+              entryTime: visitor.pendingEntry.time,
+              exitTime: formattedTime,
+              status: 'Completed'
+            });
+            visitor.pendingEntry = null;
+          } else {
+            visitor.sessions.push({
+              entryTime: '—',
+              exitTime: formattedTime,
+              status: 'Exit Only'
+            });
+          }
+        }
+      });
+      
+      // Add remaining pending entries
+      for (const [visitorId, visitor] of visitorMap.entries()) {
+        if (visitor.pendingEntry) {
+          visitor.sessions.push({
+            entryTime: visitor.pendingEntry.time,
+            exitTime: '—',
+            status: 'Still Inside'
+          });
+        }
+      }
+      
+      // Flatten sessions
+      const allSessions = [];
+      for (const [visitorId, visitor] of visitorMap.entries()) {
+        visitor.sessions.forEach((session, idx) => {
+          allSessions.push({
+            no: 0,
+            visitorId: visitor.visitorId,
+            name: visitor.name,
+            email: visitor.email,
+            reason: visitor.reason,
+            sessionNumber: idx + 1,
+            entryTime: session.entryTime,
+            exitTime: session.exitTime,
+            status: session.status
+          });
+        });
+      }
+      
+      // Sort and number
+      allSessions.sort((a, b) => a.name.localeCompare(b.name));
+      allSessions.forEach((session, idx) => { session.no = idx + 1; });
+      
+      return allSessions;
+    };
+
+    let finalVisitorSessions = [];
+    if (isVisitorMode && (visitorEntryLogs.length > 0 || visitorExitLogs.length > 0)) {
+      finalVisitorSessions = processVisitorSessions(visitorEntryLogs, visitorExitLogs);
+    }
+
     const thGreen = {
       backgroundColor: "#01311d",
       color: "white",
@@ -432,584 +548,560 @@ const GenerateReportPdf = forwardRef(
       (visitorLogsArray.length > 0 ? 1 : 0) +
       (finalMergedLogs.length > 0 ? 1 : 0);
 
-    // FULL REPORT
-    return (
-      <div className="pdf-container">
-        <div ref={reportRef} className="pdf-report landscape">
-          {/* PAGE 1: HEADER & DEPARTMENT TABLE */}
-          <div className="pdf-page">
-            <div className="pdf-header">
-              <div className="pdf-logos-row">
-                <div className="pdf-left-logos">
-                  {[leftLogoSrc1, leftLogoSrc2, leftLogoSrc3, rightLogoSrc].map(
-                    (src, i) => (
-                      <div
-                        key={i}
-                        className="pdf-logo-box"
-                        style={
-                          i === 1
-                            ? { width: "65px", height: "65px" }
-                            : i === 3
-                              ? { width: "70px", height: "70px" }
-                              : {}
-                        }
-                      >
-                        <img
-                          src={src}
-                          alt={`Logo ${i + 1}`}
-                          className="pdf-logo-img"
-                          onError={(e) => {
-                            e.target.style.display = "none";
-                          }}
-                        />
-                      </div>
-                    ),
-                  )}
-                </div>
-                <div className="pdf-center-text">
-                  <div className="pdf-university-name">
-                    PAMANTASAN NG LUNGSOD NG PASIG
+
+    // VISITOR REPORT
+ // ============================================================
+// CONDITIONAL RENDERING - VISITOR OR STUDENT REPORT
+// ============================================================
+
+// VISITOR REPORT
+if (isVisitorMode) {
+  const visitorTotalRecords = filters?.actionType === 'entry' 
+    ? visitorEntryLogs.length 
+    : filters?.actionType === 'exit' 
+      ? visitorExitLogs.length 
+      : finalVisitorSessions.length;
+
+  // VISITOR REPORT JSX
+  return (
+    <div className="pdf-container">
+      <div ref={reportRef} className="pdf-report landscape">
+        
+        {/* PAGE 1: HEADER & SUMMARY STATS */}
+        <div className="pdf-page">
+          <div className="pdf-header">
+            <div className="pdf-logos-row">
+              <div className="pdf-left-logos">
+                {[leftLogoSrc1, leftLogoSrc2, leftLogoSrc3, rightLogoSrc].map((src, i) => (
+                  <div key={i} className="pdf-logo-box"
+                    style={i === 1 ? { width: "65px", height: "65px" } : i === 3 ? { width: "70px", height: "70px" } : {}}>
+                    <img src={src} alt={`Logo ${i + 1}`} className="pdf-logo-img"
+                      onError={(e) => { e.target.style.display = "none"; }} />
                   </div>
-                  <div className="pdf-system-title">
-                    ENTRANCE AND EXIT STUDENT MONITORING SYSTEM
-                  </div>
-                </div>
+                ))}
+              </div>
+              <div className="pdf-center-text">
+                <div className="pdf-university-name">PAMANTASAN NG LUNGSOD NG PASIG</div>
+                <div className="pdf-system-title">ENTRANCE AND EXIT VISITOR MONITORING SYSTEM</div>
+              </div>
+            </div>
+
+            <div style={{ borderTop: "2px solid #01311d", margin: "10px 0 8px 0" }}></div>
+            <div style={{ borderTop: "1px solid #d0d0d0", margin: "8px 0" }}></div>
+
+            <div className="pdf-report-summary">
+              <div className="pdf-title-row">
+                <h1 className="pdf-main-title">VISITOR SUMMARY REPORT</h1>
+                <p className="pdf-subtitle">
+                  This report provides an overview of visitor entrance and exit activity within the selected date range.
+                  {filters?.collegeDepartment ? ` — ${filters.collegeDepartment}` : ""}
+                </p>
               </div>
 
-              <div
-                style={{
-                  borderTop: "2px solid #01311d",
-                  margin: "10px 0 8px 0",
-                }}
-              ></div>
-              <div
-                style={{ borderTop: "1px solid #d0d0d0", margin: "8px 0" }}
-              ></div>
-
-              <div className="pdf-report-summary">
-                <div className="pdf-title-row">
-                  <h1 className="pdf-main-title">SUMMARY REPORT</h1>
-                  <p className="pdf-subtitle">
-                    The summary report provides an overview of student entrance
-                    and exit activity within the selected date range. It
-                    presents key attendance metrics, authentication method
-                    distribution, traffic trends and detailed logs to support
-                    administrative monitoring and data-driven decision-making
-                    {filters?.collegeDepartment
-                      ? ` — ${filters.collegeDepartment}`
-                      : ""}
-                  </p>
+              {getAppliedFiltersSummary() !== "No additional filters applied" && (
+                <div style={{ backgroundColor: "#f0f7f4", border: "1px solid #01311d", borderRadius: "6px", padding: "8px 12px", fontSize: "10px", color: "#01311d", marginBottom: "8px" }}>
+                  <strong>Filters Applied:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                  <strong>Date Range:</strong> {formatDateRange()}
                 </div>
+              )}
 
-                {getAppliedFiltersSummary() !==
-                  "No additional filters applied" && (
-                  <div
-                    style={{
-                      backgroundColor: "#f0f7f4",
-                      border: "1px solid #01311d",
-                      borderRadius: "6px",
-                      padding: "8px 12px",
-                      fontSize: "10px",
-                      color: "#01311d",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <strong>Filters Applied:</strong>{" "}
-                    {getAppliedFiltersSummary()} &nbsp;|&nbsp;
-                    <strong>Date Range:</strong> {formatDateRange()}
-                  </div>
-                )}
-
-                <div className="pdf-stats-section">
-                  <div className="pdf-stats-left">
-                    {/* Card 1: Students on Campus */}
-                    <div className="pdf-green-box">
-                      <div className="pdf-big-number">
-                        {finalOnCampus.toLocaleString()}
-                        <span
-                          style={{
-                            fontSize: "16px",
-                            fontWeight: "normal",
-                            opacity: 0.8,
-                          }}
-                        >
-                          {" "}
-                          / {finalTotalEnrolled.toLocaleString()}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          color: "white",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        {filters?.collegeDepartment
-                          ? "DEPT. STUDENTS ON CAMPUS"
-                          : "STUDENTS ON CAMPUS"}
-                      </div>
+              <div className="pdf-stats-section">
+                <div className="pdf-stats-left">
+                  {/* Card 1: Total Visitors */}
+                  <div className="pdf-green-box">
+                    <div className="pdf-big-number">
+                      {visitorLogsArray.length.toLocaleString()}
                     </div>
-
-                    {/* Card 2: Avg Daily Entries - STATIC */}
-                    <div className="pdf-green-box">
-                      <div className="pdf-big-number">278</div>
-                      <div
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          color: "white",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        AVG DAILY ENTRIES
-                      </div>
-                    </div>
-
-                    {/* Card 3: Peak Day (Entries) - STATIC */}
-                    <div className="pdf-green-box">
-                      <div className="pdf-big-number">1,412</div>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          color: "rgba(255,255,255,0.8)",
-                          marginTop: "4px",
-                        }}
-                      >
-                        April 15, 2026
-                      </div>
-                      <div
-                        style={{
-                          fontSize: "18px",
-                          fontWeight: "bold",
-                          color: "white",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        PEAK DAY ENTRIES
-                      </div>
-                    </div>
-
-                    {/* Card 4: Gate Warnings - STATIC */}
-                    <div className="pdf-green-box">
-                      <div className="pdf-big-number">12</div>
-                      <div
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: "bold",
-                          color: "white",
-                          letterSpacing: "1px",
-                        }}
-                      >
-                        GATE WARNINGS
-                      </div>
+                    <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                      TOTAL VISITOR MOVEMENTS
                     </div>
                   </div>
-                </div>
 
-                {/* Insights Summary Section - STATIC */}
-                <div
-                  className="pdf-insights-section"
-                  style={{
-                    marginTop: "24px",
-                    padding: "16px",
-                  
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                      color: "#2c3e50",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    Insights Summary:
+                  {/* Card 2: Total Entries */}
+                  <div className="pdf-green-box">
+                    <div className="pdf-big-number">
+                      {visitorEntryLogs.length.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                      TOTAL ENTRY MOVEMENTS
+                    </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: "13px",
-                      color: "#555",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    • Highest traffic day: April 15, 2026 (1,412 entries, 390
-                    exits)
-                    <br />
-                    • Average daily entries: 278 — campus occupancy is stable
-                    <br />
-                    • Gate compliance rate: 97.29% — 12 out of 16,298 movements
-                    occurred outside allowed gate windows
-                    <br />• High number of outside-window scans — consider
-                    reviewing gate hours
+
+                  {/* Card 3: Total Exits */}
+                  <div className="pdf-green-box">
+                    <div className="pdf-big-number">
+                      {visitorExitLogs.length.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                      TOTAL EXIT MOVEMENTS
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="pdf-section-spacing">
-                <div style={{ display: "flex", gap: "20px" }}>
-                  <div style={{ flex: 2 }}>
-                    <h3 className="pdf-chart-title">
-                      Chart 1:{" "}
-                      {filters?.collegeDepartment
-                        ? `Students — ${filters.collegeDepartment}`
-                        : "Distribution of Students by Department"}
-                    </h3>
-
-                    <div style={{ overflowX: "auto", marginBottom: "16px" }}>
-                      <table
-                        className="pdf-table"
-                        style={{ width: "100%", fontSize: "10px" }}
-                      >
-                        <thead>
-                          <tr>
-                            <th style={thGreen}>No.</th>
-                            <th style={{ ...thGreen, textAlign: "left" }}>
-                              Department
-                            </th>
-                            <th style={thGreen}>Present Now</th>
-                            <th style={thGreen}>Total Enrolled</th>
-                            <th style={thGreen}>% Present</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {processedCollegeDataFinal.length > 0 ? (
-                            processedCollegeDataFinal.map((dept) => (
-                              <tr key={dept.id}>
-                                <td
-                                  style={{
-                                    padding: "6px",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  {dept.id}
-                                </td>
-                                <td
-                                  style={{ padding: "6px", textAlign: "left" }}
-                                >
-                                  {dept.name}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "6px",
-                                    textAlign: "center",
-                                    fontWeight: "bold",
-                                    color: "#d99201",
-                                  }}
-                                >
-                                  {dept.presentNow.toLocaleString()}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "6px",
-                                    textAlign: "center",
-                                    fontWeight: "bold",
-                                    color: "#01311d",
-                                  }}
-                                >
-                                  {dept.totalEnrolled.toLocaleString()}
-                                </td>
-                                <td
-                                  style={{
-                                    padding: "6px",
-                                    textAlign: "center",
-                                  }}
-                                >
-                                  {dept.percentagePresent.toFixed(1)}%
-                                </td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td
-                                colSpan="5"
-                                style={{
-                                  textAlign: "center",
-                                  padding: "20px",
-                                  color: "#999",
-                                }}
-                              >
-                                No department data for selected filters
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                  {/* Card 4: Date Range */}
+                  <div className="pdf-green-box-small-date">
+                    <div className="pdf-big-number" style={{ fontSize: "14px" }}>
+                      {formatDateRange()}
+                    </div>
+                    <div style={{ fontSize: "12px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                      REPORT PERIOD
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* PAGE 2: STUDENT LOGS TABLE */}
-          <div className="pdf-page">
-            <div className="pdf-section-spacing">
-              <div className="pdf-section-header">
-                <div
-                  className="pdf-section-indicator"
-                  style={{ backgroundColor: "#01311d" }}
-                ></div>
-                <div className="pdf-section-title-wrapper">
-                  <h3 className="pdf-section-title">
-                    {filters?.actionType === "entry"
-                      ? "STUDENT ENTRY LOGS"
-                      : filters?.actionType === "exit"
-                        ? "STUDENT EXIT LOGS"
-                        : "STUDENT ENTRY & EXIT LOGS"}
-                  </h3>
-                  <p className="pdf-section-subtitle">
-                    {filters?.actionType === "entry"
-                      ? "Student entry records"
-                      : filters?.actionType === "exit"
-                        ? "Student exit records"
-                        : "Complete session history - each row represents one entry-exit pair"}{" "}
-                    &nbsp;|&nbsp;
-                    <strong>Filters:</strong> {getAppliedFiltersSummary()}{" "}
-                    &nbsp;|&nbsp;
-                    <strong>Date:</strong> {formatDateRange()} &nbsp;|&nbsp;
-                    <strong>Total Records:</strong> {totalRecordsForFooter}
-                  </p>
+        {/* PAGE 2: VISITOR LOGS TABLE */}
+        <div className="pdf-page">
+          <div className="pdf-section-spacing">
+            <div className="pdf-section-header">
+              <div className="pdf-section-indicator" style={{ backgroundColor: "#01311d" }}></div>
+              <div className="pdf-section-title-wrapper">
+                <h3 className="pdf-section-title">
+                  {filters?.actionType === "entry"
+                    ? "VISITOR ENTRY LOGS"
+                    : filters?.actionType === "exit"
+                      ? "VISITOR EXIT LOGS"
+                      : "VISITOR ENTRY & EXIT LOGS"}
+                </h3>
+                <p className="pdf-section-subtitle">
+                  {filters?.actionType === "entry"
+                    ? "Visitor entry records"
+                    : filters?.actionType === "exit"
+                      ? "Visitor exit records"
+                      : "Complete visitor session history - each row represents one entry-exit pair"}{" "}
+                  &nbsp;|&nbsp;
+                  <strong>Filters:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                  <strong>Date:</strong> {formatDateRange()} &nbsp;|&nbsp;
+                  <strong>Total Records:</strong> {visitorTotalRecords}
+                </p>
+              </div>
+            </div>
+
+            <div className="pdf-table-container">
+              <table className="pdf-table pdf-table-logs">
+                <thead>
+                  <tr>
+                    <th className="pdf-th-no">No.</th>
+                    <th className="pdf-th-id">Visitor ID</th>
+                    <th className="pdf-th-name">Name</th>
+                    <th className="pdf-th-email">Email</th>
+                    <th className="pdf-th-reason">Reason</th>
+                    
+                    {filters?.actionType === "entry" && (
+                      <th className="pdf-th-time">ENTRY TIME</th>
+                    )}
+                    
+                    {filters?.actionType === "exit" && (
+                      <th className="pdf-th-time">EXIT TIME</th>
+                    )}
+                    
+                    {(!filters?.actionType || filters?.actionType === "both") && (
+                      <>
+                        <th className="pdf-th-session">SESSION #</th>
+                        <th className="pdf-th-time">ENTRY TIME</th>
+                        <th className="pdf-th-time">EXIT TIME</th>
+                        <th className="pdf-th-status">STATUS</th>
+                      </>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filters?.actionType === "entry" && (
+                    visitorEntryLogs.length > 0 ? (
+                      visitorEntryLogs.map((log, i) => (
+                        <tr key={`visitor-entry-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                          <td className="pdf-td-no">{i + 1}</td>
+                          <td className="pdf-td-id">{log.visitorId || log.visitor_id || log.id || "N/A"}</td>
+                          <td className="pdf-td-name">{log.name || log.full_name || "Unknown"}</td>
+                          <td className="pdf-td-email">{log.email || "N/A"}</td>
+                          <td className="pdf-td-reason">{log.reason || log.visitReason || log.visit_reason || "N/A"}</td>
+                          <td className="pdf-td-time-entry">{log.dateTime || log.log_time || log.timestamp || "—"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="pdf-row-empty">
+                        <td colSpan={6} className="pdf-empty-message">No visitor entry records found</td>
+                      </tr>
+                    )
+                  )}
+                  
+                  {filters?.actionType === "exit" && (
+                    visitorExitLogs.length > 0 ? (
+                      visitorExitLogs.map((log, i) => (
+                        <tr key={`visitor-exit-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                          <td className="pdf-td-no">{i + 1}</td>
+                          <td className="pdf-td-id">{log.visitorId || log.visitor_id || log.id || "N/A"}</td>
+                          <td className="pdf-td-name">{log.name || log.full_name || "Unknown"}</td>
+                          <td className="pdf-td-email">{log.email || "N/A"}</td>
+                          <td className="pdf-td-reason">{log.reason || log.visitReason || log.visit_reason || "N/A"}</td>
+                          <td className="pdf-td-time-exit">{log.dateTime || log.log_time || log.timestamp || "—"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="pdf-row-empty">
+                        <td colSpan={6} className="pdf-empty-message">No visitor exit records found</td>
+                      </tr>
+                    )
+                  )}
+                  
+                  {(!filters?.actionType || filters?.actionType === "both") && (
+                    finalVisitorSessions.length > 0 ? (
+                      finalVisitorSessions.map((session, i) => (
+                        <tr key={`visitor-session-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                          <td className="pdf-td-no">{session.no}</td>
+                          <td className="pdf-td-id">{session.visitorId}</td>
+                          <td className="pdf-td-name">{session.name}</td>
+                          <td className="pdf-td-email">{session.email}</td>
+                          <td className="pdf-td-reason">{session.reason}</td>
+                          <td className="pdf-td-session">{session.sessionNumber}</td>
+                          <td className="pdf-td-time-entry">{session.entryTime}</td>
+                          <td className="pdf-td-time-exit">{session.exitTime}</td>
+                          <td className="pdf-td-status">
+                            <span className={`status-badge ${session.status === "Still Inside" ? "status-inside" : "status-completed"}`}>
+                              {session.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="pdf-row-empty">
+                        <td colSpan={9} className="pdf-empty-message">No visitor records found for the selected filters</td>
+                      </tr>
+                    )
+                  )}
+                </tbody>
+                
+                {visitorTotalRecords > 0 && (
+                  <tfoot>
+                    <tr className="pdf-footer-row">
+                      <td colSpan={filters?.actionType === "entry" ? 6 : filters?.actionType === "exit" ? 6 : 9} 
+                          className="pdf-footer-message">
+                        <strong>Summary:</strong>&nbsp;
+                        Total {filters?.actionType === "entry" ? "Entry" : filters?.actionType === "exit" ? "Exit" : "Visitor"} Records: {visitorTotalRecords}
+                        {filters?.actionType === "both" && finalVisitorSessions.length > 0 && (
+                          <>
+                            &nbsp;|&nbsp;
+                            <span className="text-green">Still Inside: {finalVisitorSessions.filter(s => s.status === "Still Inside").length}</span>
+                            &nbsp;|&nbsp;
+                            <span className="text-blue">Completed: {finalVisitorSessions.filter(s => s.status === "Completed").length}</span>
+                          </>
+                        )}
+                        &nbsp;|&nbsp;
+                        Generated on {generationDate}
+                      </td>
+                    </tr>
+                  </tfoot>
+                )}
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// STUDENT REPORT (DEFAULT)
+// ============================================================
+return (
+  <div className="pdf-container">
+    <div ref={reportRef} className="pdf-report landscape">
+      
+      {/* PAGE 1: HEADER & DEPARTMENT TABLE */}
+      <div className="pdf-page">
+        <div className="pdf-header">
+          <div className="pdf-logos-row">
+            <div className="pdf-left-logos">
+              {[leftLogoSrc1, leftLogoSrc2, leftLogoSrc3, rightLogoSrc].map((src, i) => (
+                <div key={i} className="pdf-logo-box"
+                  style={i === 1 ? { width: "65px", height: "65px" } : i === 3 ? { width: "70px", height: "70px" } : {}}>
+                  <img src={src} alt={`Logo ${i + 1}`} className="pdf-logo-img"
+                    onError={(e) => { e.target.style.display = "none"; }} />
+                </div>
+              ))}
+            </div>
+            <div className="pdf-center-text">
+              <div className="pdf-university-name">PAMANTASAN NG LUNGSOD NG PASIG</div>
+              <div className="pdf-system-title">ENTRANCE AND EXIT STUDENT MONITORING SYSTEM</div>
+            </div>
+          </div>
+
+          <div style={{ borderTop: "2px solid #01311d", margin: "10px 0 8px 0" }}></div>
+          <div style={{ borderTop: "1px solid #d0d0d0", margin: "8px 0" }}></div>
+
+          <div className="pdf-report-summary">
+            <div className="pdf-title-row">
+              <h1 className="pdf-main-title">SUMMARY REPORT</h1>
+              <p className="pdf-subtitle">
+                The summary report provides an overview of student entrance and exit activity within the selected date range. It presents key attendance metrics, authentication method distribution, traffic trends and detailed logs to support administrative monitoring and data-driven decision-making
+                {filters?.collegeDepartment ? ` — ${filters.collegeDepartment}` : ""}
+              </p>
+            </div>
+
+            {getAppliedFiltersSummary() !== "No additional filters applied" && (
+              <div style={{ backgroundColor: "#f0f7f4", border: "1px solid #01311d", borderRadius: "6px", padding: "8px 12px", fontSize: "10px", color: "#01311d", marginBottom: "8px" }}>
+                <strong>Filters Applied:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                <strong>Date Range:</strong> {formatDateRange()}
+              </div>
+            )}
+
+            <div className="pdf-stats-section">
+              <div className="pdf-stats-left">
+                <div className="pdf-green-box">
+                  <div className="pdf-big-number">
+                    {finalOnCampus.toLocaleString()}
+                    <span style={{ fontSize: "16px", fontWeight: "normal", opacity: 0.8 }}>
+                      {" "}/ {finalTotalEnrolled.toLocaleString()}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                    {filters?.collegeDepartment ? "DEPT. STUDENTS ON CAMPUS" : "STUDENTS ON CAMPUS"}
+                  </div>
+                </div>
+
+                <div className="pdf-green-box">
+                  <div className="pdf-big-number">
+                    {totalEntries.toLocaleString()}
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                    TOTAL ENTRIES
+                  </div>
+                </div>
+
+                <div className="pdf-green-box">
+                  <div className="pdf-big-number">
+                    {processedAuthData[0]?.successRate || 0}%
+                  </div>
+                  <div style={{ fontSize: "14px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                    AUTHENTICATION SUCCESS RATE
+                  </div>
+                </div>
+
+                <div className="pdf-green-box-small-date">
+                  <div className="pdf-big-number" style={{ fontSize: "14px" }}>
+                    {formatDateRange()}
+                  </div>
+                  <div style={{ fontSize: "12px", fontWeight: "bold", color: "white", letterSpacing: "1px" }}>
+                    REPORT PERIOD
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="pdf-table-container">
-                <table className="pdf-table pdf-table-logs">
-                  <thead>
-                    <tr>
-                      <th className="pdf-th-no">No.</th>
-                      <th className="pdf-th-id">Student ID</th>
-                      <th className="pdf-th-name">Name</th>
-                      <th className="pdf-th-dept">Department</th>
-                      <th className="pdf-th-year">Year Level</th>
+            <div className="pdf-section-spacing">
+              <div style={{ display: "flex", gap: "20px" }}>
+                <div style={{ flex: 2 }}>
+                  <h3 className="pdf-chart-title">
+                    Chart 1: {filters?.collegeDepartment ? `Students — ${filters.collegeDepartment}` : "Distribution of Students by Department"}
+                  </h3>
 
-                      {filters?.actionType === "entry" && (
-                        <>
-                          <th className="pdf-th-time">ENTRY TIME</th>
-                          <th className="pdf-th-method">ENTRY METHOD</th>
-                        </>
-                      )}
-
-                      {filters?.actionType === "exit" && (
-                        <>
-                          <th className="pdf-th-time">EXIT TIME</th>
-                          <th className="pdf-th-method">EXIT METHOD</th>
-                        </>
-                      )}
-
-                      {(!filters?.actionType ||
-                        filters?.actionType === "both") && (
-                        <>
-                          <th className="pdf-th-session">SESSION #</th>
-                          <th className="pdf-th-time">ENTRY TIME</th>
-                          <th className="pdf-th-method">ENTRY METHOD</th>
-                          <th className="pdf-th-time">EXIT TIME</th>
-                          <th className="pdf-th-method">EXIT METHOD</th>
-                          <th className="pdf-th-status">STATUS</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filters?.actionType === "entry" &&
-                      (finalEntryLogs.length > 0 ? (
-                        finalEntryLogs.map((log, i) => (
-                          <tr
-                            key={`entry-${i}`}
-                            className={
-                              i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"
-                            }
-                          >
-                            <td className="pdf-td-no">{i + 1}</td>
-                            <td className="pdf-td-id">
-                              {log.studentId || log.student_id || "N/A"}
-                            </td>
-                            <td className="pdf-td-name">
-                              {log.name || log.student_name || "Unknown"}
-                            </td>
-                            <td className="pdf-td-dept">
-                              {log.department ||
-                                log.collegeDept ||
-                                log.college ||
-                                "N/A"}
-                            </td>
-                            <td className="pdf-td-year">
-                              {log.yearLevel || log.year || "N/A"}
-                            </td>
-                            <td className="pdf-td-time-entry">
-                              {log.dateTime ||
-                                log.date ||
-                                log.time ||
-                                log.timestamp ||
-                                "—"}
-                            </td>
-                            <td className="pdf-td-method">
-                              {log.method ||
-                                log.authMethod ||
-                                "Face Recognition"}
+                  <div style={{ overflowX: "auto", marginBottom: "16px" }}>
+                    <table className="pdf-table" style={{ width: "100%", fontSize: "10px" }}>
+                      <thead>
+                        <tr>
+                          <th style={thGreen}>No.</th>
+                          <th style={{ ...thGreen, textAlign: "left" }}>Department</th>
+                          <th style={thGreen}>Present Now</th>
+                          <th style={thGreen}>Total Enrolled</th>
+                          <th style={thGreen}>% Present</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {processedCollegeDataFinal.length > 0 ? (
+                          processedCollegeDataFinal.map((dept) => (
+                            <tr key={dept.id}>
+                              <td style={{ padding: "6px", textAlign: "center" }}>{dept.id}</td>
+                              <td style={{ padding: "6px", textAlign: "left" }}>{dept.name}</td>
+                              <td style={{ padding: "6px", textAlign: "center", fontWeight: "bold", color: "#d99201" }}>{dept.presentNow.toLocaleString()}</td>
+                              <td style={{ padding: "6px", textAlign: "center", fontWeight: "bold", color: "#01311d" }}>{dept.totalEnrolled.toLocaleString()}</td>
+                              <td style={{ padding: "6px", textAlign: "center" }}>{dept.percentagePresent.toFixed(1)}%</td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" style={{ textAlign: "center", padding: "20px", color: "#999" }}>
+                              No department data for selected filters
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr className="pdf-row-empty">
-                          <td colSpan={7} className="pdf-empty-message">
-                            No entry records found
-                          </td>
-                        </tr>
-                      ))}
-
-                    {filters?.actionType === "exit" &&
-                      (finalExitLogs.length > 0 ? (
-                        finalExitLogs.map((log, i) => (
-                          <tr
-                            key={`exit-${i}`}
-                            className={
-                              i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"
-                            }
-                          >
-                            <td className="pdf-td-no">{i + 1}</td>
-                            <td className="pdf-td-id">
-                              {log.studentId || log.student_id || "N/A"}
-                            </td>
-                            <td className="pdf-td-name">
-                              {log.name || log.student_name || "Unknown"}
-                            </td>
-                            <td className="pdf-td-dept">
-                              {log.department ||
-                                log.collegeDept ||
-                                log.college ||
-                                "N/A"}
-                            </td>
-                            <td className="pdf-td-year">
-                              {log.yearLevel || log.year || "N/A"}
-                            </td>
-                            <td className="pdf-td-time-exit">
-                              {log.dateTime ||
-                                log.date ||
-                                log.time ||
-                                log.timestamp ||
-                                "—"}
-                            </td>
-                            <td className="pdf-td-method">
-                              {log.method ||
-                                log.authMethod ||
-                                "Face Recognition"}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr className="pdf-row-empty">
-                          <td colSpan={7} className="pdf-empty-message">
-                            No exit records found
-                          </td>
-                        </tr>
-                      ))}
-
-                    {(!filters?.actionType || filters?.actionType === "both") &&
-                      (finalMergedLogs.length > 0 ? (
-                        finalMergedLogs.map((session, i) => (
-                          <tr
-                            key={`session-${i}`}
-                            className={
-                              i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"
-                            }
-                          >
-                            <td className="pdf-td-no">{i + 1}</td>
-                            <td className="pdf-td-id">{session.studentId}</td>
-                            <td className="pdf-td-name">{session.name}</td>
-                            <td className="pdf-td-dept">
-                              {session.department}
-                            </td>
-                            <td className="pdf-td-year">{session.yearLevel}</td>
-                            <td className="pdf-td-session">
-                              {session.sessionNumber}
-                            </td>
-                            <td className="pdf-td-time-entry">
-                              {session.entryTime}
-                            </td>
-                            <td className="pdf-td-method">
-                              {session.entryMethod}
-                            </td>
-                            <td className="pdf-td-time-exit">
-                              {session.exitTime}
-                            </td>
-                            <td className="pdf-td-method">
-                              {session.exitMethod}
-                            </td>
-                            <td className="pdf-td-status">
-                              <span
-                                className={`status-badge ${session.status === "Still Inside Campus" ? "status-inside" : session.status === "Completed" ? "status-completed" : "status-exit-only"}`}
-                              >
-                                {session.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr className="pdf-row-empty">
-                          <td colSpan={11} className="pdf-empty-message">
-                            No entry or exit records found for the selected
-                            filters
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-
-                  {totalRecordsForFooter > 0 && (
-                    <tfoot>
-                      <tr className="pdf-footer-row">
-                        <td
-                          colSpan={
-                            filters?.actionType === "entry"
-                              ? 7
-                              : filters?.actionType === "exit"
-                                ? 7
-                                : 11
-                          }
-                          className="pdf-footer-message"
-                        >
-                          <strong>Summary:</strong>&nbsp; Total{" "}
-                          {filters?.actionType === "entry"
-                            ? "Entry"
-                            : filters?.actionType === "exit"
-                              ? "Exit"
-                              : "Session"}{" "}
-                          Records: {totalRecordsForFooter}
-                          {filters?.actionType === "both" &&
-                            finalMergedLogs.length > 0 && (
-                              <>
-                                &nbsp;|&nbsp;
-                                <span className="text-green">
-                                  Still Inside:{" "}
-                                  {
-                                    finalMergedLogs.filter(
-                                      (s) => s.status === "Still Inside Campus",
-                                    ).length
-                                  }
-                                </span>
-                                &nbsp;|&nbsp;
-                                <span className="text-blue">
-                                  Completed:{" "}
-                                  {
-                                    finalMergedLogs.filter(
-                                      (s) => s.status === "Completed",
-                                    ).length
-                                  }
-                                </span>
-                              </>
-                            )}
-                          &nbsp;|&nbsp; Generated on {generationDate}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    );
+
+      {/* PAGE 2: STUDENT LOGS TABLE */}
+      <div className="pdf-page">
+        <div className="pdf-section-spacing">
+          <div className="pdf-section-header">
+            <div className="pdf-section-indicator" style={{ backgroundColor: "#01311d" }}></div>
+            <div className="pdf-section-title-wrapper">
+              <h3 className="pdf-section-title">
+                {filters?.actionType === "entry"
+                  ? "STUDENT ENTRY LOGS"
+                  : filters?.actionType === "exit"
+                    ? "STUDENT EXIT LOGS"
+                    : "STUDENT ENTRY & EXIT LOGS"}
+              </h3>
+              <p className="pdf-section-subtitle">
+                {filters?.actionType === "entry"
+                  ? "Student entry records"
+                  : filters?.actionType === "exit"
+                    ? "Student exit records"
+                    : "Complete session history - each row represents one entry-exit pair"}{" "}
+                &nbsp;|&nbsp;
+                <strong>Filters:</strong> {getAppliedFiltersSummary()} &nbsp;|&nbsp;
+                <strong>Date:</strong> {formatDateRange()} &nbsp;|&nbsp;
+                <strong>Total Records:</strong> {totalRecordsForFooter}
+              </p>
+            </div>
+          </div>
+
+          <div className="pdf-table-container">
+            <table className="pdf-table pdf-table-logs">
+              <thead>
+                <tr>
+                  <th className="pdf-th-no">No.</th>
+                  <th className="pdf-th-id">Student ID</th>
+                  <th className="pdf-th-name">Name</th>
+                  <th className="pdf-th-dept">Department</th>
+                  <th className="pdf-th-year">Year Level</th>
+
+                  {filters?.actionType === "entry" && (
+                    <>
+                      <th className="pdf-th-time">ENTRY TIME</th>
+                      <th className="pdf-th-method">ENTRY METHOD</th>
+                    </>
+                  )}
+
+                  {filters?.actionType === "exit" && (
+                    <>
+                      <th className="pdf-th-time">EXIT TIME</th>
+                      <th className="pdf-th-method">EXIT METHOD</th>
+                    </>
+                  )}
+
+                  {(!filters?.actionType || filters?.actionType === "both") && (
+                    <>
+                      <th className="pdf-th-session">SESSION #</th>
+                      <th className="pdf-th-time">ENTRY TIME</th>
+                      <th className="pdf-th-method">ENTRY METHOD</th>
+                      <th className="pdf-th-time">EXIT TIME</th>
+                      <th className="pdf-th-method">EXIT METHOD</th>
+                      <th className="pdf-th-status">STATUS</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {filters?.actionType === "entry" &&
+                  (finalEntryLogs.length > 0 ? (
+                    finalEntryLogs.map((log, i) => (
+                      <tr key={`entry-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                        <td className="pdf-td-no">{i + 1}</td>
+                        <td className="pdf-td-id">{log.studentId || log.student_id || "N/A"}</td>
+                        <td className="pdf-td-name">{log.name || log.student_name || "Unknown"}</td>
+                        <td className="pdf-td-dept">{log.department || log.collegeDept || log.college || "N/A"}</td>
+                        <td className="pdf-td-year">{log.yearLevel || log.year || "N/A"}</td>
+                        <td className="pdf-td-time-entry">{log.dateTime || log.date || log.time || log.timestamp || "—"}</td>
+                        <td className="pdf-td-method">{log.method || log.authMethod || "Face Recognition"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="pdf-row-empty">
+                      <td colSpan={7} className="pdf-empty-message">No entry records found</td>
+                    </tr>
+                  ))}
+
+                {filters?.actionType === "exit" &&
+                  (finalExitLogs.length > 0 ? (
+                    finalExitLogs.map((log, i) => (
+                      <tr key={`exit-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                        <td className="pdf-td-no">{i + 1}</td>
+                        <td className="pdf-td-id">{log.studentId || log.student_id || "N/A"}</td>
+                        <td className="pdf-td-name">{log.name || log.student_name || "Unknown"}</td>
+                        <td className="pdf-td-dept">{log.department || log.collegeDept || log.college || "N/A"}</td>
+                        <td className="pdf-td-year">{log.yearLevel || log.year || "N/A"}</td>
+                        <td className="pdf-td-time-exit">{log.dateTime || log.date || log.time || log.timestamp || "—"}</td>
+                        <td className="pdf-td-method">{log.method || log.authMethod || "Face Recognition"}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="pdf-row-empty">
+                      <td colSpan={7} className="pdf-empty-message">No exit records found</td>
+                    </tr>
+                  ))}
+
+                {(!filters?.actionType || filters?.actionType === "both") &&
+                  (finalMergedLogs.length > 0 ? (
+                    finalMergedLogs.map((session, i) => (
+                      <tr key={`session-${i}`} className={i % 2 === 0 ? "pdf-row-even" : "pdf-row-odd"}>
+                        <td className="pdf-td-no">{i + 1}</td>
+                        <td className="pdf-td-id">{session.studentId}</td>
+                        <td className="pdf-td-name">{session.name}</td>
+                        <td className="pdf-td-dept">{session.department}</td>
+                        <td className="pdf-td-year">{session.yearLevel}</td>
+                        <td className="pdf-td-session">{session.sessionNumber}</td>
+                        <td className="pdf-td-time-entry">{session.entryTime}</td>
+                        <td className="pdf-td-method">{session.entryMethod}</td>
+                        <td className="pdf-td-time-exit">{session.exitTime}</td>
+                        <td className="pdf-td-method">{session.exitMethod}</td>
+                        <td className="pdf-td-status">
+                          <span className={`status-badge ${session.status === "Still Inside Campus" ? "status-inside" : session.status === "Completed" ? "status-completed" : "status-exit-only"}`}>
+                            {session.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="pdf-row-empty">
+                      <td colSpan={11} className="pdf-empty-message">No entry or exit records found for the selected filters</td>
+                    </tr>
+                  ))}
+              </tbody>
+
+              {totalRecordsForFooter > 0 && (
+                <tfoot>
+                  <tr className="pdf-footer-row">
+                    <td colSpan={filters?.actionType === "entry" ? 7 : filters?.actionType === "exit" ? 7 : 11} className="pdf-footer-message">
+                      <strong>Summary:</strong>&nbsp; Total{" "}
+                      {filters?.actionType === "entry"
+                        ? "Entry"
+                        : filters?.actionType === "exit"
+                          ? "Exit"
+                          : "Session"}{" "}
+                      Records: {totalRecordsForFooter}
+                      {filters?.actionType === "both" && finalMergedLogs.length > 0 && (
+                        <>
+                          &nbsp;|&nbsp;
+                          <span className="text-green">
+                            Still Inside: {finalMergedLogs.filter((s) => s.status === "Still Inside Campus").length}
+                          </span>
+                          &nbsp;|&nbsp;
+                          <span className="text-blue">
+                            Completed: {finalMergedLogs.filter((s) => s.status === "Completed").length}
+                          </span>
+                        </>
+                      )}
+                      &nbsp;|&nbsp; Generated on {generationDate}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
   },
 );
 {
@@ -1623,9 +1715,7 @@ const GenerateReportPdf = forwardRef(({ reportData = {}, filters = {}, mode = 'f
     </div>
   );
 });
-
-GenerateReportPdf.displayName = 'GenerateReportPdf';
-export default GenerateReportPdf; */
+ */
 }
 
 GenerateReportPdf.displayName = "GenerateReportPdf";

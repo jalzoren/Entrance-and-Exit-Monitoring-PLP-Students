@@ -25,11 +25,11 @@ function GenerateReportFilter({ onClose, onGenerate }) {
   const [loadingSections, setLoadingSections] = useState(false);
 
   const yearLevelOptions = [
-    { value: '', label: 'All Year Levels' },
-    { value: '1', label: '1st Year' },
-    { value: '2', label: '2nd Year' },
-    { value: '3', label: '3rd Year' },
-    { value: '4', label: '4th Year' },
+    { value: '', label: 'All Year Levels', key: 'year-all' },
+    { value: '1', label: '1st Year', key: 'year-1' },
+    { value: '2', label: '2nd Year', key: 'year-2' },
+    { value: '3', label: '3rd Year', key: 'year-3' },
+    { value: '4', label: '4th Year', key: 'year-4' },
   ];
 
   // Fetch departments
@@ -102,46 +102,49 @@ useEffect(() => {
   }, [filters.collegeDepartment]);
 
   // Fetch sections when program or year level changes
-  useEffect(() => {
-    const fetchSections = async () => {
-      if (!filters.program) {
-        setSectionOptions([]);
-        return;
-      }
-      
-      setLoadingSections(true);
-      try {
-        // Fetch sections from students table based on program and year level
-        const params = new URLSearchParams();
-        if (filters.program) params.append('program', filters.program);
-        if (filters.yearLevel) params.append('yearLevel', filters.yearLevel);
-        
-        const response = await fetch(`/api/analytics/sections?${params.toString()}`);
-        if (!response.ok) throw new Error('Failed to fetch sections');
-        const data = await response.json();
-        
-        if (Array.isArray(data) && data.length > 0) {
-          setSectionOptions([
-            { value: '', label: 'All Sections' },
-            ...data.map(section => ({
-              value: section.section || section.section_name,
-              label: section.section || section.section_name,
-              key: `${section.section}_${index}` 
-            }))
-          ]);
-        } else {
-          setSectionOptions([{ value: '', label: 'All Sections' }]);
-        }
-      } catch (err) {
-        console.error('Error fetching sections:', err);
-        setSectionOptions([{ value: '', label: 'All Sections' }]);
-      } finally {
-        setLoadingSections(false);
-      }
-    };
+  // Fetch sections when program or year level changes
+useEffect(() => {
+  const fetchSections = async () => {
+    if (!filters.program) {
+      setSectionOptions([]);
+      return;
+    }
     
-    fetchSections();
-  }, [filters.program, filters.yearLevel]);
+    setLoadingSections(true);
+    try {
+      // Fetch sections from students table based on program and year level
+      const params = new URLSearchParams();
+      if (filters.program) params.append('program', filters.program);
+      if (filters.yearLevel) params.append('yearLevel', filters.yearLevel);
+      
+      const response = await fetch(`/api/analytics/sections?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch sections');
+      const data = await response.json();
+      
+      console.log('Sections data received:', data); // Debug log
+      
+      if (Array.isArray(data) && data.length > 0) {
+        setSectionOptions([
+          { value: '', label: 'All Sections', key: 'all-sections' },
+          ...data.map((section, idx) => ({
+            value: section.section || section.section_name,
+            label: section.section || section.section_name,
+            key: `section-${section.section || section.section_name}-${idx}`  // FIXED: idx is now defined
+          }))
+        ]);
+      } else {
+        setSectionOptions([{ value: '', label: 'All Sections', key: 'all-sections' }]);
+      }
+    } catch (err) {
+      console.error('Error fetching sections:', err);
+      setSectionOptions([{ value: '', label: 'All Sections', key: 'all-sections' }]);
+    } finally {
+      setLoadingSections(false);
+    }
+  };
+  
+  fetchSections();
+}, [filters.program, filters.yearLevel]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -348,7 +351,7 @@ useEffect(() => {
                     className="modal-select"
                   >
                     {yearLevelOptions.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      <option key={opt.key} value={opt.value}>{opt.label}</option>
                     ))}
                   </select>
                 </div>
