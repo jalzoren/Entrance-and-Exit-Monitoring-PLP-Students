@@ -112,7 +112,6 @@
 /* ── Form (reuses styles from RegisterStudent where possible) ─────────────── */
 .edit-form {
   padding: 20px 24px 24px;
-  display: flex;
   flex-direction: column;
   gap: 14px;
 }
