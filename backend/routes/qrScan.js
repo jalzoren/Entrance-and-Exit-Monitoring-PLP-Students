@@ -209,7 +209,7 @@ router.post('/', async (req, res) => {
       ? `${mode === 'ENTRY' ? 'Entry' : 'Exit'} beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
       : null;
 
-    await db.query(
+    const [logResult] = await db.query(
       `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
       VALUES (?, ?, ?, ?, ?, ?)`,
       [student_id.trim(), authResult.insertId, mode, now, gateStatus.warning ? 1 : 0, warningReason]

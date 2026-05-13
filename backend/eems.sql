@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 13, 2026 at 08:27 AM
+-- Generation Time: May 13, 2026 at 11:50 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -75,71 +75,14 @@ CREATE TABLE `authentication` (
 --
 
 INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, `action`, `accuracy`, `duration`, `timestamp`, `failure_reason`, `confidence`, `processing_time_ms`, `quality_score`) VALUES
-(225, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 20:59:01', NULL, NULL, NULL, NULL),
-(226, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 20:59:12', NULL, NULL, NULL, NULL),
-(227, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 20:59:57', NULL, NULL, NULL, NULL),
-(228, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 21:00:15', NULL, NULL, NULL, NULL),
-(229, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:08:16', NULL, NULL, NULL, NULL),
-(230, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:08:47', NULL, NULL, NULL, NULL),
-(231, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:11:12', NULL, NULL, NULL, NULL),
-(232, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:11:29', NULL, NULL, NULL, NULL),
-(233, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:11:36', NULL, NULL, NULL, NULL),
-(234, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:12:12', NULL, NULL, NULL, NULL),
-(235, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:58:03', NULL, NULL, NULL, NULL),
-(236, '23-00298', 'QR', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 22:58:28', NULL, NULL, NULL, NULL),
-(237, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-12 23:01:06', NULL, NULL, NULL, NULL),
-(238, '23-01023', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:25:57', NULL, NULL, NULL, NULL),
-(239, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:26:09', NULL, NULL, NULL, NULL),
-(240, '23-00269', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:26:27', NULL, NULL, NULL, NULL),
-(241, '23-00251', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:26:39', NULL, NULL, NULL, NULL),
-(242, '23-00898', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:26:48', NULL, NULL, NULL, NULL),
-(243, '23-00201', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:26:58', NULL, NULL, NULL, NULL),
-(244, '23-00306', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:16', NULL, NULL, NULL, NULL),
-(245, '23-01158', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:26', NULL, NULL, NULL, NULL),
-(246, '23-01078', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:33', NULL, NULL, NULL, NULL),
-(247, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:40', NULL, NULL, NULL, NULL),
-(248, '23-00334', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:47', NULL, NULL, NULL, NULL),
-(249, '23-00188', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:29:55', NULL, NULL, NULL, NULL),
-(250, '23-01041', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:30:11', NULL, NULL, NULL, NULL),
-(251, '23-01083', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:30:18', NULL, NULL, NULL, NULL),
-(252, '23-00283', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:30:27', NULL, NULL, NULL, NULL),
-(253, '23-00179', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:30:34', NULL, NULL, NULL, NULL),
-(254, '23-00221', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:30:39', NULL, NULL, NULL, NULL),
-(255, '23-00236', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:31:32', NULL, NULL, NULL, NULL),
-(256, '23-00260', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:31:44', NULL, NULL, NULL, NULL),
-(257, '23-00180', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:31:53', NULL, NULL, NULL, NULL),
-(258, '23-00178', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:31:58', NULL, NULL, NULL, NULL),
-(259, '23-00158', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:32:18', NULL, NULL, NULL, NULL),
-(260, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:32:42', NULL, NULL, NULL, NULL),
-(261, '23-00160', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:32:49', NULL, NULL, NULL, NULL),
-(262, '23-01082', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:32:55', NULL, NULL, NULL, NULL),
-(263, '23-00257', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:12', NULL, NULL, NULL, NULL),
-(264, '23-00173', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:19', NULL, NULL, NULL, NULL),
-(265, '23-00254', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:31', NULL, NULL, NULL, NULL),
-(266, '23-00206', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:37', NULL, NULL, NULL, NULL),
-(267, '23-00282', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:43', NULL, NULL, NULL, NULL),
-(268, '23-01283', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 00:33:53', NULL, NULL, NULL, NULL),
-(269, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 12:46:07', 'DUPLICATE_ENTRY', 87.02, 575, 1.0000),
-(270, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:20', NULL, 78.40, 514, 1.0000),
-(271, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:22', NULL, 81.64, 563, 1.0000),
-(272, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:25', NULL, 86.21, 535, 1.0000),
-(273, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:26', NULL, 79.88, 585, 1.0000),
-(274, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:30', NULL, 63.92, 507, 1.0000),
-(275, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:33', NULL, 70.88, 524, 0.9252),
-(276, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:34', NULL, 70.27, 545, 0.9439),
-(277, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:37', NULL, 78.93, 489, 1.0000),
-(278, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:38', NULL, 73.13, 530, 1.0000),
-(279, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:41', NULL, 87.52, 601, 1.0000),
-(280, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:46:45', NULL, 65.28, 1262, 1.0000),
-(281, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 12:46:50', NULL, NULL, NULL, NULL),
-(282, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:48:59', NULL, 76.33, 468, 1.0000),
-(283, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 12:49:14', NULL, 77.30, 560, 1.0000),
-(284, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 12:49:28', 'DUPLICATE_ENTRY', 82.64, 797, 1.0000),
-(285, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:49:48', NULL, 83.35, 800, 1.0000),
-(286, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 12:53:37', NULL, 81.04, 502, 1.0000),
-(287, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 12:53:45', 'DUPLICATE_ENTRY', 57.55, 486, 1.0000),
-(288, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 12:53:54', NULL, 73.65, 516, 1.0000),
-(289, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 12:54:11', NULL, 75.74, 536, 1.0000);
+(293, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 17:44:39', NULL, 58.71, 833, 0.7906),
+(294, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 17:44:48', 'DUPLICATE_ENTRY', 56.24, 416, 0.9333),
+(295, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 17:45:06', NULL, 59.09, 437, 0.8774),
+(296, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:23', NULL, NULL, NULL, NULL),
+(297, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:31', NULL, NULL, NULL, NULL),
+(298, '23-00173', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:46:40', NULL, NULL, NULL, NULL),
+(299, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:49:10', NULL, NULL, NULL, NULL),
+(300, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 17:49:32', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -182,6 +125,7 @@ CREATE TABLE `entry_exit_logs` (
   `auth_id` bigint(20) NOT NULL,
   `action` enum('ENTRY','EXIT') NOT NULL,
   `gate_window_warning` tinyint(1) DEFAULT NULL,
+  `gate_window_reason` varchar(255) DEFAULT NULL,
   `log_time` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -189,44 +133,14 @@ CREATE TABLE `entry_exit_logs` (
 -- Dumping data for table `entry_exit_logs`
 --
 
-INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `gate_window_warning`, `log_time`) VALUES
-(221, '23-01023', 238, 'ENTRY', 0, '2026-05-13 00:25:57'),
-(222, '23-00174', 239, 'ENTRY', 0, '2026-05-13 00:26:09'),
-(223, '23-00269', 240, 'ENTRY', 0, '2026-05-13 00:26:27'),
-(224, '23-00251', 241, 'ENTRY', 0, '2026-05-13 00:26:39'),
-(225, '23-00898', 242, 'ENTRY', 0, '2026-05-13 00:26:48'),
-(226, '23-00201', 243, 'ENTRY', 0, '2026-05-13 00:26:58'),
-(227, '23-00306', 244, 'ENTRY', 0, '2026-05-13 00:29:16'),
-(228, '23-01158', 245, 'ENTRY', 0, '2026-05-13 00:29:26'),
-(229, '23-01078', 246, 'ENTRY', 0, '2026-05-13 00:29:33'),
-(230, '23-00298', 247, 'ENTRY', 0, '2026-05-13 00:29:40'),
-(231, '23-00334', 248, 'ENTRY', 0, '2026-05-13 00:29:47'),
-(232, '23-00188', 249, 'ENTRY', 0, '2026-05-13 00:29:55'),
-(233, '23-01041', 250, 'ENTRY', 0, '2026-05-13 00:30:11'),
-(234, '23-01083', 251, 'ENTRY', 0, '2026-05-13 00:30:18'),
-(235, '23-00283', 252, 'ENTRY', 0, '2026-05-13 00:30:27'),
-(236, '23-00179', 253, 'ENTRY', 0, '2026-05-13 00:30:34'),
-(237, '23-00221', 254, 'ENTRY', 0, '2026-05-13 00:30:39'),
-(238, '23-00236', 255, 'ENTRY', 0, '2026-05-13 00:31:32'),
-(239, '23-00260', 256, 'ENTRY', 0, '2026-05-13 00:31:44'),
-(240, '23-00180', 257, 'ENTRY', 0, '2026-05-13 00:31:53'),
-(241, '23-00178', 258, 'ENTRY', 0, '2026-05-13 00:31:58'),
-(242, '23-00158', 259, 'ENTRY', 0, '2026-05-13 00:32:18'),
-(243, '23-00295', 260, 'ENTRY', 0, '2026-05-13 00:32:42'),
-(244, '23-00160', 261, 'ENTRY', 0, '2026-05-13 00:32:49'),
-(245, '23-01082', 262, 'ENTRY', 0, '2026-05-13 00:32:55'),
-(246, '23-00257', 263, 'ENTRY', 0, '2026-05-13 00:33:12'),
-(247, '23-00173', 264, 'ENTRY', 0, '2026-05-13 00:33:19'),
-(248, '23-00254', 265, 'ENTRY', 0, '2026-05-13 00:33:31'),
-(249, '23-00206', 266, 'ENTRY', 0, '2026-05-13 00:33:37'),
-(250, '23-00282', 267, 'ENTRY', 0, '2026-05-13 00:33:43'),
-(251, '23-01283', 268, 'ENTRY', 0, '2026-05-13 00:33:53'),
-(252, '23-00298', 282, 'EXIT', 0, '2026-05-13 12:48:59'),
-(253, '23-00298', 283, 'ENTRY', 0, '2026-05-13 12:49:14'),
-(254, '23-00298', 285, 'EXIT', 0, '2026-05-13 12:49:48'),
-(255, '23-00298', 286, 'ENTRY', 0, '2026-05-13 12:53:37'),
-(256, '23-00298', 288, 'EXIT', 0, '2026-05-13 12:53:54'),
-(257, '23-00298', 289, 'ENTRY', 0, '2026-05-13 12:54:11');
+INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `gate_window_warning`, `gate_window_reason`, `log_time`) VALUES
+(260, '23-00298', 293, 'ENTRY', 0, NULL, '2026-05-13 17:44:39'),
+(261, '23-00298', 295, 'EXIT', 0, NULL, '2026-05-13 17:45:06'),
+(262, '23-00174', 296, 'ENTRY', 0, NULL, '2026-05-13 17:46:23'),
+(263, '23-00295', 297, 'ENTRY', 0, NULL, '2026-05-13 17:46:31'),
+(264, '23-00173', 298, 'ENTRY', 0, NULL, '2026-05-13 17:46:40'),
+(265, '23-00298', 299, 'ENTRY', 1, 'Entry beyond gate hours (07:00–15:00)', '2026-05-13 17:49:10'),
+(266, '23-00298', 300, 'EXIT', 1, 'Exit beyond gate hours (07:00–15:00)', '2026-05-13 17:49:32');
 
 -- --------------------------------------------------------
 
@@ -408,11 +322,11 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`key`, `value`, `updated_at`) VALUES
-('block_outside_window', 'true', '2026-04-22 13:10:47'),
-('gate_entry_end', '23:59', '2026-05-13 00:25:37'),
-('gate_entry_start', '00:00', '2026-05-13 00:25:37'),
-('gate_exit_end', '23:59', '2026-05-13 00:25:37'),
-('gate_exit_start', '00:00', '2026-05-13 00:25:37'),
+('block_outside_window', 'false', '2026-05-13 17:47:58'),
+('gate_entry_end', '15:00', '2026-05-13 17:47:58'),
+('gate_entry_start', '07:00', '2026-05-13 15:23:00'),
+('gate_exit_end', '15:00', '2026-05-13 17:47:58'),
+('gate_exit_start', '07:00', '2026-05-13 15:23:00'),
 ('school_year_end', '2026', '2026-04-22 13:10:47'),
 ('school_year_start', '2025', '2026-04-22 13:10:47'),
 ('sem1_end', '2025-12-31', '2026-04-22 13:10:47'),
@@ -437,24 +351,6 @@ CREATE TABLE `visitor_logs` (
   `log_time` datetime NOT NULL DEFAULT current_timestamp(),
   `qr_token` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `visitor_logs`
---
-
-INSERT INTO `visitor_logs` (`visitor_id`, `full_name`, `email`, `reason`, `other_reason`, `action`, `log_time`, `qr_token`) VALUES
-(6, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:46:35', '143439a8-4141-4f15-8894-be9b11f1897d'),
-(7, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 06:58:59', 'a5405905-787f-4f14-b09f-83b02cfa5061'),
-(8, 'Lynn Czyla Alpuerto', 'lynnzylameczdo@gmail.com', 'Meeting with Faculty', NULL, 'EXIT', '2026-04-05 07:20:24', 'b06fc5d1-27ed-4252-98d4-9e2d1f0a16f3'),
-(9, 'Lynn Czyla ALpuerto', 'bitancor1234amora@gmail.com', 'Event / Activity', NULL, 'ENTRY', '2026-04-06 16:43:58', '95cc9628-2458-4539-bd43-9cda18de7a9e'),
-(10, 'Bitancor, jerimiah A', 'bitancor1234amora@gmail.com', 'Enrollment / Registration', NULL, 'EXIT', '2026-04-13 22:40:02', '45095469-9652-42b6-8292-8340fe8bb6dd'),
-(11, 'Bitancor, Jerimiah A.', 'bitancor_jeremiah@plpasig.edu.ph', 'Event / Activity', NULL, 'ENTRY', '2026-04-22 16:13:07', 'd841af60-cf74-4cff-b272-e1487421d87b'),
-(12, 'Bitancor', 'bitancor_jeremiah@plpasig.edu.ph', 'Meeting with Faculty', NULL, 'EXIT', '2026-05-12 23:02:48', 'a7830d49-f452-4167-9d79-bb47bfcd0237'),
-(13, 'Bitancor, Jerimiah A.', 'bitancor_jeremiah@plpasig.edu.ph', 'Event / Activity', NULL, 'ENTRY', '2026-05-13 00:34:30', '92229049-c558-400d-bc6e-a7754c913d5d'),
-(14, 'Flavier, Laurence James L.', 'flavierlaurence01@gmail.com', 'Meeting with Faculty', NULL, 'ENTRY', '2026-05-13 00:35:00', 'ef63040d-d88c-4088-b3ae-b6164eb72a45'),
-(15, 'Alpuerto, Lynn Czyla M.', 'mercado_lynnczyla@plpasig.edu.ph', 'Enrollment / Registration', NULL, 'ENTRY', '2026-05-13 00:35:50', '69896213-e5e2-44c2-be2f-26501c24e0bd'),
-(16, 'Castillon, Bianca Rain C.', 'bianca.cagurungan03@gmail.com', 'Library Access', NULL, 'ENTRY', '2026-05-13 00:36:29', '670bed5e-ec35-418a-9aca-bb06b2c627f8'),
-(17, 'Onrubia, Neil Adrian B.', 'onrubia_neiladrian@plpasig.edu.ph', 'Delivery / Pickup', NULL, 'ENTRY', '2026-05-13 00:37:11', 'a2f7b8da-6e54-417c-a8e8-9916168d30ab');
 
 --
 -- Indexes for dumped tables
@@ -564,7 +460,7 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=301;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -576,7 +472,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=258;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=267;
 
 --
 -- AUTO_INCREMENT for table `notifications`
@@ -617,7 +513,7 @@ ALTER TABLE `authentication`
 --
 ALTER TABLE `entry_exit_logs`
   ADD CONSTRAINT `entry_exit_logs_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`student_id`) ON UPDATE CASCADE,
-  ADD CONSTRAINT `entry_exit_logs_ibfk_2` FOREIGN KEY (`auth_id`) REFERENCES `authentication` (`auth_id`) ON DELETE CASCADE;
+  ADD CONSTRAINT `entry_exit_logs_ibfk_2` FOREIGN KEY (`auth_id`) REFERENCES `authentication` (`auth_id`);
 
 --
 -- Constraints for table `programs`
