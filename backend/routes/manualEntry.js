@@ -104,11 +104,16 @@ router.post('/', async (req, res) => {
     console.log('Authentication record inserted, ID:', authResult.insertId);
 
     // Insert entry/exit log
+    const warningReason = gateStatus.warning
+      ? `${mode === 'ENTRY' ? 'Entry' : 'Exit'} beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
+      : null;
+
     await db.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning)
-      VALUES (?, ?, ?, ?, ?)`,
-      [student_id.trim(), authResult.insertId, mode, now, gateStatus.warning ? 1 : 0]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [student_id.trim(), authResult.insertId, mode, now, gateStatus.warning ? 1 : 0, warningReason]
     );
+
     console.log('Entry/Exit log record inserted');
 
     // Prepare response - send the EXACT year_level from database
