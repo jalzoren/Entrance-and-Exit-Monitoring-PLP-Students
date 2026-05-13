@@ -1,0 +1,341 @@
+/* GenerateGraduateReportPdf.css - Styles for Graduates Archive Report PDF */
+
+.ggr-container {
+  position: relative;
+  background: #f5f5f5;
+  padding: 0;
+  margin: 0;
+}
+
+.ggr-report {
+  background: white;
+  padding: 12px;
+  margin: 0 auto;
+  font-family: 'Arial', 'Helvetica', sans-serif;
+  color: #333;
+  max-width: 100%;
+}
+
+/* Header Styles */
+.ggr-header {
+  margin-bottom: 16px;
+}
+
+.ggr-logos-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ggr-left-logos {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ggr-logo-box {
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f9f9f9;
+}
+
+.ggr-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.ggr-center-text {
+  text-align: right;
+  flex: 1;
+  min-width: 250px;
+}
+
+.ggr-university-name {
+  font-size: 14px;
+  font-weight: bold;
+  color: #01311d;
+  letter-spacing: 1.2px;
+  font-family: 'Cinzel', serif;
+}
+
+.ggr-system-title {
+  font-size: 11px;
+  color: #548772;
+  letter-spacing: 0.4px;
+  margin-top: 3px;
+  font-weight: 600;
+}
+
+/* Summary Section */
+.ggr-summary-section {
+  margin-bottom: 16px;
+}
+
+.ggr-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 12px;
+  background: #BEE5B9;
+  padding: 12px 16px;
+  border-radius: 6px;
+}
+
+.ggr-summary-title {
+  font-size: 13px;
+  font-weight: bold;
+  color: #01311d;
+  letter-spacing: 0.8px;
+  flex: 0 0 auto;
+  line-height: 1.2;
+}
+
+.ggr-summary-title div {
+  display: block;
+}
+
+.ggr-summary-description {
+  font-size: 10px;
+  color: #01311d;
+  text-align: right;
+  flex: 1;
+  line-height: 1.4;
+}
+
+.ggr-summary-description div {
+  display: block;
+}
+
+.ggr-summary-boxes {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.ggr-summary-box {
+  flex: 1;
+  min-width: 140px;
+  padding: 16px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  font-weight: 600;
+}
+
+.ggr-box-primary {
+  background: #2d8659;
+}
+
+.ggr-box-darker {
+  background: #015f3a;
+}
+
+.ggr-box-value {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: white;
+}
+
+.ggr-box-value-date {
+  font-size: 12px;
+  font-weight: 600;
+  color: white;
+}
+
+.ggr-box-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: white;
+}
+
+.ggr-box-label-top {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: white;
+  margin-bottom: 8px;
+}
+
+/* Table Container */
+.ggr-table-container {
+  margin: 16px 0;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  overflow: visible;
+}
+
+.ggr-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9px;
+  table-layout: auto;
+}
+
+.ggr-table thead {
+  background: #01311d;
+  color: white;
+}
+
+.ggr-table th {
+  padding: 6px 4px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 2px solid #01311d;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.ggr-table td {
+  padding: 5px 3px;
+  border-bottom: 1px solid #e5e5e5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  overflow: visible;
+  white-space: normal;
+  display: table-cell;
+  vertical-align: middle;
+  color: black; /* Ensure student data text is visible */
+}
+
+.ggr-row-even {
+  background: #f9f9f9;
+}
+
+.ggr-row-odd {
+  background: white;
+}
+
+.ggr-table tbody tr:hover {
+  background: #f0f0f0;
+}
+
+/* Column-specific styles */
+.ggr-td-no {
+  font-size: 10px;
+  text-align: center;
+  width: 5%;
+  font-weight: 600;
+  min-width: 25px;
+}
+
+.ggr-td-id {
+  font-size: 10px;
+  font-weight: 500;
+  color: #01311d;
+  width: 10%;
+  min-width: 60px;
+}
+
+.ggr-td-name {
+  font-size: 10px;
+  font-weight: 500;
+  width: 20%;
+  min-width: 90px;
+}
+
+.ggr-td-dept {
+  font-size: 10px;
+  width: 12%;
+  min-width: 70px;
+}
+
+.ggr-td-program {
+  font-size: 10px;
+  width: 18%;
+  min-width: 85px;
+}
+
+.ggr-td-year {
+  font-size: 10px;
+  text-align: center;
+  width: 8%;
+  min-width: 40px;
+}
+
+.ggr-td-section {
+  font-size: 10px;
+  text-align: center;
+  width: 8%;
+  min-width: 40px;
+}
+
+.ggr-td-date {
+  text-align: center;
+  width: 12%;
+  font-size: 10px;
+  min-width: 60px;
+  color: #01311d;
+}
+
+.ggr-empty-message {
+  text-align: center;
+  padding: 16px !important;
+  color: #999;
+  font-style: italic;
+  font-size: 9px;
+}
+
+/* Footer */
+.ggr-footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #ddd;
+  font-size: 9px;
+  color: #666;
+  text-align: center;
+}
+
+.ggr-footer-text {
+  margin: 2px 0;
+}
+
+/* Print and responsive styles */
+@media print {
+  .ggr-container {
+    background: white;
+    padding: 0;
+  }
+
+  .ggr-report {
+    padding: 8px;
+    max-width: none;
+  }
+
+  .ggr-table {
+    font-size: 8px;
+    table-layout: fixed;
+  }
+
+  .ggr-table th,
+  .ggr-table td {
+    padding: 4px 2px;
+  }
+
+  .ggr-summary {
+    background: #E8F5E9;
+  }
+}
+
+/* Page break for multi-page PDFs */
+@media print {
+  .ggr-table tbody tr:nth-child(n + 30) {
+    page-break-before: always;
+  }
+}

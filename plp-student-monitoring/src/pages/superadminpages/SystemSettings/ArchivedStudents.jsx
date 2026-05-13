@@ -6,6 +6,7 @@ import '../../../css/GlobalModal.css';
 import '../../../css/SystemSettings.css';
 import { generateReportWithFilters } from '../../../utils/pdfGenerator';
 import GenerateGraduateReportsFilter from './GenerateGraduateReportsFilter';
+import GenerateGraduateReportPdf from './GenerateGraduateReportPdf';
 
 const ROWS_PER_PAGE = 10;
 const ALL_STATUSES = ['LOA', 'Dropout', 'Kickout', 'Graduated', 'Transferred'];
@@ -49,10 +50,11 @@ function Archive() {
   const [restoreYearLevel, setRestoreYearLevel] = useState('');
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
-  const [generatingReport, setGeneratingReport] = useState(false);
-  const [reportStudents, setReportStudents] = useState([]);
-  const reportRef = useRef(null);
   const [showGraduateFilter, setShowGraduateFilter] = useState(false);
+  const [showGraduatePdfPreview, setShowGraduatePdfPreview] = useState(false);
+  const [graduatePdfData, setGraduatePdfData] = useState([]);
+  const [graduatePdfFilters, setGraduatePdfFilters] = useState({});
+  const pdfRef = useRef(null);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -213,28 +215,40 @@ function Archive() {
     // Start with currently displayed list (honors current search/college/status filters)
     let graduates = filtered.filter((s) => s.status === 'Graduated');
 
-    if (filters.department) {
-      graduates = graduates.filter((s) => (s.college_department || '').toLowerCase() === String(filters.department).toLowerCase());
+    // Apply college/department filter
+    if (filters.collegeDepartment) {
+      graduates = graduates.filter((s) => (s.college_department || '').toLowerCase() === String(filters.collegeDepartment).toLowerCase());
     }
+
+    // Apply program filter
     if (filters.program) {
       const q = String(filters.program).toLowerCase();
       graduates = graduates.filter((s) => (s.program_name || '').toLowerCase().includes(q));
     }
+
+    // Apply year level filter
     if (filters.yearLevel) {
       graduates = graduates.filter((s) => String(s.year_level) === String(filters.yearLevel));
     }
+
+    // Apply section filter
     if (filters.section) {
       const q = String(filters.section).toLowerCase();
       graduates = graduates.filter((s) => {
         return ((s.section || s.section_name || '') + '').toLowerCase().includes(q);
       });
     }
-    if (filters.dateFrom) {
-      const from = new Date(filters.dateFrom);
+
+    // Apply date range filters (dateRange.from and dateRange.to are in DD/MM/YYYY format)
+    if (filters.dateRange && filters.dateRange.from) {
+      const parts = String(filters.dateRange.from).split('/');
+      const from = new Date(parts[2], parts[1] - 1, parts[0]);
       graduates = graduates.filter((s) => s.updated_at && new Date(s.updated_at) >= from);
     }
-    if (filters.dateTo) {
-      const to = new Date(filters.dateTo);
+
+    if (filters.dateRange && filters.dateRange.to) {
+      const parts = String(filters.dateRange.to).split('/');
+      const to = new Date(parts[2], parts[1] - 1, parts[0]);
       to.setHours(23, 59, 59, 999);
       graduates = graduates.filter((s) => s.updated_at && new Date(s.updated_at) <= to);
     }
@@ -244,20 +258,30 @@ function Archive() {
       return;
     }
 
-    setReportStudents(graduates);
-    setGeneratingReport(true);
+    // Convert filters to format expected by PDF component
+    const pdfFilters = {
+      dateFrom: filters.dateRange?.from || '',
+      dateTo: filters.dateRange?.to || '',
+      collegeDepartment: filters.collegeDepartment || '',
+      program: filters.program || '',
+      yearLevel: filters.yearLevel || '',
+      section: filters.section || '',
+    };
+
+    // Show PDF preview instead of directly downloading
+    setGraduatePdfData(graduates);
+    setGraduatePdfFilters(pdfFilters);
+    setShowGraduatePdfPreview(true);
+  };
+
+  const handleDownloadGraduatesPdf = async () => {
     try {
-      // allow hidden DOM node to render
-      await new Promise((res) => setTimeout(res, 120));
-      const dateRange = filters.dateFrom || filters.dateTo ? `${filters.dateFrom || ''} - ${filters.dateTo || ''}` : 'Graduates';
-      await generateReportWithFilters(reportRef, { dateRange });
-      Swal.fire({ title: 'Report Generated', text: 'Graduates report has been downloaded.', icon: 'success', confirmButtonText: 'OK' });
+      if (pdfRef.current && pdfRef.current.generatePDF) {
+        await pdfRef.current.generatePDF();
+      }
     } catch (err) {
-      console.error('Generate report error:', err);
-      Swal.fire({ title: 'Error', text: 'Failed to generate report. Please try again.', icon: 'error', confirmButtonText: 'OK' });
-    } finally {
-      setGeneratingReport(false);
-      setReportStudents([]);
+      console.error('PDF download error:', err);
+      Swal.fire({ title: 'Error', text: 'Failed to download PDF. Please try again.', icon: 'error', confirmButtonText: 'OK' });
     }
   };
 
@@ -299,7 +323,7 @@ function Archive() {
         <span className="result-count">Total: {filtered.length}</span>
         <button
           onClick={() => setShowGraduateFilter(true)}
-          disabled={generatingReport || graduatesCount === 0}
+          disabled={graduatesCount === 0}
           style={{
             marginLeft: '12px',
             padding: '8px 12px',
@@ -311,7 +335,7 @@ function Archive() {
           }}
           title={graduatesCount === 0 ? 'No graduates to generate report' : 'Generate report for graduated students'}
         >
-          {generatingReport ? 'Generating...' : `Generate Graduates Report (${graduatesCount})`}
+          {`Generate Graduates Report (${graduatesCount})`}
         </button>
       </div>
 
@@ -326,6 +350,7 @@ function Archive() {
               <th>College/Department</th>
               <th>Program</th>
               <th>Year Level</th>
+              <th>Section</th>
               <th>Status</th>
               <th>Archived Date</th>
               <th>Action</th>
@@ -334,11 +359,11 @@ function Archive() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={9} className="tab-empty">Loading archived students...</td>
+                <td colSpan={10} className="tab-empty">Loading archived students...</td>
               </tr>
             ) : error ? (
               <tr>
-                <td colSpan={9} className="tab-empty" style={{ color: 'red' }}>Error: {error}</td>
+                <td colSpan={10} className="tab-empty" style={{ color: 'red' }}>Error: {error}</td>
               </tr>
             ) : paginated.length > 0 ? (
               paginated.map((student, idx) => {
@@ -357,6 +382,7 @@ function Archive() {
                       </span>
                     </td>
                     <td>{student.year_level}</td>
+                    <td>{student.section || student.section_name || 'N/A'}</td>
                     <td>
                       <span className={`status-badge ${statusBadgeClass(student.status)}`}>
                         {student.status}
@@ -382,7 +408,7 @@ function Archive() {
               })
             ) : (
               <tr>
-                <td colSpan={9} className="tab-empty">No archived students found.</td>
+                <td colSpan={10} className="tab-empty">No archived students found.</td>
               </tr>
             )}
           </tbody>
@@ -518,39 +544,110 @@ function Archive() {
           </div>
         </div>
       )}
-      {/* Hidden report content used for PDF generation (graduates only) */}
-      {reportStudents.length > 0 && (
-        <div ref={reportRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '900px', padding: '20px', background: '#fff', color: '#000' }}>
-          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-            <h2 style={{ margin: 0 }}>Graduates Archive Report</h2>
-            <div style={{ fontSize: '12px', marginTop: '4px' }}>Generated: {new Date().toLocaleString()}</div>
-            <div style={{ fontSize: '12px', marginTop: '4px' }}><strong>Total Graduates:</strong> {reportStudents.length}</div>
-          </div>
+      {/* PDF Preview Modal */}
+      {showGraduatePdfPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setShowGraduatePdfPreview(false)}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+              maxWidth: '90vw',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* PDF Preview Header */}
+            <div
+              style={{
+                padding: '16px',
+                borderBottom: '1px solid #eee',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f9f9f9',
+              }}
+            >
+              <h3 style={{ margin: 0, color: '#01311d' }}>Graduates Report Preview</h3>
+              <button
+                onClick={() => setShowGraduatePdfPreview(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  fontSize: '24px',
+                  cursor: 'pointer',
+                  color: '#999',
+                }}
+              >
+                ✕
+              </button>
+            </div>
 
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>No.</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Student ID</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Full Name</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Program</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Year</th>
-                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Archived Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reportStudents.map((s, i) => (
-                <tr key={s.student_id}>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{i + 1}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.student_id}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{`${s.last_name || ''}, ${s.first_name || ''}`}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.program_name || 'N/A'}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.year_level}</td>
-                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.updated_at ? new Date(s.updated_at).toLocaleDateString() : 'N/A'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            {/* PDF Content */}
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px', background: '#f5f5f5' }}>
+              <GenerateGraduateReportPdf ref={pdfRef} reportData={graduatePdfData} filters={graduatePdfFilters} />
+            </div>
+
+            {/* PDF Preview Footer - Buttons */}
+            <div
+              style={{
+                padding: '16px',
+                borderTop: '1px solid #eee',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                gap: '12px',
+                background: '#f9f9f9',
+              }}
+            >
+              <button
+                onClick={() => setShowGraduatePdfPreview(false)}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '6px',
+                  border: '1px solid #ddd',
+                  background: '#fff',
+                  color: '#333',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}
+              >
+                Close
+              </button>
+              <button
+                onClick={handleDownloadGraduatesPdf}
+                style={{
+                  padding: '5px 30px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: '#01311d',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}
+              >
+                Download PDF
+              </button>
+            </div>
+          </div>
         </div>
       )}
       {showGraduateFilter && (
