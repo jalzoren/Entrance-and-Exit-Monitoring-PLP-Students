@@ -18,7 +18,7 @@ const getTodayPhilippineRange = () => {
   return { dayStart, dayEnd };
 };
 
-// API Service - fetch logs from the analytics routes using XML
+// API Service - fetch logs from the analytics routes
 const MonitorService = {
   async fetchAllLogs(filters = {}) {
     try {
@@ -34,12 +34,46 @@ const MonitorService = {
       
       const data = await res.json();
       
-      // Transform the report data into log entries
       const logs = [];
       const uniqueKeys = new Set();
       
-      // Add entry logs if available (primary source)
-      if (data.entryLogs && Array.isArray(data.entryLogs)) {
+      // Use studentLogs as primary source
+      if (data.studentLogs && Array.isArray(data.studentLogs)) {
+        data.studentLogs.forEach(log => {
+          const uniqueKey = `${log.studentId}_${log.dateTime}_${log.action}`;
+          if (!uniqueKeys.has(uniqueKey)) {
+            uniqueKeys.add(uniqueKey);
+            
+            let formattedTime = '';
+            let formattedDate = '';
+            let timestamp = null;
+            
+            if (log.dateTime) {
+              const dateObj = new Date(log.dateTime);
+              formattedTime = dateObj.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+              formattedDate = dateObj.toLocaleDateString('en-US');
+              timestamp = dateObj.getTime();
+            }
+            
+            logs.push({
+              id: `student_${log.studentId}_${timestamp}`,
+              studentId: log.studentId,
+              name: log.name,
+              collegeDept: log.department,
+              yearLevel: log.yearLevel,
+              action: log.action === "Entrance" ? "ENTERED" : "EXITED",
+              method: log.method,
+              time: formattedTime || '--:--:--',
+              date: formattedDate || '----/--/--',
+              timestamp: timestamp || new Date().getTime(),
+              failed: false
+            });
+          }
+        });
+      }
+      
+      // Fallback for entry logs
+      if ((!data.studentLogs || data.studentLogs.length === 0) && data.entryLogs && Array.isArray(data.entryLogs)) {
         data.entryLogs.forEach(log => {
           let formattedTime = log.time;
           let formattedDate = log.date;
@@ -55,7 +89,7 @@ const MonitorService = {
           if (!uniqueKeys.has(uniqueKey)) {
             uniqueKeys.add(uniqueKey);
             logs.push({
-              id: log.id || `entry_${Date.now()}_${Math.random()}`,
+              id: log.id || `entry_${log.studentId}_${timestamp}`,
               studentId: log.studentId,
               name: log.name,
               collegeDept: log.collegeDept || log.department,
@@ -71,8 +105,8 @@ const MonitorService = {
         });
       }
       
-      // Add exit logs if available (primary source)
-      if (data.exitLogs && Array.isArray(data.exitLogs)) {
+      // Fallback for exit logs
+      if ((!data.studentLogs || data.studentLogs.length === 0) && data.exitLogs && Array.isArray(data.exitLogs)) {
         data.exitLogs.forEach(log => {
           let formattedTime = log.time;
           let formattedDate = log.date;
@@ -88,7 +122,7 @@ const MonitorService = {
           if (!uniqueKeys.has(uniqueKey)) {
             uniqueKeys.add(uniqueKey);
             logs.push({
-              id: log.id || `exit_${Date.now()}_${Math.random()}`,
+              id: log.id || `exit_${log.studentId}_${timestamp}`,
               studentId: log.studentId,
               name: log.name,
               collegeDept: log.collegeDept || log.department,
@@ -104,7 +138,7 @@ const MonitorService = {
         });
       }
       
-      // Add failed attempts if available
+      // Add failed attempts
       if (data.failedAttempts && Array.isArray(data.failedAttempts)) {
         data.failedAttempts.forEach(log => {
           let formattedTime = log.time;
@@ -134,51 +168,14 @@ const MonitorService = {
         });
       }
       
-      // Sort logs in DESCENDING order (newest first) for display
-      logs.sort((a, b) => {
-        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return timeB - timeA;
-      });
-      
-      console.log(`Fetched ${logs.length} unique logs (newest to oldest)`);
+      // Sort logs - newest first
+      logs.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
       
       return { logs };
     } catch (err) {
       console.error('[MonitorService.fetchAllLogs] ERROR:', err.message);
       return { logs: [] };
     }
-  },
-  
-  async fetchMetrics() {
-    try {
-      const res = await fetch('/api/analytics/metrics');
-      if (!res.ok) throw new Error(`metrics: HTTP ${res.status}`);
-      const data = await res.json();
-      console.log('[MonitorService.fetchMetrics] Response:', data);
-      return data;
-    } catch (err) {
-      console.error('[MonitorService.fetchMetrics] ERROR:', err.message);
-      return { totalStudents: 0, onCampus: 0 };
-    }
-  },
-  
-  // NEW: Fetch current students list directly from API
-  async fetchCurrentStudents() {
-    try {
-      // Try to get current students from dedicated endpoint
-      const res = await fetch('/api/analytics/current-students');
-      if (res.ok) {
-        const data = await res.json();
-        console.log('[MonitorService.fetchCurrentStudents] Got list:', data);
-        return data;
-      }
-    } catch (err) {
-      console.error('[MonitorService.fetchCurrentStudents] Error:', err.message);
-    }
-    
-    // Fallback: return empty
-    return { onCampus: 0, students: [] };
   },
   
   async exportToXml(filters = {}) {
@@ -206,7 +203,7 @@ const MonitorService = {
   }
 };
 
-function LogEntry({ log, animDelay }) {
+function LogEntry({ log }) {
   const getStudentInfo = () => {
     if (log.failed) {
       return <span className="rtm-log-name failed">Unknown Person</span>;
@@ -245,7 +242,7 @@ function LogEntry({ log, animDelay }) {
   return (
     <div className="rtm-log-item-wrapper">
       {log.failed ? (
-        <div className="rtm-log-entry failed" style={{ animationDelay: `${animDelay}s` }}>
+        <div className="rtm-log-entry failed">
           <span className="rtm-log-time">[{getDisplayDateTime()}]</span>
           <span className="rtm-log-message">Failed Authentication Attempt</span>
           {log.name && log.name !== "Unknown" && (
@@ -253,7 +250,7 @@ function LogEntry({ log, animDelay }) {
           )}
         </div>
       ) : (
-        <div className={`rtm-log-entry success ${getActionClass()}`} style={{ animationDelay: `${animDelay}s` }}>
+        <div className={`rtm-log-entry success ${getActionClass()}`}>
           <span className="rtm-log-time">[{getDisplayDateTime()}]</span>
           <div className="rtm-log-info">
             {getStudentInfo()}
@@ -280,7 +277,7 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
         </div>
         <div className="modal-body">
           <div className="students-count-badge">
-            Total Students Inside (Today): <span className="count-number">{studentsCount}</span>
+            Total Students Inside: <span className="count-number">{studentsCount}</span>
           </div>
           {studentsInsideList.length === 0 ? (
             <div className="no-students-message">
@@ -334,20 +331,12 @@ export default function Monitor() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const logRef = useRef(null);
   const refreshIntervalRef = useRef(null);
-  const prevLogsLengthRef = useRef(0);
   const isMountedRef = useRef(true);
-  const autoScrollRef = useRef(true);
 
   const totalLogsCount = allLogs.length;
   const enteredCount = allLogs.filter(log => !log.failed && log.action === "ENTERED").length;
   const exitedCount = allLogs.filter(log => !log.failed && log.action === "EXITED").length;
   const failedCount = allLogs.filter(log => log.failed === true).length;
-
-  const scrollToTop = () => {
-    if (logRef.current && autoScrollRef.current) {
-      logRef.current.scrollTop = 0;
-    }
-  };
 
   // Filter logs based on active filter
   useEffect(() => {
@@ -363,81 +352,62 @@ export default function Monitor() {
       filtered = allLogs.filter(log => log.failed === true);
     }
     
-    // Keep descending order (newest first)
-    const sortedFiltered = filtered.sort((a, b) => {
-      const timeA = a.timestamp || 0;
-      const timeB = b.timestamp || 0;
-      return timeB - timeA;
-    });
-    
-    setFilteredLogs(sortedFiltered);
-    
-    setTimeout(scrollToTop, 100);
+    setFilteredLogs(filtered);
   }, [allLogs, activeFilter]);
 
-  // Auto-scroll to top when new logs are added
-  useEffect(() => {
-    const currentLength = filteredLogs.length;
-    const prevLength = prevLogsLengthRef.current;
+  // Calculate students currently inside based on logs
+  const calculateStudentsInsideFromLogs = useCallback((logs) => {
+    const studentState = new Map();
     
-    if (currentLength > prevLength) {
-      scrollToTop();
+    // Sort chronologically - oldest first
+    const sortedLogs = [...logs].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+    for (const log of sortedLogs) {
+      if (log.failed) continue;
+      if (!log.studentId) continue;
+      
+      if (log.action === "ENTERED") {
+        studentState.set(log.studentId, {
+          studentId: log.studentId,
+          student_id: log.studentId,
+          name: log.name,
+          department: log.collegeDept,
+          collegeDept: log.collegeDept,
+          yearLevel: log.yearLevel,
+          entryTime: log.time,
+          entryTimestamp: log.timestamp,
+          entryDate: log.date
+        });
+      } else if (log.action === "EXITED") {
+        studentState.delete(log.studentId);
+      }
     }
-    
-    prevLogsLengthRef.current = currentLength;
-  }, [filteredLogs.length]);
+
+    return Array.from(studentState.values());
+  }, []);
 
   const fetchLogs = useCallback(async () => {
     if (isRefreshing) return;
     
     setIsRefreshing(true);
-    console.log("Fetching logs from API...", new Date().toLocaleTimeString());
     
     try {
-      // Use TODAY's Philippine date range to match Analytics
       const { dayStart, dayEnd } = getTodayPhilippineRange();
       const fromDate = dayStart.split(' ')[0];
       const toDate = dayEnd.split(' ')[0];
       
-      console.log(`Fetching logs for date range: ${fromDate} to ${toDate}`);
-      
-      // Fetch logs
       const { logs } = await MonitorService.fetchAllLogs({
         from: fromDate,
         to: toDate
       });
       
-      // Fetch metrics from API for consistency with Analytics
-      const metrics = await MonitorService.fetchMetrics();
-      const apiStudentsInside = metrics.onCampus || 0;
-      
-      // Try to fetch current students list from API
-      let currentStudentsList = [];
-      try {
-        const currentStudentsRes = await fetch('/api/analytics/current-students');
-        if (currentStudentsRes.ok) {
-          const currentStudentsData = await currentStudentsRes.json();
-          currentStudentsList = currentStudentsData.students || [];
-          console.log(`Fetched ${currentStudentsList.length} current students from API`);
-        } else {
-          // Fallback: calculate from logs
-          currentStudentsList = calculateStudentsInsideFromLogs(logs);
-          console.log(`Calculated ${currentStudentsList.length} students from logs`);
-        }
-      } catch (err) {
-        console.error('Failed to fetch current students:', err);
-        currentStudentsList = calculateStudentsInsideFromLogs(logs);
-      }
-      
-      console.log(`API says: ${apiStudentsInside} students inside`);
-      console.log(`List has: ${currentStudentsList.length} students`);
+      const studentsInside = calculateStudentsInsideFromLogs(logs);
       
       if (isMountedRef.current) {
         setAllLogs(logs);
-        setStudentsInsideCount(apiStudentsInside);
-        setStudentsInsideList(currentStudentsList);
+        setStudentsInsideCount(studentsInside.length);
+        setStudentsInsideList(studentsInside);
         setLastRefresh(new Date());
-        console.log(`Fetched ${logs.length} logs for today, ${apiStudentsInside} students inside`);
       }
       
     } catch (error) {
@@ -447,38 +417,7 @@ export default function Monitor() {
         setIsRefreshing(false);
       }
     }
-  }, [isRefreshing]);
-
-  // Helper function to calculate students inside from logs (fallback)
-  const calculateStudentsInsideFromLogs = (logs) => {
-    const insideMap = new Map();
-    
-    const sortedLogs = [...logs].sort((a, b) => {
-      const timeA = a.timestamp || 0;
-      const timeB = b.timestamp || 0;
-      return timeA - timeB;
-    });
-
-    for (const log of sortedLogs) {
-      if (!log.failed && log.action) {
-        if (log.action === "ENTERED") {
-          insideMap.set(log.studentId, {
-            studentId: log.studentId,
-            name: log.name,
-            department: log.collegeDept,
-            yearLevel: log.yearLevel,
-            entryTime: log.time,
-            entryTimestamp: log.timestamp,
-            entryDate: log.date
-          });
-        } else if (log.action === "EXITED") {
-          insideMap.delete(log.studentId);
-        }
-      }
-    }
-
-    return Array.from(insideMap.values());
-  };
+  }, [isRefreshing, calculateStudentsInsideFromLogs]);
 
   const handleExportXml = async () => {
     try {
@@ -493,29 +432,24 @@ export default function Monitor() {
                     activeFilter === 'entered' ? 'entry' : 
                     activeFilter === 'exited' ? 'exit' : undefined
       });
-      
-      console.log('XML export successful');
     } catch (error) {
       console.error('Error exporting to XML:', error);
       alert('Failed to export to XML. Please try again.');
     }
   };
 
-  // Setup refresh interval - only once on mount
+  // Setup auto-refresh - 5 seconds
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Initial fetch
     fetchLogs();
     
-    // Set up interval for every 5 seconds
     refreshIntervalRef.current = setInterval(() => {
-      if (isMountedRef.current) {
+      if (isMountedRef.current && !isRefreshing) {
         fetchLogs();
       }
     }, 5000);
     
-    // Cleanup on unmount
     return () => {
       isMountedRef.current = false;
       if (refreshIntervalRef.current) {
@@ -523,21 +457,15 @@ export default function Monitor() {
         refreshIntervalRef.current = null;
       }
     };
-  }, []);
+  }, [fetchLogs, isRefreshing]);
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
-    autoScrollRef.current = true;
   };
 
   const handleManualRefresh = () => {
-    fetchLogs();
-  };
-
-  const handleScroll = () => {
-    if (logRef.current) {
-      const isAtTop = logRef.current.scrollTop <= 50;
-      autoScrollRef.current = isAtTop;
+    if (!isRefreshing) {
+      fetchLogs();
     }
   };
 
@@ -552,7 +480,7 @@ export default function Monitor() {
         <div className="rtm-card">
           <div className="rtm-subheader-horizontal">
             <div className="rtm-student-count">
-              Students Currently Inside (Today): 
+              Students Currently Inside: 
               <span className="rtm-student-count-num">{studentsInsideCount}</span>
               <button 
                 className="view-students-btn"
@@ -595,7 +523,7 @@ export default function Monitor() {
                 className="rtm-filter-btn refresh-btn"
                 disabled={isRefreshing}
               >
-                {isRefreshing ? 'Refreshing...' : '⟳ Refresh'}
+                {isRefreshing ? '⟳ Refresh' : '⟳ Refresh'}
               </button>
             </div>
           </div>
@@ -604,7 +532,6 @@ export default function Monitor() {
             <span className={`refresh-indicator ${isRefreshing ? 'refreshing' : ''}`}></span>
             <span className="refresh-text">
               Auto-refreshing every 5 seconds
-              {isRefreshing && ' (Updating...)'}
             </span>
             <span className="refresh-time">
               Last refresh: {lastRefresh.toLocaleTimeString()}
@@ -612,7 +539,7 @@ export default function Monitor() {
           </div>
 
           <div className="rtm-body">
-            <div className="rtm-log-panel" ref={logRef} onScroll={handleScroll}>
+            <div className="rtm-log-panel" ref={logRef}>
               <div className="logs-container">
                 {filteredLogs.length === 0 ? (
                   <div className="rtm-empty-state">
@@ -622,8 +549,8 @@ export default function Monitor() {
                      'No activity logs to display for today'}
                   </div>
                 ) : (
-                  filteredLogs.map((log, i) => (
-                    <LogEntry key={log.id || i} log={log} animDelay={0} />
+                  filteredLogs.map((log) => (
+                    <LogEntry key={log.id} log={log} />
                   ))
                 )}
               </div>
