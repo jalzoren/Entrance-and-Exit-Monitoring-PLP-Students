@@ -46,6 +46,9 @@ const formatVisitorReason = (reason, otherReason) => {
 };
 
 const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => {
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] 🔍 STARTING AUTO-EXIT CHECK`);
+  console.log(`  Report range: ${rangeStart} → ${rangeEnd}`);
+  
   const gateStatus = await getGateStatus('EXIT');
   
   console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate status: ${gateStatus.open ? 'OPEN' : 'CLOSED'}`);
@@ -53,20 +56,23 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
   console.log(`  Window: ${gateStatus.windowStart} – ${gateStatus.windowEnd}`);
   
   if (gateStatus.open) {
-    console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate is OPEN - auto-exit skipped`);
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] ❌ Gate is OPEN - auto-exit skipped`);
     return { updated: 0, gateStatus };
   }
 
   const { dayStart, dayEnd } = await getTodayPhRange(db);
   
-  console.log(`[markUnexitedStudentsAsGateClosedWarning] Checking report range vs day range...`);
-  console.log(`  Report: ${rangeStart} → ${rangeEnd}`);
-  console.log(`  Day: ${dayStart} → ${dayEnd}`);
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Today range: ${dayStart} → ${dayEnd}`);
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Checking if report covers full day...`);
 
   if (rangeStart > dayStart || rangeEnd < dayEnd) {
-    console.log(`[markUnexitedStudentsAsGateClosedWarning] Range does not cover full day - auto-exit skipped`);
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] ❌ Range does not cover full day - auto-exit skipped`);
+    console.log(`  Range: ${rangeStart} → ${rangeEnd}`);
+    console.log(`  Day: ${dayStart} → ${dayEnd}`);
     return { updated: 0, gateStatus };
   }
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] ✅ Full day covered - proceeding with auto-exit`);
 
   const [rows] = await db.query(
     `SELECT eel.student_id, eel.log_id
@@ -82,14 +88,18 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
     [dayStart, dayEnd, 'still inside (%']
   );
 
-  console.log(`[markUnexitedStudentsAsGateClosedWarning] Found ${rows.length} unmatched ENTRY logs`);
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Found ${rows.length} unmatched ENTRY logs:`);
+  rows.forEach(row => console.log(`  → Student ${row.student_id} (log_id: ${row.log_id})`));
 
   if (!rows.length) {
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] ❌ No unmatched entries - auto-exit skipped`);
     return { updated: 0, gateStatus };
   }
 
   const now = await getPhTime(db);
   const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Current time: ${exitTime}`);
 
   // Create or get system authentication record for auto-exits
   const [systemAuthRows] = await db.query(
@@ -99,6 +109,7 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
   let systemAuthId;
   if (systemAuthRows.length > 0) {
     systemAuthId = systemAuthRows[0].auth_id;
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Using existing system auth record: ${systemAuthId}`);
   } else {
     // Insert a system auth record for auto-exits
     const [authResult] = await db.query(
@@ -107,11 +118,13 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
       [exitTime]
     );
     systemAuthId = authResult.insertId;
-    console.log(`[markUnexitedStudentsAsGateClosedWarning] Created system auth record with id: ${systemAuthId}`);
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Created new system auth record: ${systemAuthId}`);
   }
 
   // Insert EXIT logs for unmatched entries
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Inserting ${rows.length} EXIT logs...`);
   const insertPromises = rows.map(async (row) => {
+    console.log(`  → Creating EXIT for student ${row.student_id}`);
     await db.query(
       `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
        VALUES (?, ?, 'EXIT', ?, 1, 'Auto-exit: Gate closed – no exit recorded')`,
@@ -121,7 +134,7 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
 
   await Promise.all(insertPromises);
 
-  console.log(`[markUnexitedStudentsAsGateClosedWarning] ✅ Auto-exit created for ${rows.length} student(s)`);
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] ✅ Auto-exit completed for ${rows.length} student(s)`);
 
   return { updated: rows.length, gateStatus };
 };
