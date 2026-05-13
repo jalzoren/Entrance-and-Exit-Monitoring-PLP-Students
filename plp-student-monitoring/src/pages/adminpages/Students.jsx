@@ -498,7 +498,7 @@ function Students() {
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div>
+    <div className="students">
       {/* ── Page header ── */}
       <header className="header-card">
         <h1>STUDENT MANAGEMENT</h1>

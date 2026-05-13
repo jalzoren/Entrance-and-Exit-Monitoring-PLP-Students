@@ -361,7 +361,7 @@ function Users() {
   };
 
   return (
-    <div>
+    <div className="users">
       <header className="header-card">
         <h1>USER MANAGEMENT</h1>
         <p className="subtitle">Dashboard / User Management</p>

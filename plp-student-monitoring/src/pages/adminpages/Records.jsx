@@ -309,7 +309,7 @@ function Records() {
   const activeTabLabel = activeTab === 'student' ? 'student' : 'visitor';
 
   return (
-    <div>
+    <div className='records'>
       <header className="header-card">
         <h1>ENTRY-EXIT RECORDS</h1>
         <p className="subtitle">Dashboard / Entry-Exit Records</p>

@@ -14,6 +14,11 @@
   --transition: 0.28s ease;
 }
 
+.records{
+    background-color: var(--color-bg-main);
+
+}
+
 .records-container {
   padding: 20px;
   max-width: 1400px;
