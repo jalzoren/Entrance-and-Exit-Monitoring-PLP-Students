@@ -6,7 +6,6 @@ import { reportToXml, xmlToReport, downloadXml } from '../../utils/xmlReportUtil
 // Helper function to get Philippine date range for today
 const getTodayPhilippineRange = () => {
   const now = new Date();
-  // Convert to Philippine time (UTC+8)
   const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
   
   const year = phTime.getFullYear();
@@ -142,17 +141,12 @@ const MonitorService = {
         return timeB - timeA;
       });
       
-      // Calculate current students inside from the logs
-      const studentsInsideList = calculateStudentsInsideFromLogs(logs);
-      const studentsInside = studentsInsideList.length;
-      
       console.log(`Fetched ${logs.length} unique logs (newest to oldest)`);
-      console.log(`Calculated ${studentsInside} students inside from logs`);
       
-      return { logs, studentsInside, studentsInsideList };
+      return { logs };
     } catch (err) {
       console.error('[MonitorService.fetchAllLogs] ERROR:', err.message);
-      return { logs: [], studentsInside: 0, studentsInsideList: [] };
+      return { logs: [] };
     }
   },
   
@@ -167,6 +161,24 @@ const MonitorService = {
       console.error('[MonitorService.fetchMetrics] ERROR:', err.message);
       return { totalStudents: 0, onCampus: 0 };
     }
+  },
+  
+  // NEW: Fetch current students list directly from API
+  async fetchCurrentStudents() {
+    try {
+      // Try to get current students from dedicated endpoint
+      const res = await fetch('/api/analytics/current-students');
+      if (res.ok) {
+        const data = await res.json();
+        console.log('[MonitorService.fetchCurrentStudents] Got list:', data);
+        return data;
+      }
+    } catch (err) {
+      console.error('[MonitorService.fetchCurrentStudents] Error:', err.message);
+    }
+    
+    // Fallback: return empty
+    return { onCampus: 0, students: [] };
   },
   
   async exportToXml(filters = {}) {
@@ -193,38 +205,6 @@ const MonitorService = {
     }
   }
 };
-
-// Helper function to calculate students inside from logs
-function calculateStudentsInsideFromLogs(logs) {
-  const insideMap = new Map();
-  
-  // Sort logs chronologically (oldest to newest) for accurate entry/exit tracking
-  const sortedLogs = [...logs].sort((a, b) => {
-    const timeA = a.timestamp || 0;
-    const timeB = b.timestamp || 0;
-    return timeA - timeB;
-  });
-
-  for (const log of sortedLogs) {
-    if (!log.failed && log.action) {
-      if (log.action === "ENTERED") {
-        insideMap.set(log.studentId, {
-          studentId: log.studentId,
-          name: log.name,
-          department: log.collegeDept,
-          yearLevel: log.yearLevel,
-          entryTime: log.time,
-          entryTimestamp: log.timestamp,
-          entryDate: log.date
-        });
-      } else if (log.action === "EXITED") {
-        insideMap.delete(log.studentId);
-      }
-    }
-  }
-
-  return Array.from(insideMap.values());
-}
 
 function LogEntry({ log, animDelay }) {
   const getStudentInfo = () => {
@@ -321,13 +301,13 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
                 </thead>
                 <tbody>
                   {studentsInsideList.map((student, index) => (
-                    <tr key={student.studentId || index}>
+                    <tr key={student.studentId || student.student_id || index}>
                       <td>{index + 1}</td>
-                      <td>{student.studentId || 'N/A'}</td>
+                      <td>{student.studentId || student.student_id || 'N/A'}</td>
                       <td>{student.name || 'Unknown'}</td>
                       <td>{student.department || student.collegeDept || 'N/A'}</td>
                       <td>{student.yearLevel || 'N/A'}</td>
-                      <td>{student.entryTime || student.time || 'N/A'}</td>
+                      <td>{student.entryTime || student.time || student.entry_time || 'N/A'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -407,52 +387,103 @@ export default function Monitor() {
     prevLogsLengthRef.current = currentLength;
   }, [filteredLogs.length]);
 
-  const fetchLogs = useCallback(async () => {
-    if (isRefreshing) return;
+ const fetchLogs = useCallback(async () => {
+  if (isRefreshing) return;
+  
+  setIsRefreshing(true);
+  console.log("Fetching logs from API...", new Date().toLocaleTimeString());
+  
+  try {
+    const { dayStart, dayEnd } = getTodayPhilippineRange();
+    const fromDate = dayStart.split(' ')[0];
+    const toDate = dayEnd.split(' ')[0];
     
-    setIsRefreshing(true);
-    console.log("Fetching logs from API...", new Date().toLocaleTimeString());
+    console.log(`Fetching logs for date range: ${fromDate} to ${toDate}`);
+    
+    const { logs } = await MonitorService.fetchAllLogs({
+      from: fromDate,
+      to: toDate
+    });
+    
+    // Fetch current students list from API (this now returns unique students)
+    let currentStudentsList = [];
+    let apiStudentsInside = 0;
     
     try {
-      // Use TODAY's Philippine date range to match Analytics
-      const { dayStart, dayEnd } = getTodayPhilippineRange();
-      const fromDate = dayStart.split(' ')[0];
-      const toDate = dayEnd.split(' ')[0];
-      
-      console.log(`Fetching logs for date range: ${fromDate} to ${toDate}`);
-      
-      const { logs, studentsInside, studentsInsideList: insideList } = await MonitorService.fetchAllLogs({
-        from: fromDate,
-        to: toDate
-      });
-      
-      // Also fetch metrics from API for consistency with Analytics
-      const metrics = await MonitorService.fetchMetrics();
-      const apiStudentsInside = metrics.onCampus || 0;
-      
-      console.log(`Monitor calculated: ${studentsInside} students inside`);
-      console.log(`Analytics API says: ${apiStudentsInside} students inside`);
-      
-      // Use the API value for consistency with Analytics dashboard
-      const finalCount = apiStudentsInside;
-      
-      if (isMountedRef.current) {
-        setAllLogs(logs);
-        setStudentsInsideCount(finalCount);
-        setStudentsInsideList(insideList);
-        setLastRefresh(new Date());
-        console.log(`Fetched ${logs.length} logs for today, ${finalCount} students inside (from API)`);
+      const currentStudentsRes = await fetch('/api/analytics/current-students');
+      if (currentStudentsRes.ok) {
+        const currentStudentsData = await currentStudentsRes.json();
+        currentStudentsList = currentStudentsData.students || [];
+        apiStudentsInside = currentStudentsData.onCampus || currentStudentsList.length;
+        console.log(`API returned ${currentStudentsList.length} unique students inside`);
+      } else {
+        console.log('current-students endpoint failed');
+        // Fallback to manual calculation
+        const manualCalculation = calculateStudentsInsideFromLogs(logs);
+        currentStudentsList = manualCalculation;
+        apiStudentsInside = manualCalculation.length;
       }
-      
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-    } finally {
-      if (isMountedRef.current) {
-        setIsRefreshing(false);
+    } catch (err) {
+      console.error('Failed to fetch current students:', err);
+      const manualCalculation = calculateStudentsInsideFromLogs(logs);
+      currentStudentsList = manualCalculation;
+      apiStudentsInside = manualCalculation.length;
+    }
+    
+    console.log(`\n=== FINAL RESULT ===`);
+    console.log(`Count to display: ${apiStudentsInside}`);
+    console.log(`List length: ${currentStudentsList.length}`);
+    
+    if (isMountedRef.current) {
+      setAllLogs(logs);
+      setStudentsInsideCount(apiStudentsInside);
+      setStudentsInsideList(currentStudentsList);
+      setLastRefresh(new Date());
+    }
+    
+  } catch (error) {
+    console.error("Error fetching logs:", error);
+  } finally {
+    if (isMountedRef.current) {
+      setIsRefreshing(false);
+    }
+  }
+}, [isRefreshing]);
+
+  // Helper function to calculate students inside from logs (fallback)
+  // Helper function to calculate students inside from logs (fallback) - FIXED with deduplication
+const calculateStudentsInsideFromLogs = (logs) => {
+  const insideMap = new Map();
+  
+  const sortedLogs = [...logs].sort((a, b) => {
+    const timeA = a.timestamp || 0;
+    const timeB = b.timestamp || 0;
+    return timeA - timeB;
+  });
+
+  for (const log of sortedLogs) {
+    if (!log.failed && log.action && log.studentId) {
+      if (log.action === "ENTERED") {
+        insideMap.set(log.studentId, {
+          studentId: log.studentId,
+          student_id: log.studentId,
+          name: log.name,
+          department: log.collegeDept,
+          yearLevel: log.yearLevel,
+          entryTime: log.time,
+          entryTimestamp: log.timestamp,
+          entryDate: log.date
+        });
+      } else if (log.action === "EXITED") {
+        insideMap.delete(log.studentId);
       }
     }
-  }, [isRefreshing]);
+  }
 
+  const result = Array.from(insideMap.values());
+  console.log(`[calculateStudentsInsideFromLogs] Found ${result.length} unique students inside`);
+  return result;
+};
   const handleExportXml = async () => {
     try {
       const { dayStart, dayEnd } = getTodayPhilippineRange();
