@@ -206,7 +206,7 @@ router.post('/', async (req, res) => {
 
     // Insert into entry_exit_logs table
     const [logResult] = await db.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_violation)
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning)
       VALUES (?, ?, ?, ?, ?)`,
       [student_id, authResult.insertId, mode, now, gateStatus.warning ? 1 : 0]
     );
