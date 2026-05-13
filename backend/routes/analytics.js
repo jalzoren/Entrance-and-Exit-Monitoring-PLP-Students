@@ -91,12 +91,31 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
   const now = await getPhTime(db);
   const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
 
+  // Create or get system authentication record for auto-exits
+  const [systemAuthRows] = await db.query(
+    `SELECT auth_id FROM authentication WHERE method = 'SYSTEM' AND auth_status = 'AUTO-EXIT' LIMIT 1`
+  );
+
+  let systemAuthId;
+  if (systemAuthRows.length > 0) {
+    systemAuthId = systemAuthRows[0].auth_id;
+  } else {
+    // Insert a system auth record for auto-exits
+    const [authResult] = await db.query(
+      `INSERT INTO authentication (method, auth_status, timestamp)
+       VALUES ('SYSTEM', 'AUTO-EXIT', ?)`,
+      [exitTime]
+    );
+    systemAuthId = authResult.insertId;
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Created system auth record with id: ${systemAuthId}`);
+  }
+
   // Insert EXIT logs for unmatched entries
   const insertPromises = rows.map(async (row) => {
     await db.query(
-      `INSERT INTO entry_exit_logs (student_id, action, log_time, gate_window_warning, gate_window_reason)
-       VALUES (?, 'EXIT', ?, 1, 'Auto-exit: Gate closed – no exit recorded')`,
-      [row.student_id, exitTime]
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
+       VALUES (?, ?, 'EXIT', ?, 1, 'Auto-exit: Gate closed – no exit recorded')`,
+      [row.student_id, systemAuthId, exitTime]
     );
   });
 
@@ -1643,27 +1662,24 @@ router.get('/sections', async (req, res) => {
 });
 
 // Add to your analytics routes
-app.get('/api/analytics/current-students', async (req, res) => {
+router.get('/api/analytics/current-students', async (req, res) => {
   try {
     // Query students who have entered but not exited
     // This should match the logic used in your metrics endpoint
-    const currentStudents = await db.query(`
-      SELECT DISTINCT ON (student_id) 
-        student_id, name, department, year_level, timestamp as entry_time
-      FROM logs 
-      WHERE action = 'ENTERED' 
-      AND NOT EXISTS (
-        SELECT 1 FROM logs l2 
-        WHERE l2.student_id = logs.student_id 
-        AND l2.action = 'EXITED' 
-        AND l2.timestamp > logs.timestamp
-      )
-      ORDER BY student_id, timestamp DESC
+    const [currentStudents] = await db.query(`
+      SELECT 
+        student_id, year_level
+      FROM entry_exit_logs
+      WHERE action = 'ENTRY'
+        AND student_id NOT IN (
+          SELECT student_id FROM entry_exit_logs 
+          WHERE action = 'EXIT'
+        )
     `);
     
     res.json({
-      onCampus: currentStudents.rows.length,
-      students: currentStudents.rows
+      onCampus: currentStudents.length,
+      students: currentStudents
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

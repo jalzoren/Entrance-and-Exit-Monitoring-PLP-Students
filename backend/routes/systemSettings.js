@@ -332,12 +332,30 @@ router.post('/force-gate-closure', async (req, res) => {
     const now = await getPhTime();
     const exitTime = now.toISOString().slice(0, 19).replace('T', ' ');
 
+    // Create or get system authentication record for auto-exits
+    const [systemAuthRows] = await db.query(
+      `SELECT auth_id FROM authentication WHERE method = 'SYSTEM' AND auth_status = 'AUTO-EXIT' LIMIT 1`
+    );
+
+    let systemAuthId;
+    if (systemAuthRows.length > 0) {
+      systemAuthId = systemAuthRows[0].auth_id;
+    } else {
+      // Insert a system auth record for auto-exits
+      const [authResult] = await db.query(
+        `INSERT INTO authentication (method, auth_status, timestamp)
+         VALUES ('SYSTEM', 'AUTO-EXIT', ?)`,
+        [exitTime]
+      );
+      systemAuthId = authResult.insertId;
+    }
+
     // Insert EXIT logs for all unmatched entries
     const insertPromises = rows.map(async (row) => {
       await db.query(
-        `INSERT INTO entry_exit_logs (student_id, action, log_time, gate_window_warning, gate_window_reason)
-         VALUES (?, 'EXIT', ?, 1, 'Force-closed: Gate closure forced by admin')`,
-        [row.student_id, exitTime]
+        `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
+         VALUES (?, ?, 'EXIT', ?, 1, 'Force-closed: Gate closure forced by admin')`,
+        [row.student_id, systemAuthId, exitTime]
       );
     });
 
