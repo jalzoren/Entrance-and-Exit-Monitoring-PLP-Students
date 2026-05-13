@@ -1560,6 +1560,4 @@ router.get('/sections', async (req, res) => {
   }
 });
 
-
-
 module.exports = router;
