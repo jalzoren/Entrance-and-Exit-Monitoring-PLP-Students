@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 13, 2026 at 12:31 PM
+-- Generation Time: May 13, 2026 at 12:51 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -87,7 +87,15 @@ INSERT INTO `authentication` (`auth_id`, `student_id`, `method`, `auth_status`, 
 (302, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:29', NULL, NULL, NULL, NULL),
 (303, '23-00173', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:35', NULL, NULL, NULL, NULL),
 (304, '23-00295', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:28:40', NULL, NULL, NULL, NULL),
-(305, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:29:40', NULL, NULL, NULL, NULL);
+(305, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:29:40', NULL, NULL, NULL, NULL),
+(306, '23-00298', 'FACIAL', 'SUCCESS', 'EXIT', NULL, NULL, '2026-05-13 18:43:00', NULL, 56.42, 425, 0.9895),
+(307, '23-00298', 'FACIAL', 'SUCCESS', 'ENTRY', NULL, NULL, '2026-05-13 18:43:21', NULL, 57.59, 424, 0.9973),
+(308, '23-00298', 'FACIAL', 'FAILED', 'ENTRY', NULL, NULL, '2026-05-13 18:43:41', 'DUPLICATE_ENTRY', 57.63, 436, 1.0000),
+(309, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:47:54', NULL, NULL, NULL, NULL),
+(310, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:00', NULL, NULL, NULL, NULL),
+(311, '23-00298', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:07', NULL, NULL, NULL, NULL),
+(312, '23-00174', 'MANUAL', 'SUCCESS', NULL, NULL, NULL, '2026-05-13 18:48:13', NULL, NULL, NULL, NULL),
+(313, NULL, '', '', NULL, NULL, NULL, '2026-05-13 10:50:06', NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -152,7 +160,14 @@ INSERT INTO `entry_exit_logs` (`log_id`, `student_id`, `auth_id`, `action`, `gat
 (279, '23-00174', 302, 'EXIT', 0, NULL, '2026-05-13 18:28:29'),
 (280, '23-00173', 303, 'EXIT', 0, NULL, '2026-05-13 18:28:35'),
 (281, '23-00295', 304, 'EXIT', 0, NULL, '2026-05-13 18:28:40'),
-(282, '23-00298', 305, 'ENTRY', 0, NULL, '2026-05-13 18:29:40');
+(282, '23-00298', 305, 'ENTRY', 0, NULL, '2026-05-13 18:29:40'),
+(283, '23-00298', 306, 'EXIT', 0, NULL, '2026-05-13 18:43:00'),
+(284, '23-00298', 307, 'ENTRY', 0, NULL, '2026-05-13 18:43:21'),
+(285, '23-00298', 309, 'EXIT', 0, NULL, '2026-05-13 18:47:54'),
+(286, '23-00298', 310, 'ENTRY', 0, NULL, '2026-05-13 18:48:00'),
+(287, '23-00298', 311, 'EXIT', 0, NULL, '2026-05-13 18:48:07'),
+(288, '23-00174', 312, 'ENTRY', 0, NULL, '2026-05-13 18:48:13'),
+(289, '23-00174', 313, 'EXIT', 1, 'Auto-exit: Gate closed – no exit recorded', '2026-05-13 10:50:06');
 
 -- --------------------------------------------------------
 
@@ -335,9 +350,9 @@ CREATE TABLE `system_settings` (
 
 INSERT INTO `system_settings` (`key`, `value`, `updated_at`) VALUES
 ('block_outside_window', 'true', '2026-05-13 18:30:14'),
-('gate_entry_end', '17:00', '2026-05-13 18:30:14'),
+('gate_entry_end', '16:00', '2026-05-13 18:48:49'),
 ('gate_entry_start', '07:00', '2026-05-13 15:23:00'),
-('gate_exit_end', '17:00', '2026-05-13 18:30:14'),
+('gate_exit_end', '16:00', '2026-05-13 18:48:49'),
 ('gate_exit_start', '07:00', '2026-05-13 15:23:00'),
 ('school_year_end', '2026', '2026-04-22 13:10:47'),
 ('school_year_start', '2025', '2026-04-22 13:10:47'),
@@ -472,7 +487,7 @@ ALTER TABLE `admins`
 -- AUTO_INCREMENT for table `authentication`
 --
 ALTER TABLE `authentication`
-  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=306;
+  MODIFY `auth_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=314;
 
 --
 -- AUTO_INCREMENT for table `departments`
@@ -484,7 +499,7 @@ ALTER TABLE `departments`
 -- AUTO_INCREMENT for table `entry_exit_logs`
 --
 ALTER TABLE `entry_exit_logs`
-  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=283;
+  MODIFY `log_id` bigint(20) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=290;
 
 --
 -- AUTO_INCREMENT for table `notifications`
