@@ -2,7 +2,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
-const { getTodayPhRange } = require('../src/time');
+const { getTodayPhRange, getPhTime } = require('../src/time');
 const { getGateStatus } = require('../src/gateUtils');
 
 const formatStudentName = (row) => {
@@ -47,14 +47,24 @@ const formatVisitorReason = (reason, otherReason) => {
 
 const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => {
   const gateStatus = await getGateStatus('EXIT');
+  
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate status: ${gateStatus.open ? 'OPEN' : 'CLOSED'}`);
+  console.log(`  Message: ${gateStatus.message}`);
+  console.log(`  Window: ${gateStatus.windowStart} – ${gateStatus.windowEnd}`);
+  
   if (gateStatus.open) {
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Gate is OPEN - auto-exit skipped`);
     return { updated: 0, gateStatus };
   }
 
   const { dayStart, dayEnd } = await getTodayPhRange(db);
+  
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Checking report range vs day range...`);
+  console.log(`  Report: ${rangeStart} → ${rangeEnd}`);
+  console.log(`  Day: ${dayStart} → ${dayEnd}`);
 
   if (rangeStart > dayStart || rangeEnd < dayEnd) {
-    // Only apply warnings for the current Philippine day when the gate is currently closed.
+    console.log(`[markUnexitedStudentsAsGateClosedWarning] Range does not cover full day - auto-exit skipped`);
     return { updated: 0, gateStatus };
   }
 
@@ -71,6 +81,8 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
        AND (eel.gate_window_warning <> 1 OR eel.gate_window_reason IS NULL OR LOWER(eel.gate_window_reason) NOT LIKE ?)`,
     [dayStart, dayEnd, 'still inside (%']
   );
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] Found ${rows.length} unmatched ENTRY logs`);
 
   if (!rows.length) {
     return { updated: 0, gateStatus };
@@ -89,6 +101,8 @@ const markUnexitedStudentsAsGateClosedWarning = async (rangeStart, rangeEnd) => 
   });
 
   await Promise.all(insertPromises);
+
+  console.log(`[markUnexitedStudentsAsGateClosedWarning] ✅ Auto-exit created for ${rows.length} student(s)`);
 
   return { updated: rows.length, gateStatus };
 };
