@@ -881,7 +881,7 @@ function SuperDashboard() {
           <MetricCard
             title="Total Students"
             value={formatNumber(metrics?.totalStudents)}
-            tooltip="Shows the total number of active students currently registered in the system."
+            tooltip="Shows the total number of students currently registered in the system."
           />
         </section>
 
