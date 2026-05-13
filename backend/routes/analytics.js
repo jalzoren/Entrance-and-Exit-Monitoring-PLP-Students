@@ -659,26 +659,26 @@ router.get('/report', async (req, res) => {
     if (reportType === 'visitors') {
       let visitorQuery = `
         SELECT 
-          vl.id,
-          vl.full_name,
-          vl.email,
-          vl.visit_reason,
-          vl.other_reason,
-          vl.action,
-          vl.log_time,
-          vl.qr_token
+          visitor_id,
+          full_name,
+          email,
+          reason,
+          other_reason,
+          action,
+          log_time,
+          qr_token
         FROM visitor_logs vl
-        WHERE vl.log_time BETWEEN ? AND ?
+        WHERE log_time BETWEEN ? AND ?
       `;
       
       const visitorParams = [rangeStart, rangeEnd];
       
       if (actionType && actionType !== 'both') {
-        visitorQuery += ' AND vl.action = ?';
+        visitorQuery += ' AND action = ?';
         visitorParams.push(actionType.toUpperCase());
       }
       
-      visitorQuery += ' ORDER BY vl.log_time DESC';
+      visitorQuery += ' ORDER BY log_time DESC';
       
       const [visitorRows] = await db.query(visitorQuery, visitorParams);
       
@@ -687,7 +687,7 @@ router.get('/report', async (req, res) => {
         dateTime: new Date(row.log_time).toLocaleString('en-PH', { hour12: true }),
         name: row.full_name,
         email: row.email || 'N/A',
-        reason: row.visit_reason === 'Other' ? row.other_reason : row.visit_reason,
+        reason: row.reason === 'Other' ? row.other_reason : row.reason,
         action: row.action === 'ENTRY' ? 'Entrance' : 'Exit',
         qrToken: row.qr_token || 'N/A'
       }));
@@ -1185,6 +1185,7 @@ router.get('/overall-success-rate', async (req, res) => {
 });
 
 
+// ── GET /api/analytics/visitor-logs ─────────────────────────────────────────
 // ── GET /api/analytics/visitor-logs ─────────────────────────────────────────
 router.get('/visitor-logs', async (req, res) => {
   try {
