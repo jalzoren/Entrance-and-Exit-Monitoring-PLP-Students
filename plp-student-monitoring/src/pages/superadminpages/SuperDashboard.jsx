@@ -685,6 +685,7 @@ function SuperDashboard() {
   const [filteredReportData, setFilteredReportData] = useState(null);
   const [appliedFilters, setAppliedFilters] = useState({});
   const pdfRef = useRef(null);
+  const [expandedGuide, setExpandedGuide] = useState(null);
 
   // Function to fetch users from backend
   const fetchUsers = useCallback(async () => {
@@ -896,45 +897,49 @@ function SuperDashboard() {
         <section className="quick-guide-section">
           <h3><FaBook /> Quick Guide &amp; FAQs</h3>
           <div className="guide-grid">
-            <div className="guide-card">
+            <div className="guide-card" onClick={() => setExpandedGuide('getting-started')} style={{ cursor: 'pointer' }}>
               <div className="guide-icon"><FaBook /></div>
               <h4>Getting Started</h4>
               <ul>
-                <li><FaCircle /> Monitor real-time entries/exits</li>
-                <li><FaCircle /> View daily traffic trends</li>
-                <li><FaCircle /> Check college distribution</li>
-                <li><FaCircle /> Generate reports weekly</li>
+                <li><FaCircle /> Monitor real-time entries/exits via Real-Time Monitor</li>
+                <li><FaCircle /> View daily traffic trends and college distribution</li>
+                <li><FaCircle /> Generate reports for analytics and audits</li>
+                <li><FaCircle /> Configure system-wide settings and academic years</li>
               </ul>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>Click to expand</p>
             </div>
-            <div className="guide-card">
+            <div className="guide-card" onClick={() => setExpandedGuide('faq')} style={{ cursor: 'pointer' }}>
               <div className="guide-icon"><FaQuestionCircle /></div>
               <h4>Frequently Asked</h4>
               <ul>
-                <li><FaCircle /> How to add new students?</li>
-                <li><FaCircle /> What if facial recognition fails?</li>
-                <li><FaCircle /> How to export reports?</li>
-                <li><FaCircle /> Who to contact for support?</li>
+                <li><FaCircle /> How do I add or manage system users and admins?</li>
+                <li><FaCircle /> How do I configure a new academic year?</li>
+                <li><FaCircle /> How can I reset a user's password?</li>
+                <li><FaCircle /> What's the difference between EEMS and EAMS admins?</li>
               </ul>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>Click to expand</p>
             </div>
-            <div className="guide-card">
+            <div className="guide-card" onClick={() => setExpandedGuide('tips')} style={{ cursor: 'pointer' }}>
               <div className="guide-icon"><FaBolt /></div>
               <h4>Quick Tips</h4>
               <ul>
-                <li><FaCircle /> Use filters to narrow logs</li>
-                <li><FaCircle /> Hover over cards for details</li>
-                <li><FaCircle /> Click charts to zoom</li>
-                <li><FaCircle /> Export data as CSV</li>
+                <li><FaCircle /> Use date filters in reports to analyze specific periods</li>
+                <li><FaCircle /> Monitor college distribution to identify peak hours</li>
+                <li><FaCircle /> Use role-based access to delegate admin tasks</li>
+                <li><FaCircle /> Review logs daily for suspicious patterns</li>
               </ul>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>Click to expand</p>
             </div>
-            <div className="guide-card">
+            <div className="guide-card" onClick={() => setExpandedGuide('contact')} style={{ cursor: 'pointer' }}>
               <div className="guide-icon"><FaHeadset /></div>
               <h4>Contact Support</h4>
               <ul>
-                <li><FaCircle /> IT Helpdesk: ext. 1234</li>
-                <li><FaCircle /> Email: support@plp.edu</li>
-                <li><FaCircle /> Hours: 8AM - 5PM</li>
+                <li><FaCircle /> Main Support Line: (+63) 2-1234-5678 ext. 1234</li>
+                <li><FaCircle /> General Email: ithelpdesk@plp.edu.ph</li>
+                <li><FaCircle /> Hours: Monday-Friday, 8:00 AM - 5:00 PM</li>
                 <li><FaCircle /> Emergency: 0917-123-4567</li>
               </ul>
+              <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '0.5rem' }}>Click to expand</p>
             </div>
           </div>
         </section>
@@ -1226,6 +1231,179 @@ function SuperDashboard() {
               }}>
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Expanded Guide Modal */}
+      {expandedGuide && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10001,
+          padding: '1rem',
+          backdropFilter: 'blur(2px)',
+        }} onClick={() => setExpandedGuide(null)}>
+          <div style={{
+            background: '#fff',
+            borderRadius: '12px',
+            boxShadow: '0 12px 48px rgba(0, 0, 0, 0.25)',
+            width: '100%',
+            maxWidth: '700px',
+            maxHeight: '80vh',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            animation: 'slideUp 0.3s ease',
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '1.5rem',
+              borderBottom: '1px solid rgba(0, 0, 0, 0.08)',
+              background: 'linear-gradient(135deg, rgba(84, 135, 114, 0.05), rgba(217, 146, 1, 0.05))',
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: '1.25rem',
+                color: '#123',
+                fontFamily: '"Montserrat", sans-serif',
+                fontWeight: 600,
+              }}>
+                {expandedGuide === 'getting-started' && 'Getting Started'}
+                {expandedGuide === 'faq' && 'Frequently Asked Questions'}
+                {expandedGuide === 'tips' && 'Quick Tips & Best Practices'}
+                {expandedGuide === 'contact' && 'Contact Support'}
+              </h2>
+              <button style={{
+                background: 'none',
+                border: 'none',
+                fontSize: '28px',
+                color: '#999',
+                cursor: 'pointer',
+                padding: 0,
+                width: '32px',
+                height: '32px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease',
+              }} onClick={() => setExpandedGuide(null)} onMouseEnter={(e) => {
+                e.target.style.background = 'rgba(0, 0, 0, 0.08)';
+                e.target.style.color = '#123';
+              }} onMouseLeave={(e) => {
+                e.target.style.background = 'none';
+                e.target.style.color = '#999';
+              }}>
+                ✕
+              </button>
+            </div>
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '1.5rem',
+              fontFamily: '"Montserrat", sans-serif',
+              fontSize: '0.95rem',
+              lineHeight: '1.7',
+              color: '#333',
+            }}>
+              {expandedGuide === 'getting-started' && (
+                <>
+                  <h3 style={{ marginTop: 0, color: '#123', fontSize: '1.1rem', fontWeight: 600 }}>Key Features</h3>
+                  <ul style={{ paddingLeft: '1.5rem', margin: '0.75rem 0' }}>
+                    <li style={{ margin: '0.75rem 0' }}><strong>Monitor real-time entries/exits</strong> via Real-Time Monitor</li>
+                    <li style={{ margin: '0.75rem 0' }}><strong>View daily traffic trends</strong> and college distribution in Analytics & Reports</li>
+                    <li style={{ margin: '0.75rem 0' }}><strong>Generate reports</strong> for analytics</li>
+                    <li style={{ margin: '0.75rem 0' }}><strong>Configure system-wide settings</strong> and academic years</li>
+                    <li style={{ margin: '0.75rem 0' }}><strong>Manage users</strong> and assign roles</li>
+                  </ul>
+                  <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
+                  <p style={{ color: '#666', fontSize: '0.9rem' }}>
+                    As a Super Admin, you have full access to all system functions. Use the Quick Actions panel to access key features directly.
+                  </p>
+                </>
+              )}
+
+              {expandedGuide === 'faq' && (
+                <>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>How do I add or manage system users and admins?</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Click "User Management" in the Side Bar. From there, you can view all users, manage their roles, and create new admin accounts.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>How do I configure a new academic year?</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Go to System Settings and look for the Academic Year configuration. Set the start and end dates, then save the settings.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>How can I reset a user's password?</h4>
+                    <p style={{ margin: 0, color: '#666' }}>In the Users Management, find the user then click edit button then input the new password.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>How do can I set CAMPUS ENTRY WINDOW and CAMPUS EXIT WINDOW?</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Access System Settings and navigate to Gate Settings.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>What's the difference between EEMS Admin and EAMS Admin roles?</h4>
+                    <p style={{ margin: 0, color: '#666' }}>EEMS Admin (Entrance & Exit Monitoring System) manages student monitoring, while EAMS Admin (Attendance & Assessment Management System) handles Employee Attendance Monitoring. Super Admin oversees both systems.</p>
+                  </div>
+                </>
+              )}
+
+              {expandedGuide === 'tips' && (
+                <>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', borderLeft: '4px solid #548772', borderRadius: '4px' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>Use date filters in reports</h4>
+                    <p style={{ margin: 0, color: '#666' }}>When generating reports, always use date filters to analyze specific periods. This helps identify trends and anomalies.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', borderLeft: '4px solid #D99201', borderRadius: '4px' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>Monitor college distribution</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Review the college distribution charts on the Analytics & Reports tab to see current campus population.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', borderLeft: '4px solid #548772', borderRadius: '4px' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>Use role-based access</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Delegate administrative tasks by assigning appropriate roles to other admins. This improves efficiency and security.</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f9f9f9', borderLeft: '4px solid #D99201', borderRadius: '4px' }}>
+                    <h4 style={{ color: '#123', marginTop: 0, marginBottom: '0.5rem' }}>Review logs daily</h4>
+                    <p style={{ margin: 0, color: '#666' }}>Check entry and exit logs daily for suspicious patterns, missed records, or system errors.</p>
+                  </div>
+                </>
+              )}
+
+              {expandedGuide === 'contact' && (
+                <>
+                  <h3 style={{ marginTop: 0, color: '#123', fontSize: '1.1rem', fontWeight: 600 }}>Main Support Channels</h3>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f8ff', borderLeft: '4px solid #548772', borderRadius: '4px' }}>
+                    <p style={{ margin: 0 }}><strong>📞 Main Support Line:</strong> (+63) 2-1234-5678 ext. 1234</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f8ff', borderLeft: '4px solid #548772', borderRadius: '4px' }}>
+                    <p style={{ margin: 0 }}><strong>✉️ General Email:</strong> ithelpdesk@plp.edu.ph</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f0f8ff', borderLeft: '4px solid #548772', borderRadius: '4px' }}>
+                    <p style={{ margin: 0 }}><strong>⏰ Business Hours:</strong> Monday-Friday, 8:00 AM - 5:00 PM</p>
+                  </div>
+                  <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#ffe0e0', borderLeft: '4px solid #d11100', borderRadius: '4px' }}>
+                    <p style={{ margin: 0 }}><strong>🚨 After-Hours Emergency:</strong> 0917-123-4567</p>
+                  </div>
+                  <hr style={{ margin: '1.5rem 0', border: 'none', borderTop: '1px solid #ddd' }} />
+                  <h4 style={{ color: '#123', marginTop: '1.5rem', marginBottom: '1rem', fontWeight: 600 }}>Specialized Support</h4>
+                  <div style={{ marginBottom: '1rem' }}>
+                    <p style={{ margin: '0.5rem 0' }}><strong>📧 Facial Recognition Issues:</strong> fr_support@plp.edu.ph</p>
+                    <p style={{ margin: '0.5rem 0' }}><strong>📧 System Access/Login Problems:</strong> sysaccess@plp.edu.ph</p>
+                    <p style={{ margin: '0.5rem 0' }}><strong>📧 Reports & Analytics:</strong> analytics@plp.edu.ph</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
