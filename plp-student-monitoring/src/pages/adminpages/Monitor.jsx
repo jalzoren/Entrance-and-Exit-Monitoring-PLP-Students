@@ -3,6 +3,22 @@ import "../../css/RealTimeMonitor.css";
 import '../../css/Monitor.css';
 import { reportToXml, xmlToReport, downloadXml } from '../../utils/xmlReportUtils';
 
+// Helper function to get Philippine date range for today
+const getTodayPhilippineRange = () => {
+  const now = new Date();
+  // Convert to Philippine time (UTC+8)
+  const phTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Manila' }));
+  
+  const year = phTime.getFullYear();
+  const month = String(phTime.getMonth() + 1).padStart(2, '0');
+  const day = String(phTime.getDate()).padStart(2, '0');
+  
+  const dayStart = `${year}-${month}-${day} 00:00:00`;
+  const dayEnd = `${year}-${month}-${day} 23:59:59`;
+  
+  return { dayStart, dayEnd };
+};
+
 // API Service - fetch logs from the analytics routes using XML
 const MonitorService = {
   async fetchAllLogs(filters = {}) {
@@ -123,15 +139,15 @@ const MonitorService = {
       logs.sort((a, b) => {
         const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
         const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-        return timeB - timeA; // Changed to descending (newest first)
+        return timeB - timeA;
       });
       
-      // Calculate current students inside from the logs (still need chronological order for calculation)
+      // Calculate current students inside from the logs
       const studentsInsideList = calculateStudentsInsideFromLogs(logs);
       const studentsInside = studentsInsideList.length;
       
       console.log(`Fetched ${logs.length} unique logs (newest to oldest)`);
-      console.log(`Calculated ${studentsInside} students inside`);
+      console.log(`Calculated ${studentsInside} students inside from logs`);
       
       return { logs, studentsInside, studentsInsideList };
     } catch (err) {
@@ -144,7 +160,9 @@ const MonitorService = {
     try {
       const res = await fetch('/api/analytics/metrics');
       if (!res.ok) throw new Error(`metrics: HTTP ${res.status}`);
-      return await res.json();
+      const data = await res.json();
+      console.log('[MonitorService.fetchMetrics] Response:', data);
+      return data;
     } catch (err) {
       console.error('[MonitorService.fetchMetrics] ERROR:', err.message);
       return { totalStudents: 0, onCampus: 0 };
@@ -177,7 +195,6 @@ const MonitorService = {
 };
 
 // Helper function to calculate students inside from logs
-// This needs chronological order, so we sort ascending inside this function
 function calculateStudentsInsideFromLogs(logs) {
   const insideMap = new Map();
   
@@ -185,7 +202,7 @@ function calculateStudentsInsideFromLogs(logs) {
   const sortedLogs = [...logs].sort((a, b) => {
     const timeA = a.timestamp || 0;
     const timeB = b.timestamp || 0;
-    return timeA - timeB; // Ascending for calculation
+    return timeA - timeB;
   });
 
   for (const log of sortedLogs) {
@@ -283,7 +300,7 @@ function StudentsInsideModal({ isOpen, onClose, studentsInsideList, studentsCoun
         </div>
         <div className="modal-body">
           <div className="students-count-badge">
-            Total Students Inside: <span className="count-number">{studentsCount}</span>
+            Total Students Inside (Today): <span className="count-number">{studentsCount}</span>
           </div>
           {studentsInsideList.length === 0 ? (
             <div className="no-students-message">
@@ -352,7 +369,7 @@ export default function Monitor() {
     }
   };
 
-  // Filter logs based on active filter - already in descending order from API
+  // Filter logs based on active filter
   useEffect(() => {
     let filtered = [];
     
@@ -366,26 +383,24 @@ export default function Monitor() {
       filtered = allLogs.filter(log => log.failed === true);
     }
     
-    // Logs are already sorted descending from API, keep them that way
+    // Keep descending order (newest first)
     const sortedFiltered = filtered.sort((a, b) => {
       const timeA = a.timestamp || 0;
       const timeB = b.timestamp || 0;
-      return timeB - timeA; // Descending (newest first)
+      return timeB - timeA;
     });
     
     setFilteredLogs(sortedFiltered);
     
-    // Scroll to top after filter change to see newest logs
     setTimeout(scrollToTop, 100);
   }, [allLogs, activeFilter]);
 
-  // Auto-scroll to top when new logs are added (to see newest first)
+  // Auto-scroll to top when new logs are added
   useEffect(() => {
     const currentLength = filteredLogs.length;
     const prevLength = prevLogsLengthRef.current;
     
     if (currentLength > prevLength) {
-      // New logs added - scroll to top to see them (newest first)
       scrollToTop();
     }
     
@@ -399,24 +414,34 @@ export default function Monitor() {
     console.log("Fetching logs from API...", new Date().toLocaleTimeString());
     
     try {
-      const today = new Date();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(today.getDate() - 30);
+      // Use TODAY's Philippine date range to match Analytics
+      const { dayStart, dayEnd } = getTodayPhilippineRange();
+      const fromDate = dayStart.split(' ')[0];
+      const toDate = dayEnd.split(' ')[0];
       
-      const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-      const toDate = today.toISOString().split('T')[0];
+      console.log(`Fetching logs for date range: ${fromDate} to ${toDate}`);
       
       const { logs, studentsInside, studentsInsideList: insideList } = await MonitorService.fetchAllLogs({
         from: fromDate,
         to: toDate
       });
       
+      // Also fetch metrics from API for consistency with Analytics
+      const metrics = await MonitorService.fetchMetrics();
+      const apiStudentsInside = metrics.onCampus || 0;
+      
+      console.log(`Monitor calculated: ${studentsInside} students inside`);
+      console.log(`Analytics API says: ${apiStudentsInside} students inside`);
+      
+      // Use the API value for consistency with Analytics dashboard
+      const finalCount = apiStudentsInside;
+      
       if (isMountedRef.current) {
         setAllLogs(logs);
-        setStudentsInsideCount(studentsInside);
+        setStudentsInsideCount(finalCount);
         setStudentsInsideList(insideList);
         setLastRefresh(new Date());
-        console.log(`Fetched ${logs.length} logs (newest to oldest), ${studentsInside} students inside`);
+        console.log(`Fetched ${logs.length} logs for today, ${finalCount} students inside (from API)`);
       }
       
     } catch (error) {
@@ -430,12 +455,9 @@ export default function Monitor() {
 
   const handleExportXml = async () => {
     try {
-      const today = new Date();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(today.getDate() - 30);
-      
-      const fromDate = thirtyDaysAgo.toISOString().split('T')[0];
-      const toDate = today.toISOString().split('T')[0];
+      const { dayStart, dayEnd } = getTodayPhilippineRange();
+      const fromDate = dayStart.split(' ')[0];
+      const toDate = dayEnd.split(' ')[0];
       
       await MonitorService.exportToXml({
         from: fromDate,
@@ -474,12 +496,11 @@ export default function Monitor() {
         refreshIntervalRef.current = null;
       }
     };
-  }, []); // Empty dependency array - only run once on mount
+  }, []);
 
   const handleFilterChange = (filter) => {
     setActiveFilter(filter);
     autoScrollRef.current = true;
-    // Scroll will happen in the useEffect after filteredLogs updates
   };
 
   const handleManualRefresh = () => {
@@ -504,7 +525,7 @@ export default function Monitor() {
         <div className="rtm-card">
           <div className="rtm-subheader-horizontal">
             <div className="rtm-student-count">
-              Students Currently Inside: 
+              Students Currently Inside (Today): 
               <span className="rtm-student-count-num">{studentsInsideCount}</span>
               <button 
                 className="view-students-btn"
@@ -568,10 +589,10 @@ export default function Monitor() {
               <div className="logs-container">
                 {filteredLogs.length === 0 ? (
                   <div className="rtm-empty-state">
-                    {activeFilter === 'entered' ? 'No entered records yet' : 
-                     activeFilter === 'exited' ? 'No exited records yet' : 
+                    {activeFilter === 'entered' ? 'No entered records today' : 
+                     activeFilter === 'exited' ? 'No exited records today' : 
                      activeFilter === 'failed' ? 'No failed attempts recorded' : 
-                     'No activity logs to display'}
+                     'No activity logs to display for today'}
                   </div>
                 ) : (
                   filteredLogs.map((log, i) => (
