@@ -1,492 +1,500 @@
-/**
- * xmlReportUtils.js
- * 
- * Converts report data (from /api/analytics/report) to an XML string,
- * and provides a parser that reads that XML back into a structured object
- * for use by GenerateReportPdf.
- *
- * WHY XML:
- * - Satisfies the project requirement to use XML in the system.
- * - Acts as a clean, portable document format between the backend response
- *   and the PDF renderer — the same XML could be saved, emailed, or re-imported.
- *
- * FLOW:
- *   API response (JSON)
- *     → reportToXml()   → XML string  (can be stored / inspected)
- *     → xmlToReport()   → report object (fed into GenerateReportPdf)
- */
-
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Escape special XML characters in a string value. */
-function esc(val) {
-  if (val === null || val === undefined) return '';
-  return String(val)
-    .replace(/&/g,  '&amp;')
-    .replace(/</g,  '&lt;')
-    .replace(/>/g,  '&gt;')
-    .replace(/"/g,  '&quot;')
-    .replace(/'/g,  '&apos;');
-}
-
-/** Wrap content in a tag with optional attributes. */
-function tag(name, content, attrs = {}) {
-  const attrStr = Object.entries(attrs)
-    .map(([k, v]) => ` ${k}="${esc(v)}"`)
-    .join('');
-  if (content === null || content === undefined || content === '') {
-    return `<${name}${attrStr}/>`;
-  }
-  return `<${name}${attrStr}>${content}</${name}>`;
-}
-
-/** Create a self-closing tag with all data as attributes (useful for simple rows). */
-function attrTag(name, obj) {
-  const attrs = Object.entries(obj)
-    .map(([k, v]) => ` ${k}="${esc(v)}"`)
-    .join('');
-  return `<${name}${attrs}/>`;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// JSON → XML
-// ─────────────────────────────────────────────────────────────────────────────
+// XML Report Utilities for EEMS
 
 /**
- * Convert a report data object (as returned by GET /api/analytics/report)
- * into a well-formed XML string.
- *
- * @param {Object} reportData  - The object from AnalyticsService.fetchReport()
- * @param {Object} filters     - The filter params used to generate the report
- * @returns {string}           - UTF-8 XML string
+ * Converts report data to XML format
+ * @param {Object} data - Report data from API
+ * @param {Object} filters - Applied filters
+ * @returns {string} XML string
  */
-export function reportToXml(reportData, filters = {}) {
-  const {
-    generatedAt    = new Date().toISOString(),
-    dateRange      = 'All Time',
-    totalStudents  = 0,
-    currentOnCampus = 0,
-    totalEntries   = 0,
-    authSuccessRate = 0,
-    peakHour       = null,
-    entryLogs      = [],
-    exitLogs       = [],
-    studentLogs    = [],
-    collegeData    = [],
-    authData       = [],
-    trafficData    = [],
-    trafficInsights = {},
-    visitorData    = [],
-  } = reportData;
-
-  // Determine which logs to use (prefer separated logs if available)
-  const finalEntryLogs = entryLogs && entryLogs.length > 0 
-    ? entryLogs 
-    : studentLogs.filter(log => {
-        const action = (log.action || '').toUpperCase();
-        return action === 'ENTRY' || action === 'ENTRANCE';
-      });
-  
-  const finalExitLogs = exitLogs && exitLogs.length > 0
-    ? exitLogs
-    : studentLogs.filter(log => {
-        const action = (log.action || '').toUpperCase();
-        return action === 'EXIT';
-      });
-
-  // ── Meta ────────────────────────────────────────────────────────────────
-  const metaXml = tag('meta',
-    tag('generatedAt', esc(generatedAt)) +
-    tag('dateRange',   esc(dateRange)) +
-    tag('totalStudents', totalStudents) +
-    tag('currentOnCampus', currentOnCampus) +
-    tag('totalEntries', totalEntries) +
-    tag('authSuccessRate', authSuccessRate) +
-    tag('peakHour', esc(peakHour ? (typeof peakHour === 'object' ? peakHour.hour || JSON.stringify(peakHour) : peakHour) : 'N/A')) +
-    tag('filters',
-      tag('from',       esc(filters.from || filters.dateRange?.from || '')) +
-      tag('to',         esc(filters.to   || filters.dateRange?.to   || '')) +
-      tag('department', esc(filters.dept || filters.collegeDepartment || '')) +
-      tag('actionType', esc(filters.actionType || 'both'))
-    )
-  );
-
-  // ── Traffic summary ──────────────────────────────────────────────────────
-  const trafficSummaryXml = tag('trafficSummary',
-    tag('highest', esc(trafficInsights?.highest?.date || 'N/A')) +
-    tag('highestEntries', trafficInsights?.highest?.entrance || 0) +
-    tag('lowest',  esc(trafficInsights?.lowest?.date || 'N/A')) +
-    tag('lowestEntries', trafficInsights?.lowest?.entrance || 0)
-  );
-
-  // ── Traffic chart data ───────────────────────────────────────────────────
-  const trafficChartXml = tag('trafficChart',
-    (Array.isArray(trafficData) ? trafficData : []).map(d =>
-      attrTag('day', { 
-        date: d.date, 
-        entrance: d.entrance ?? d.entrances ?? 0, 
-        exit: d.exit ?? d.exits ?? 0 
-      })
-    ).join('\n    ')
-  );
-
-  // ── College / department distribution ────────────────────────────────────
-  const collegeXml = tag('collegeDistribution',
-    (Array.isArray(collegeData) ? collegeData : []).map((c, i) =>
-      tag('college', null, {
-        no:              i + 1,
-        name:            c.displayName || c.fullCollegeName || c.collegeName || c.dept_name || 'Unknown',
-        presentNow:      c.presentNow ?? c.presenceNow ?? c.currentStudents ?? 0,
-        totalEnrolled:   c.totalEnrolled ?? c.totalStudents ?? 0,
-        percentagePresent: c.percentagePresent?.toFixed(1) ?? 0,
-        percentageOfCampus: c.percentageOfCampus?.toFixed(1) ?? 0,
-      })
-    ).join('\n    ')
-  );
-
-  // ── Authentication method breakdown ──────────────────────────────────────
-  const authXml = tag('authMethods',
-    (Array.isArray(authData) ? authData : []).map((a, i) =>
-      tag('method', null, {
-        no:          i + 1,
-        name:        a.method || a.authentication_method || 'Unknown',
-        attempts:    a.attempts || a.total_attempts || 0,
-        successRate: a.successRate || a.success_rate || 0,
-      })
-    ).join('\n    ')
-  );
-
-  // ── Visitor stats ────────────────────────────────────────────────────────
-  const visitorXml = tag('visitorStats',
-    (Array.isArray(visitorData) ? visitorData : []).map((v, i) =>
-      attrTag('visitor', {
-        name:  v.name || (v.action?.toUpperCase() === 'ENTRY' ? 'ENTRY' : 'EXIT'),
-        value: v.value || 1,
-      })
-    ).join('\n    ')
-  );
-
-  // ── ENTRY Logs (separate table) ──────────────────────────────────────────
-  const entryLogsXml = tag('entryLogs',
-    finalEntryLogs.map((l, i) =>
-      tag('entry', null, {
-        no:         i + 1,
-        dateTime:   l.dateTime || l.date || l.time || l.timestamp || '',
-        studentId:  l.studentId || l.student_id || 'N/A',
-        name:       l.name || l.student_name || 'Unknown',
-        department: l.department || l.collegeDept || l.college || 'N/A',
-        yearLevel:  l.yearLevel || l.year || 'N/A',
-        method:     l.method || l.authMethod || 'Face Recognition',
-      })
-    ).join('\n    ')
-  );
-
-  // ── EXIT Logs (separate table) ───────────────────────────────────────────
-  const exitLogsXml = tag('exitLogs',
-    finalExitLogs.map((l, i) =>
-      tag('exit', null, {
-        no:         i + 1,
-        dateTime:   l.dateTime || l.date || l.time || l.timestamp || '',
-        studentId:  l.studentId || l.student_id || 'N/A',
-        name:       l.name || l.student_name || 'Unknown',
-        department: l.department || l.collegeDept || l.college || 'N/A',
-        yearLevel:  l.yearLevel || l.year || 'N/A',
-        method:     l.method || l.authMethod || 'Face Recognition',
-      })
-    ).join('\n    ')
-  );
-
-  return [
+export const reportToXml = (data, filters = {}) => {
+  const date = new Date();
+  const xmlParts = [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    '<?xml-stylesheet type="text/xsl" href="eems-report.xslt"?>',
-    '<eems-report>',
-    '  ' + metaXml,
-    '  ' + trafficSummaryXml,
-    '  ' + trafficChartXml,
-    '  ' + collegeXml,
-    '  ' + authXml,
-    '  ' + visitorXml,
-    '  ' + tag('logs',
-      '    ' + entryLogsXml + '\n    ' + exitLogsXml
-    ),
-    '</eems-report>',
-  ].join('\n');
-}
+    '<eems_report>',
+    '  <summary>',
+    `    <totalStudents>${data.totalStudents || 0}</totalStudents>`,
+    `    <currentOnCampus>${data.currentOnCampus || data.studentsInside || 0}</currentOnCampus>`,
+    `    <totalEntries>${data.totalEntries || 0}</totalEntries>`,
+    `    <totalExits>${data.totalExits || 0}</totalExits>`,
+    `    <failedAttempts>${data.failedAttempts?.length || 0}</failedAttempts>`,
+    `    <reportDate>${date.toISOString().split('T')[0]}</reportDate>`,
+    `    <reportTime>${date.toLocaleTimeString()}</reportTime>`,
+    '    <dateRange>',
+    `      <from>${filters.from || 'N/A'}</from>`,
+    `      <to>${filters.to || 'N/A'}</to>`,
+    '    </dateRange>',
+    `    <filterApplied>${filters.actionType || 'all'}</filterApplied>`,
+    '  </summary>'
+  ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// XML → JSON  (for re-importing or feeding into PDF renderer)
-// ─────────────────────────────────────────────────────────────────────────────
+  // Add authentication methods section
+  xmlParts.push('  <authentication_methods>');
+  if (data.authData && Array.isArray(data.authData)) {
+    data.authData.forEach(method => {
+      xmlParts.push('    <method>');
+      xmlParts.push(`      <name>${escapeXml(method.method || method.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <attempts>${method.attempts || 0}</attempts>`);
+      xmlParts.push(`      <success>${method.success || 0}</success>`);
+      xmlParts.push(`      <successRate>${method.successRate || 0}</successRate>`);
+      xmlParts.push('    </method>');
+    });
+  }
+  xmlParts.push('  </authentication_methods>');
 
-/**
- * Parse an XML string (produced by reportToXml) back into a report data object.
- * Uses the browser's built-in DOMParser — no extra library needed.
- *
- * @param {string} xmlString
- * @returns {Object} report data object compatible with GenerateReportPdf
- */
-export function xmlToReport(xmlString) {
-  const parser = new DOMParser();
-  const doc    = parser.parseFromString(xmlString, 'application/xml');
+  // Add department distribution section
+  xmlParts.push('  <department_distribution>');
+  if (data.collegeData && Array.isArray(data.collegeData)) {
+    data.collegeData.forEach(dept => {
+      xmlParts.push('    <department>');
+      xmlParts.push(`      <name>${escapeXml(dept.fullCollegeName || dept.collegeName || dept.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <presentNow>${dept.presenceNow || 0}</presentNow>`);
+      xmlParts.push(`      <totalEnrolled>${dept.totalStudents || 0}</totalEnrolled>`);
+      xmlParts.push(`      <percentage>${dept.percentage || 0}</percentage>`);
+      xmlParts.push('    </department>');
+    });
+  }
+  xmlParts.push('  </department_distribution>');
 
-  const parseError = doc.querySelector('parsererror');
-  if (parseError) throw new Error('Invalid XML: ' + parseError.textContent);
+  // Add traffic data section
+  xmlParts.push('  <traffic_data>');
+  if (data.trafficData && Array.isArray(data.trafficData)) {
+    data.trafficData.forEach(day => {
+      xmlParts.push('    <day>');
+      xmlParts.push(`      <date>${day.date || 'N/A'}</date>`);
+      xmlParts.push(`      <entrance>${day.entrance || 0}</entrance>`);
+      xmlParts.push(`      <exit>${day.exit || 0}</exit>`);
+      xmlParts.push('    </day>');
+    });
+  }
+  xmlParts.push('  </traffic_data>');
 
-  const getText  = (parent, selector) => parent.querySelector(selector)?.textContent?.trim() ?? '';
-  const getNum   = (parent, selector) => Number(getText(parent, selector)) || 0;
-  const getAttr  = (el, name)         => el.getAttribute(name) ?? '';
-  const getNumA  = (el, name)         => Number(el.getAttribute(name)) || 0;
-
-  // ── Meta ────────────────────────────────────────────────────────────────
-  const meta = doc.querySelector('meta');
-  const generatedAt     = getText(meta, 'generatedAt');
-  const dateRange       = getText(meta, 'dateRange');
-  const totalStudents   = getNum(meta, 'totalStudents');
-  const currentOnCampus = getNum(meta, 'currentOnCampus');
-  const totalEntries    = getNum(meta, 'totalEntries');
-  const authSuccessRate = getNum(meta, 'authSuccessRate');
-  const peakHour        = getText(meta, 'peakHour');
+  // Add logs section
+  xmlParts.push('  <logs>');
   
-  const filters = {
-    from:        getText(meta, 'filters > from'),
-    to:          getText(meta, 'filters > to'),
-    department:  getText(meta, 'filters > department'),
-    actionType:  getText(meta, 'filters > actionType'),
+  // Student logs (entries and exits)
+  if (data.studentLogs && Array.isArray(data.studentLogs)) {
+    data.studentLogs.forEach(log => {
+      xmlParts.push('    <log>');
+      xmlParts.push(`      <type>student</type>`);
+      xmlParts.push(`      <studentId>${escapeXml(log.studentId || 'N/A')}</studentId>`);
+      xmlParts.push(`      <name>${escapeXml(log.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <department>${escapeXml(log.collegeDept || log.department || 'N/A')}</department>`);
+      xmlParts.push(`      <yearLevel>${escapeXml(log.yearLevel || 'N/A')}</yearLevel>`);
+      xmlParts.push(`      <action>${log.action || 'N/A'}</action>`);
+      xmlParts.push(`      <method>${escapeXml(log.method || 'Unknown')}</method>`);
+      xmlParts.push(`      <date>${log.date || 'N/A'}</date>`);
+      xmlParts.push(`      <time>${log.time || 'N/A'}</time>`);
+      xmlParts.push(`      <timestamp>${log.timestamp || ''}</timestamp>`);
+      xmlParts.push('    </log>');
+    });
+  }
+
+  // Entry logs
+  if (data.entryLogs && Array.isArray(data.entryLogs)) {
+    data.entryLogs.forEach(log => {
+      xmlParts.push('    <log>');
+      xmlParts.push(`      <type>entry</type>`);
+      xmlParts.push(`      <studentId>${escapeXml(log.studentId || 'N/A')}</studentId>`);
+      xmlParts.push(`      <name>${escapeXml(log.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <department>${escapeXml(log.collegeDept || log.department || 'N/A')}</department>`);
+      xmlParts.push(`      <yearLevel>${escapeXml(log.yearLevel || 'N/A')}</yearLevel>`);
+      xmlParts.push(`      <action>ENTRY</action>`);
+      xmlParts.push(`      <method>${escapeXml(log.method || 'RFID')}</method>`);
+      xmlParts.push(`      <date>${log.date || 'N/A'}</date>`);
+      xmlParts.push(`      <time>${log.time || 'N/A'}</time>`);
+      xmlParts.push(`      <timestamp>${log.timestamp || ''}</timestamp>`);
+      xmlParts.push('    </log>');
+    });
+  }
+
+  // Exit logs
+  if (data.exitLogs && Array.isArray(data.exitLogs)) {
+    data.exitLogs.forEach(log => {
+      xmlParts.push('    <log>');
+      xmlParts.push(`      <type>exit</type>`);
+      xmlParts.push(`      <studentId>${escapeXml(log.studentId || 'N/A')}</studentId>`);
+      xmlParts.push(`      <name>${escapeXml(log.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <department>${escapeXml(log.collegeDept || log.department || 'N/A')}</department>`);
+      xmlParts.push(`      <yearLevel>${escapeXml(log.yearLevel || 'N/A')}</yearLevel>`);
+      xmlParts.push(`      <action>EXIT</action>`);
+      xmlParts.push(`      <method>${escapeXml(log.method || 'RFID')}</method>`);
+      xmlParts.push(`      <date>${log.date || 'N/A'}</date>`);
+      xmlParts.push(`      <time>${log.time || 'N/A'}</time>`);
+      xmlParts.push(`      <timestamp>${log.timestamp || ''}</timestamp>`);
+      xmlParts.push('    </log>');
+    });
+  }
+
+  // Failed attempts
+  if (data.failedAttempts && Array.isArray(data.failedAttempts)) {
+    data.failedAttempts.forEach(log => {
+      xmlParts.push('    <log>');
+      xmlParts.push(`      <type>failed</type>`);
+      xmlParts.push(`      <name>${escapeXml(log.name || 'Unknown')}</name>`);
+      xmlParts.push(`      <action>FAILED</action>`);
+      xmlParts.push(`      <method>${escapeXml(log.method || 'Unknown')}</method>`);
+      xmlParts.push(`      <date>${log.date || 'N/A'}</date>`);
+      xmlParts.push(`      <time>${log.time || 'N/A'}</time>`);
+      xmlParts.push(`      <timestamp>${log.timestamp || ''}</timestamp>`);
+      if (log.reason) xmlParts.push(`      <reason>${escapeXml(log.reason)}</reason>`);
+      xmlParts.push('    </log>');
+    });
+  }
+
+  xmlParts.push('  </logs>');
+  xmlParts.push('</eems_report>');
+
+  return xmlParts.join('\n');
+};
+
+/**
+ * Converts XML string back to report object
+ * @param {string} xmlString - XML string to parse
+ * @returns {Object} Report data object
+ */
+export const xmlToReport = (xmlString) => {
+  const parser = new DOMParser();
+  const xmlDoc = parser.parseFromString(xmlString, 'text/xml');
+  
+  // Check for parsing errors
+  const parserError = xmlDoc.querySelector('parsererror');
+  if (parserError) {
+    console.error('XML parsing error:', parserError.textContent);
+    return null;
+  }
+
+  const report = {
+    summary: {},
+    authData: [],
+    collegeData: [],
+    trafficData: [],
+    logs: [],
+    studentLogs: [],
+    entryLogs: [],
+    exitLogs: [],
+    failedAttempts: []
   };
 
-  // ── Traffic summary ──────────────────────────────────────────────────────
-  const ts = doc.querySelector('trafficSummary');
-  const trafficInsights = {
-    highest: {
-      date:     getText(ts, 'highest'),
-      entrance: getNum(ts, 'highestEntries'),
-    },
-    lowest: {
-      date:     getText(ts, 'lowest'),
-      entrance: getNum(ts, 'lowestEntries'),
-    },
-  };
-
-  // ── Traffic chart ────────────────────────────────────────────────────────
-  const trafficData = Array.from(doc.querySelectorAll('trafficChart > day')).map(el => ({
-    date:     getAttr(el, 'date'),
-    entrance: getNumA(el, 'entrance'),
-    exit:     getNumA(el, 'exit'),
-  }));
-
-  // ── College distribution ─────────────────────────────────────────────────
-  const collegeData = Array.from(doc.querySelectorAll('collegeDistribution > college')).map(el => ({
-    displayName:        getAttr(el, 'name'),
-    presentNow:         getNumA(el, 'presentNow'),
-    totalEnrolled:      getNumA(el, 'totalEnrolled'),
-    percentagePresent:  parseFloat(getAttr(el, 'percentagePresent')) || 0,
-    percentageOfCampus: parseFloat(getAttr(el, 'percentageOfCampus')) || 0,
-  }));
-
-  // ── Auth methods ─────────────────────────────────────────────────────────
-  const authData = Array.from(doc.querySelectorAll('authMethods > method')).map(el => ({
-    method:      getAttr(el, 'name'),
-    attempts:    getNumA(el, 'attempts'),
-    successRate: getNumA(el, 'successRate'),
-  }));
-
-  // ── Visitor stats ────────────────────────────────────────────────────────
-  const visitorData = Array.from(doc.querySelectorAll('visitorStats > visitor')).map(el => ({
-    name:  getAttr(el, 'name'),
-    value: getNumA(el, 'value'),
-  }));
-
-  // ── ENTRY Logs (separate) ────────────────────────────────────────────────
-  const entryLogs = Array.from(doc.querySelectorAll('entryLogs > entry')).map(el => ({
-    no:         getNumA(el, 'no'),
-    dateTime:   getAttr(el, 'dateTime'),
-    studentId:  getAttr(el, 'studentId'),
-    name:       getAttr(el, 'name'),
-    department: getAttr(el, 'department'),
-    yearLevel:  getAttr(el, 'yearLevel'),
-    method:     getAttr(el, 'method'),
-  }));
-
-  // ── EXIT Logs (separate) ─────────────────────────────────────────────────
-  const exitLogs = Array.from(doc.querySelectorAll('exitLogs > exit')).map(el => ({
-    no:         getNumA(el, 'no'),
-    dateTime:   getAttr(el, 'dateTime'),
-    studentId:  getAttr(el, 'studentId'),
-    name:       getAttr(el, 'name'),
-    department: getAttr(el, 'department'),
-    yearLevel:  getAttr(el, 'yearLevel'),
-    method:     getAttr(el, 'method'),
-  }));
-
-  return {
-    generatedAt,
-    dateRange,
-    totalStudents,
-    currentOnCampus,
-    totalEntries,
-    authSuccessRate,
-    peakHour: peakHour === 'N/A' ? null : peakHour,
-    collegeData,
-    authData,
-    trafficData,
-    trafficInsights,
-    visitorData,
-    entryLogs,
-    exitLogs,
-    studentLogs: [...entryLogs, ...exitLogs],
-    filters,
-  };
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// XSLT TRANSFORMATION
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Apply an XSLT transformation to an XML string.
- * Uses the browser's built-in XSLTProcessor API (supported in all modern browsers).
- *
- * @param {string} xmlString  - The XML content to transform
- * @param {string} xsltString - The XSLT stylesheet content
- * @returns {string}          - The transformed HTML string
- * @throws {Error}            - If XML or XSLT parsing fails
- */
-export function applyXsltTransform(xmlString, xsltString) {
-  try {
-    // Parse XML
-    const parser = new DOMParser();
-    const xmlDoc = parser.parseFromString(xmlString, 'application/xml');
-    
-    if (xmlDoc.querySelector('parsererror')) {
-      throw new Error('Failed to parse XML: ' + xmlDoc.querySelector('parsererror').textContent);
-    }
-
-    // Parse XSLT
-    const xsltDoc = parser.parseFromString(xsltString, 'application/xml');
-    
-    if (xsltDoc.querySelector('parsererror')) {
-      throw new Error('Failed to parse XSLT: ' + xsltDoc.querySelector('parsererror').textContent);
-    }
-
-    // Create processor and apply transformation
-    const processor = new XSLTProcessor();
-    processor.importStylesheet(xsltDoc);
-    const resultDoc = processor.transformToDocument(xmlDoc);
-
-    // Serialize result to string
-    const serializer = new XMLSerializer();
-    return serializer.serializeToString(resultDoc);
-  } catch (err) {
-    console.error('[xmlReportUtils.applyXsltTransform] Error:', err.message);
-    throw err;
+  // Parse summary
+  const summary = xmlDoc.querySelector('summary');
+  if (summary) {
+    report.totalStudents = parseInt(summary.querySelector('totalStudents')?.textContent || '0');
+    report.currentOnCampus = parseInt(summary.querySelector('currentOnCampus')?.textContent || '0');
+    report.totalEntries = parseInt(summary.querySelector('totalEntries')?.textContent || '0');
+    report.totalExits = parseInt(summary.querySelector('totalExits')?.textContent || '0');
+    report.failedAttempts = parseInt(summary.querySelector('failedAttempts')?.textContent || '0');
+    report.reportDate = summary.querySelector('reportDate')?.textContent || '';
+    report.reportTime = summary.querySelector('reportTime')?.textContent || '';
+    report.dateRange = {
+      from: summary.querySelector('dateRange from')?.textContent || '',
+      to: summary.querySelector('dateRange to')?.textContent || ''
+    };
+    report.filterApplied = summary.querySelector('filterApplied')?.textContent || 'all';
   }
-}
 
-/**
- * Transform XML report to HTML using the embedded XSLT stylesheet.
- * This is a convenience wrapper that fetches the XSLT and applies it.
- *
- * @param {string} xmlString - The XML content to transform
- * @returns {Promise<string>} - The transformed HTML string
- */
-export async function xmlToHtml(xmlString) {
-  try {
-    // Fetch the XSLT stylesheet
-    const xsltPath = new URL('eems-report.xslt', import.meta.url).href;
-    const response = await fetch(xsltPath);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch XSLT: HTTP ${response.status}`);
+  // Parse authentication methods
+  const methods = xmlDoc.querySelectorAll('authentication_methods method');
+  methods.forEach(method => {
+    report.authData.push({
+      method: method.querySelector('name')?.textContent || 'Unknown',
+      attempts: parseInt(method.querySelector('attempts')?.textContent || '0'),
+      success: parseInt(method.querySelector('success')?.textContent || '0'),
+      successRate: parseFloat(method.querySelector('successRate')?.textContent || '0')
+    });
+  });
+
+  // Parse department distribution
+  const departments = xmlDoc.querySelectorAll('department_distribution department');
+  departments.forEach(dept => {
+    report.collegeData.push({
+      fullCollegeName: dept.querySelector('name')?.textContent || 'Unknown',
+      presenceNow: parseInt(dept.querySelector('presentNow')?.textContent || '0'),
+      totalStudents: parseInt(dept.querySelector('totalEnrolled')?.textContent || '0'),
+      percentage: parseFloat(dept.querySelector('percentage')?.textContent || '0')
+    });
+  });
+
+  // Parse traffic data
+  const trafficDays = xmlDoc.querySelectorAll('traffic_data day');
+  trafficDays.forEach(day => {
+    report.trafficData.push({
+      date: day.querySelector('date')?.textContent || '',
+      entrance: parseInt(day.querySelector('entrance')?.textContent || '0'),
+      exit: parseInt(day.querySelector('exit')?.textContent || '0')
+    });
+  });
+
+  // Parse logs
+  const logs = xmlDoc.querySelectorAll('logs log');
+  logs.forEach(log => {
+    const type = log.querySelector('type')?.textContent || '';
+    const logEntry = {
+      id: `log_${Date.now()}_${Math.random()}`,
+      studentId: log.querySelector('studentId')?.textContent || '',
+      name: log.querySelector('name')?.textContent || 'Unknown',
+      collegeDept: log.querySelector('department')?.textContent || '',
+      yearLevel: log.querySelector('yearLevel')?.textContent || '',
+      action: log.querySelector('action')?.textContent || '',
+      method: log.querySelector('method')?.textContent || 'Unknown',
+      date: log.querySelector('date')?.textContent || '',
+      time: log.querySelector('time')?.textContent || '',
+      timestamp: log.querySelector('timestamp')?.textContent || null,
+      failed: type === 'failed' || log.querySelector('action')?.textContent === 'FAILED'
+    };
+
+    report.logs.push(logEntry);
+
+    // Categorize by type
+    if (type === 'student' || (!type && logEntry.action === 'ENTRY')) {
+      report.studentLogs.push(logEntry);
     }
-    
-    const xsltString = await response.text();
-    
-    // Apply transformation
-    return applyXsltTransform(xmlString, xsltString);
-  } catch (err) {
-    console.error('[xmlReportUtils.xmlToHtml] Error:', err.message);
-    throw err;
-  }
-}
-
-/**
- * Get the embedded XSLT stylesheet as a string.
- * Useful for inspection or manual transformation operations.
- *
- * @returns {Promise<string>} - The XSLT content
- */
-export async function getXsltStylesheet() {
-  try {
-    const xsltPath = new URL('eems-report.xslt', import.meta.url).href;
-    const response = await fetch(xsltPath);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch XSLT: HTTP ${response.status}`);
+    if (type === 'entry' || logEntry.action === 'ENTRY') {
+      report.entryLogs.push(logEntry);
     }
-    
-    return await response.text();
-  } catch (err) {
-    console.error('[xmlReportUtils.getXsltStylesheet] Error:', err.message);
-    throw err;
-  }
-}
-
-/**
- * Transform XML to HTML and open in a new window for preview/printing.
- * Useful for PDF export workflows.
- *
- * @param {string} xmlString - The XML content to transform
- * @param {string} windowName - Optional window name (default: 'eems-report')
- */
-export async function openXmlReportWindow(xmlString, windowName = 'eems-report') {
-  try {
-    const htmlString = await xmlToHtml(xmlString);
-    const newWindow = window.open('', windowName, 'width=1000,height=800');
-    if (newWindow) {
-      newWindow.document.write(htmlString);
-      newWindow.document.close();
-    } else {
-      alert('Popup blocked. Please allow popups for this site.');
+    if (type === 'exit' || logEntry.action === 'EXIT') {
+      report.exitLogs.push(logEntry);
     }
-  } catch (err) {
-    console.error('[xmlReportUtils.openXmlReportWindow] Error:', err.message);
-    alert('Failed to open report window. Check console for details.');
-  }
-}
+    if (type === 'failed' || logEntry.action === 'FAILED') {
+      report.failedAttempts.push(logEntry);
+    }
+  });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// DOWNLOAD HELPER
-// ─────────────────────────────────────────────────────────────────────────────
+  return report;
+};
 
 /**
- * Trigger a browser download of the XML string as a .xml file.
- *
- * @param {string} xmlString
- * @param {string} filename  - e.g. "eems-report-2026-04-20.xml"
+ * Downloads XML file
+ * @param {string} xmlContent - XML content to download
+ * @param {string} filename - Name of the file
  */
-export function downloadXml(xmlString, filename = 'eems-report.xml') {
-  const blob = new Blob([xmlString], { type: 'application/xml' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
+export const downloadXml = (xmlContent, filename) => {
+  const blob = new Blob([xmlContent], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
+};
 
 /**
- * Trigger a browser download of the HTML (transformed from XML via XSLT) as .html file.
- *
- * @param {string} htmlString
- * @param {string} filename  - e.g. "eems-report-2026-04-20.html"
+ * Converts XML to HTML report
+ * @param {string} xmlString - XML string to convert
+ * @returns {string} HTML string
  */
-export function downloadHtml(htmlString, filename = 'eems-report.html') {
-  const blob = new Blob([htmlString], { type: 'text/html;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
+export const xmlToHtml = async (xmlString) => {
+  const report = xmlToReport(xmlString);
+  if (!report) return '<html><body><h1>Error parsing XML</h1></body></html>';
+
+  const date = new Date();
+  
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EEMS Report - ${report.reportDate}</title>
+  <style>
+    body {
+      font-family: 'Montserrat', Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      overflow: hidden;
+    }
+    .header {
+      background: linear-gradient(135deg, #01311d 0%, #548772 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+    .header p {
+      margin: 10px 0 0;
+      opacity: 0.9;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      padding: 30px;
+      background: #f8f9fa;
+    }
+    .summary-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .summary-card .value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #01311d;
+    }
+    .summary-card .label {
+      font-size: 14px;
+      color: #666;
+      margin-top: 8px;
+    }
+    .section {
+      padding: 20px 30px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .section h2 {
+      color: #01311d;
+      margin-top: 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    th {
+      background-color: #548772;
+      color: white;
+    }
+    tr:hover {
+      background-color: #f5f5f5;
+    }
+    .footer {
+      padding: 20px 30px;
+      text-align: center;
+      color: #666;
+      font-size: 12px;
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>EEMS Report</h1>
+      <p>Generated on ${date.toLocaleString()}</p>
+    </div>
+    
+    <div class="summary">
+      <div class="summary-card">
+        <div class="value">${report.totalStudents || 0}</div>
+        <div class="label">Total Students</div>
+      </div>
+      <div class="summary-card">
+        <div class="value">${report.currentOnCampus || 0}</div>
+        <div class="label">Current On Campus</div>
+      </div>
+      <div class="summary-card">
+        <div class="value">${report.totalEntries || 0}</div>
+        <div class="label">Total Entries</div>
+      </div>
+      <div class="summary-card">
+        <div class="value">${report.totalExits || 0}</div>
+        <div class="label">Total Exits</div>
+      </div>
+    </div>
+    
+    <div class="section">
+      <h2>Department Distribution</h2>
+      <table>
+        <thead>
+          <tr><th>Department</th><th>Present Now</th><th>Total Enrolled</th><th>Percentage</th></tr>
+        </thead>
+        <tbody>
+          ${report.collegeData.map(dept => `
+            <tr>
+              <td>${escapeHtml(dept.fullCollegeName)}</td>
+              <td>${dept.presenceNow}</td>
+              <td>${dept.totalStudents}</td>
+              <td>${dept.percentage}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    
+    <div class="footer">
+      <p>EEMS - Entry Exit Monitoring System</p>
+    </div>
+  </div>
+</body>
+</html>`;
+};
+
+/**
+ * Opens XML report in a new window
+ * @param {string} xmlString - XML string to display
+ */
+export const openXmlReportWindow = (xmlString) => {
+  const htmlContent = xmlToHtml(xmlString);
+  const newWindow = window.open();
+  newWindow.document.write(htmlContent);
+  newWindow.document.close();
+};
+
+/**
+ * Downloads HTML file
+ * @param {string} htmlContent - HTML content to download
+ * @param {string} filename - Name of the file
+ */
+export const downloadHtml = (htmlContent, filename) => {
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
   a.download = filename;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
+};
+
+/**
+ * Escape XML special characters
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+const escapeXml = (str) => {
+  if (!str) return '';
+  return str.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case "'": return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+};
+
+/**
+ * Escape HTML special characters
+ * @param {string} str - String to escape
+ * @returns {string} Escaped string
+ */
+const escapeHtml = (str) => {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, (c) => {
+    switch (c) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      default: return c;
+    }
+  });
+};
