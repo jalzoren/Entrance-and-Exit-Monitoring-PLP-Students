@@ -95,6 +95,19 @@ const GenerateReportPdf = forwardRef(
       });
     };
 
+    const formatWarningReason = (reason) =>
+      typeof reason === "string" ? reason.toLowerCase() : "";
+    const isAutoExitReason = (reason) =>
+      formatWarningReason(reason).includes("auto-exit");
+    const isGateClosedOrStillInsideReason = (reason) => {
+      const text = formatWarningReason(reason);
+      return (
+        isAutoExitReason(text) ||
+        text.includes("gate closed") ||
+        text.includes("still inside")
+      );
+    };
+
     const finalEntryLogs = getEntryLogs();
     const finalExitLogs = getExitLogs();
 
@@ -168,22 +181,22 @@ const GenerateReportPdf = forwardRef(
 
         if (log.type === "entry") {
           if (student.pendingEntry) {
-          const pendingReason = (student.pendingEntry.warningReason || '').toLowerCase();
-          const isClosedWarning = pendingReason.includes('still inside') || pendingReason.includes('gate closed');
-          const status = student.pendingEntry.warning
-            ? "Have entered/Exit beyond gate closing hours"
-            : isClosedWarning || gateIsClosedAtReport
-              ? "Still Inside (Gate closed – no exit recorded)"
-              : "Inside Campus (No Exit)";
+            const pendingReason = student.pendingEntry.warningReason;
+            const isClosedWarning = isGateClosedOrStillInsideReason(pendingReason);
+            const status = student.pendingEntry.warning
+              ? "Have entered/Exit beyond gate closing hours"
+              : isClosedWarning || gateIsClosedAtReport
+                ? "Still Inside (Gate closed – no exit recorded)"
+                : "Inside Campus (No Exit)";
 
-          student.sessions.push({
-            entryTime: student.pendingEntry.time,
-            entryMethod: student.pendingEntry.method,
-            exitTime: "—",
-            exitMethod: "—",
-            status,
-          });
-        }
+            student.sessions.push({
+              entryTime: student.pendingEntry.time,
+              entryMethod: student.pendingEntry.method,
+              exitTime: "—",
+              exitMethod: "—",
+              status,
+            });
+          }
 
           student.pendingEntry = {
             time: formattedTime,
@@ -197,9 +210,14 @@ const GenerateReportPdf = forwardRef(
             student.pendingEntry &&
             student.pendingEntry.rawTime < log.timestamp
           ) {
-            const status = (student.pendingEntry.warning || log.warning)
-              ? "Have entered/Exit beyond gate closing hours"
-              : "Completed";
+            const isAutoExit =
+              isAutoExitReason(student.pendingEntry.warningReason) ||
+              isAutoExitReason(log.warningReason);
+            const status = isAutoExit
+              ? "Auto-exit: Gate closed – no exit recorded"
+              : student.pendingEntry.warning || log.warning
+                ? "Have entered/Exit beyond gate closing hours"
+                : "Completed";
 
             student.sessions.push({
               entryTime: student.pendingEntry.time,
@@ -227,11 +245,14 @@ const GenerateReportPdf = forwardRef(
 
       for (const [studentId, student] of studentMap.entries()) {
         if (student.pendingEntry) {
-          const status = student.pendingEntry.warning
-            ? "Have entered/Exit beyond gate closing hours"
-            : gateIsClosedAtReport
-              ? "Still Inside (Gate closed – no exit recorded)"
-              : "Still Inside Campus";
+          const isAutoExit = isAutoExitReason(student.pendingEntry.warningReason);
+          const status = isAutoExit
+            ? "Auto-exit: Gate closed – no exit recorded"
+            : student.pendingEntry.warning
+              ? "Have entered/Exit beyond gate closing hours"
+              : gateIsClosedAtReport
+                ? "Still Inside (Gate closed – no exit recorded)"
+                : "Still Inside Campus";
 
           student.sessions.push({
             entryTime: student.pendingEntry.time,
@@ -518,9 +539,14 @@ const GenerateReportPdf = forwardRef(
           };
         } else if (log.type === 'exit') {
           if (visitor.pendingEntry && visitor.pendingEntry.rawTime < log.timestamp) {
-            const status = visitor.pendingEntry.warning || log.warning
-              ? 'Have entered/Exit beyond gate closing hours'
-              : 'Completed';
+            const isAutoExit =
+              isAutoExitReason(visitor.pendingEntry.warningReason) ||
+              isAutoExitReason(log.warningReason);
+            const status = isAutoExit
+              ? 'Auto-exit: Gate closed – no exit recorded'
+              : visitor.pendingEntry.warning || log.warning
+                ? 'Have entered/Exit beyond gate closing hours'
+                : 'Completed';
 
             visitor.sessions.push({
               entryTime: visitor.pendingEntry.time,
@@ -545,11 +571,14 @@ const GenerateReportPdf = forwardRef(
       // Add remaining pending entries
       for (const [visitorId, visitor] of visitorMap.entries()) {
         if (visitor.pendingEntry) {
-          const status = visitor.pendingEntry.warning
-            ? 'Have entered/Exit beyond gate closing hours'
-            : gateIsClosedAtReport
-              ? 'Still Inside (Gate closed – no exit recorded)'
-              : 'Still Inside';
+          const isAutoExit = isAutoExitReason(visitor.pendingEntry.warningReason);
+          const status = isAutoExit
+            ? 'Auto-exit: Gate closed – no exit recorded'
+            : visitor.pendingEntry.warning
+              ? 'Have entered/Exit beyond gate closing hours'
+              : gateIsClosedAtReport
+                ? 'Still Inside (Gate closed – no exit recorded)'
+                : 'Still Inside';
 
           visitor.sessions.push({
             entryTime: visitor.pendingEntry.time,
