@@ -148,6 +148,7 @@ const GenerateReportPdf = forwardRef(
             department:
               log.department || log.collegeDept || log.college || "N/A",
             yearLevel: log.yearLevel || log.year || "N/A",
+            section: log.section || log.section_name || "N/A",  // ← ADD THIS LINE
             pendingEntry: null,
             sessions: [],
           });
@@ -225,6 +226,7 @@ const GenerateReportPdf = forwardRef(
             name: student.name,
             department: student.department,
             yearLevel: student.yearLevel,
+            section: student.section,  // ← ADD THIS LINE
             sessionNumber: idx + 1,
             entryTime: session.entryTime,
             entryMethod: session.entryMethod,
@@ -972,6 +974,7 @@ return (
                   <th className="pdf-th-id">Student ID</th>
                   <th className="pdf-th-name">Name</th>
                   <th className="pdf-th-dept">Department</th>
+                  <th className="pdf-th-section">Section</th>  {/* ← ADD THIS */}
                   <th className="pdf-th-year">Year Level</th>
 
                   {filters?.actionType === "entry" && (
@@ -1009,6 +1012,7 @@ return (
                         <td className="pdf-td-id">{log.studentId || log.student_id || "N/A"}</td>
                         <td className="pdf-td-name">{log.name || log.student_name || "Unknown"}</td>
                         <td className="pdf-td-dept">{log.department || log.collegeDept || log.college || "N/A"}</td>
+                        <td className="pdf-td-section">{log.section || log.section_name || "N/A"}</td>  
                         <td className="pdf-td-year">{log.yearLevel || log.year || "N/A"}</td>
                         <td className="pdf-td-time-entry">{log.dateTime || log.date || log.time || log.timestamp || "—"}</td>
                         <td className="pdf-td-method">{log.method || log.authMethod || "Face Recognition"}</td>
@@ -1028,6 +1032,7 @@ return (
                         <td className="pdf-td-id">{log.studentId || log.student_id || "N/A"}</td>
                         <td className="pdf-td-name">{log.name || log.student_name || "Unknown"}</td>
                         <td className="pdf-td-dept">{log.department || log.collegeDept || log.college || "N/A"}</td>
+                        <td className="pdf-td-section">{log.section || log.section_name || "N/A"}</td> 
                         <td className="pdf-td-year">{log.yearLevel || log.year || "N/A"}</td>
                         <td className="pdf-td-time-exit">{log.dateTime || log.date || log.time || log.timestamp || "—"}</td>
                         <td className="pdf-td-method">{log.method || log.authMethod || "Face Recognition"}</td>
@@ -1047,6 +1052,7 @@ return (
                         <td className="pdf-td-id">{session.studentId}</td>
                         <td className="pdf-td-name">{session.name}</td>
                         <td className="pdf-td-dept">{session.department}</td>
+                        <td className="pdf-td-section">{session.section || "N/A"}</td> 
                         <td className="pdf-td-year">{session.yearLevel}</td>
                         <td className="pdf-td-session">{session.sessionNumber}</td>
                         <td className="pdf-td-time-entry">{session.entryTime}</td>
@@ -1070,7 +1076,7 @@ return (
               {totalRecordsForFooter > 0 && (
                 <tfoot>
                   <tr className="pdf-footer-row">
-                    <td colSpan={filters?.actionType === "entry" ? 7 : filters?.actionType === "exit" ? 7 : 11} className="pdf-footer-message">
+                    <td colSpan={filters?.actionType === "entry" ? 8 : filters?.actionType === "exit" ? 8 : 12} className="pdf-footer-message">
                       <strong>Summary:</strong>&nbsp; Total{" "}
                       {filters?.actionType === "entry"
                         ? "Entry"
