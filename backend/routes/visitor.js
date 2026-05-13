@@ -57,10 +57,23 @@ router.post('/', async (req, res) => {
     const qrData  = `VISITOR_EXIT:${qrToken}`;
     const qrImage = await QRCode.toDataURL(qrData);
 
+    const warningReason = gateStatus.warning
+      ? `Entry beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
+      : null;
+
     await db.query(
-      `INSERT INTO visitor_logs (full_name, email, reason, other_reason, action, log_time, qr_token)
-       VALUES (?, ?, ?, ?, 'ENTRY', ?, ?)`,
-      [full_name.trim(), email.trim(), reason.trim(), other_reason?.trim() || null, now, qrToken]
+      `INSERT INTO visitor_logs (full_name, email, reason, other_reason, action, log_time, qr_token, gate_window_warning, gate_window_reason)
+      VALUES (?, ?, ?, ?, 'ENTRY', ?, ?, ?, ?)`,
+      [
+        full_name.trim(),
+        email.trim(),
+        reason.trim(),
+        other_reason?.trim() || null,
+        now,
+        qrToken,
+        gateStatus.warning ? 1 : 0,
+        warningReason
+      ]
     );
 
     const transporter = nodemailer.createTransport({

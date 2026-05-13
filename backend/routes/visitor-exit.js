@@ -43,11 +43,24 @@ router.post('/', async (req, res) => {
 
     const now = await getPhTime(); // ← server time, no arg needed
 
+    const warningReason = gateStatus.warning
+      ? `Exit beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
+      : null;
+
     await db.query(
       `INSERT INTO visitor_logs
-       (full_name, email, reason, other_reason, action, log_time, qr_token)
-       VALUES (?, ?, ?, ?, 'EXIT', ?, ?)`,
-      [lastLog.full_name, lastLog.email, lastLog.reason, lastLog.other_reason, now, qrToken]
+      (full_name, email, reason, other_reason, action, log_time, qr_token, gate_window_warning, gate_window_reason)
+      VALUES (?, ?, ?, ?, 'EXIT', ?, ?, ?, ?)`,
+      [
+        lastLog.full_name,
+        lastLog.email,
+        lastLog.reason,
+        lastLog.other_reason,
+        now,
+        qrToken,
+        gateStatus.warning ? 1 : 0,
+        warningReason
+      ]
     );
 
     return res.json({

@@ -205,10 +205,14 @@ router.post('/', async (req, res) => {
     console.log('[QR Scan] Auth record inserted, ID:', authResult.insertId);
 
     // Insert into entry_exit_logs table
-    const [logResult] = await db.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning)
-      VALUES (?, ?, ?, ?, ?)`,
-      [student_id, authResult.insertId, mode, now, gateStatus.warning ? 1 : 0]
+    const warningReason = gateStatus.warning
+      ? `${mode === 'ENTRY' ? 'Entry' : 'Exit'} beyond gate hours (${gateStatus.windowStart}–${gateStatus.windowEnd})`
+      : null;
+
+    await db.query(
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning, gate_window_reason)
+      VALUES (?, ?, ?, ?, ?, ?)`,
+      [student_id.trim(), authResult.insertId, mode, now, gateStatus.warning ? 1 : 0, warningReason]
     );
     console.log('[QR Scan] Log saved to entry_exit_logs, log_id:', logResult.insertId);
 
