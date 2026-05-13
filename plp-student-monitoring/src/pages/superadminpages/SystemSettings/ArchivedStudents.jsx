@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { MdRestore } from 'react-icons/md';
 import '../../../css/GlobalModal.css';
 import '../../../css/SystemSettings.css';
+import { generateReportWithFilters } from '../../../utils/pdfGenerator';
+import GenerateGraduateReportsFilter from './GenerateGraduateReportsFilter';
 
 const ROWS_PER_PAGE = 10;
 const ALL_STATUSES = ['LOA', 'Dropout', 'Kickout', 'Graduated', 'Transferred'];
@@ -47,6 +49,10 @@ function Archive() {
   const [restoreYearLevel, setRestoreYearLevel] = useState('');
   const [restoreStatus, setRestoreStatus] = useState('');
   const [restoring, setRestoring] = useState(false);
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [reportStudents, setReportStudents] = useState([]);
+  const reportRef = useRef(null);
+  const [showGraduateFilter, setShowGraduateFilter] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const stats = useMemo(() => ({
@@ -113,6 +119,9 @@ function Archive() {
     const matchesStatus = statusFilter === '' || student.status === statusFilter;
     return matchesSearch && matchesCollege && matchesStatus;
   });
+
+  const graduatesInFiltered = filtered.filter(s => s.status === 'Graduated');
+  const graduatesCount = graduatesInFiltered.length;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ROWS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
@@ -194,6 +203,64 @@ function Archive() {
   }
 };
 
+  const handleGenerateReport = () => {
+    setShowGraduateFilter(true);
+  };
+
+  const handleApplyGraduateFilters = async (filters) => {
+    setShowGraduateFilter(false);
+
+    // Start with currently displayed list (honors current search/college/status filters)
+    let graduates = filtered.filter((s) => s.status === 'Graduated');
+
+    if (filters.department) {
+      graduates = graduates.filter((s) => (s.college_department || '').toLowerCase() === String(filters.department).toLowerCase());
+    }
+    if (filters.program) {
+      const q = String(filters.program).toLowerCase();
+      graduates = graduates.filter((s) => (s.program_name || '').toLowerCase().includes(q));
+    }
+    if (filters.yearLevel) {
+      graduates = graduates.filter((s) => String(s.year_level) === String(filters.yearLevel));
+    }
+    if (filters.section) {
+      const q = String(filters.section).toLowerCase();
+      graduates = graduates.filter((s) => {
+        return ((s.section || s.section_name || '') + '').toLowerCase().includes(q);
+      });
+    }
+    if (filters.dateFrom) {
+      const from = new Date(filters.dateFrom);
+      graduates = graduates.filter((s) => s.updated_at && new Date(s.updated_at) >= from);
+    }
+    if (filters.dateTo) {
+      const to = new Date(filters.dateTo);
+      to.setHours(23, 59, 59, 999);
+      graduates = graduates.filter((s) => s.updated_at && new Date(s.updated_at) <= to);
+    }
+
+    if (!graduates || graduates.length === 0) {
+      Swal.fire({ title: 'No graduates found', text: 'No graduated students match the selected filters.', icon: 'info', confirmButtonText: 'OK' });
+      return;
+    }
+
+    setReportStudents(graduates);
+    setGeneratingReport(true);
+    try {
+      // allow hidden DOM node to render
+      await new Promise((res) => setTimeout(res, 120));
+      const dateRange = filters.dateFrom || filters.dateTo ? `${filters.dateFrom || ''} - ${filters.dateTo || ''}` : 'Graduates';
+      await generateReportWithFilters(reportRef, { dateRange });
+      Swal.fire({ title: 'Report Generated', text: 'Graduates report has been downloaded.', icon: 'success', confirmButtonText: 'OK' });
+    } catch (err) {
+      console.error('Generate report error:', err);
+      Swal.fire({ title: 'Error', text: 'Failed to generate report. Please try again.', icon: 'error', confirmButtonText: 'OK' });
+    } finally {
+      setGeneratingReport(false);
+      setReportStudents([]);
+    }
+  };
+
   return (
     <div className="archive-tab">
       {/* Search and Filter Bar */}
@@ -230,6 +297,22 @@ function Archive() {
           <option value="Transferred">Transferred</option>
         </select>
         <span className="result-count">Total: {filtered.length}</span>
+        <button
+          onClick={() => setShowGraduateFilter(true)}
+          disabled={generatingReport || graduatesCount === 0}
+          style={{
+            marginLeft: '12px',
+            padding: '8px 12px',
+            borderRadius: '6px',
+            border: 'none',
+            background: '#01311d',
+            color: '#fff',
+            cursor: graduatesCount === 0 ? 'not-allowed' : 'pointer'
+          }}
+          title={graduatesCount === 0 ? 'No graduates to generate report' : 'Generate report for graduated students'}
+        >
+          {generatingReport ? 'Generating...' : `Generate Graduates Report (${graduatesCount})`}
+        </button>
       </div>
 
       {/* Table */}
@@ -434,6 +517,48 @@ function Archive() {
             </div>
           </div>
         </div>
+      )}
+      {/* Hidden report content used for PDF generation (graduates only) */}
+      {reportStudents.length > 0 && (
+        <div ref={reportRef} style={{ position: 'absolute', left: '-9999px', top: 0, width: '900px', padding: '20px', background: '#fff', color: '#000' }}>
+          <div style={{ textAlign: 'center', marginBottom: '8px' }}>
+            <h2 style={{ margin: 0 }}>Graduates Archive Report</h2>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}>Generated: {new Date().toLocaleString()}</div>
+            <div style={{ fontSize: '12px', marginTop: '4px' }}><strong>Total Graduates:</strong> {reportStudents.length}</div>
+          </div>
+
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
+            <thead>
+              <tr>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>No.</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Student ID</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Full Name</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Program</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Year</th>
+                <th style={{ border: '1px solid #ddd', padding: '8px' }}>Archived Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {reportStudents.map((s, i) => (
+                <tr key={s.student_id}>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{i + 1}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.student_id}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{`${s.last_name || ''}, ${s.first_name || ''}`}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.program_name || 'N/A'}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.year_level}</td>
+                  <td style={{ border: '1px solid #ddd', padding: '6px' }}>{s.updated_at ? new Date(s.updated_at).toLocaleDateString() : 'N/A'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {showGraduateFilter && (
+        <GenerateGraduateReportsFilter
+          departments={departments}
+          onClose={() => setShowGraduateFilter(false)}
+          onGenerate={handleApplyGraduateFilters}
+        />
       )}
     </div>
   );

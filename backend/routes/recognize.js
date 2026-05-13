@@ -240,7 +240,7 @@ router.post("/recognize", async (req, res) => {
 
     // Log to entry_exit_logs
     await pool.query(
-      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_violation)
+      `INSERT INTO entry_exit_logs (student_id, auth_id, action, log_time, gate_window_warning)
       VALUES (?, ?, ?, ?, ?)`,
       [matchedStudent, authInsert.insertId, finalAction, now, gateStatus.warning ? 1 : 0]
     );

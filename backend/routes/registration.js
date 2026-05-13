@@ -167,16 +167,18 @@ router.post("/register", async (req, res) => {
       throw new Error("Missing required student data");
     }
 
-    if (!section) throw new Error("Section is required");
-
-    // Check if student already exists
+    // Only require section when creating a new student record.
+    // Existing students can register face images without resubmitting full profile data.
     const [existingStudents] = await connection.query(
       "SELECT * FROM students WHERE student_id = ?",
       [student_id]
     );
-    
     const studentExists = existingStudents.length > 0;
-    
+
+    if (!studentExists && !section) {
+      throw new Error("Section is required");
+    }
+
     console.log("=".repeat(60));
     console.log("REGISTRATION REQUEST");
     console.log("Student ID:", student_id);

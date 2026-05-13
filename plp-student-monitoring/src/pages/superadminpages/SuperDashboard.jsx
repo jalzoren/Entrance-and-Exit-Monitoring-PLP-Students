@@ -28,7 +28,6 @@ import {
   FaInfoCircle, FaSchool, FaDoorOpen,
   FaEllipsisH, FaTimes,
 } from "react-icons/fa";
-
 // ─────────────────────────────────────────────────────────────────────────────
 // SAMPLE DATA
 // ─────────────────────────────────────────────────────────────────────────────
@@ -146,6 +145,7 @@ class DashboardService {
     }
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTIFICATION PANEL
@@ -643,6 +643,38 @@ function SuperDashboard() {
   const [notifications,   setNotifications]   = useState([]);
   const [trafficDays,     setTrafficDays]     = useState(7);
   const [chartKey,        setChartKey]        = useState(0);
+  const [logoUrl, setLogoUrl] = useState("../logoplp.gif");
+
+    // Load logo from server (ADD THIS NEW useEffect HERE)
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('/api/settings/logo');
+        const data = await response.json();
+        if (data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+      }
+    };
+    
+    loadLogo();
+
+    const handleLogoUpdate = (event) => {
+      if (event.detail.logoUrl) {
+        setLogoUrl(event.detail.logoUrl);
+      } else {
+        setLogoUrl("../logoplp.gif");
+      }
+    };
+    
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    
+    return () => {
+      window.removeEventListener('logoUpdated', handleLogoUpdate);
+    };
+  }, []);
   const [showUsersModal,  setShowUsersModal]  = useState(false);
   const [usersList,       setUsersList]       = useState([]);
   const [usersLoading,    setUsersLoading]    = useState(false);
@@ -704,18 +736,18 @@ function SuperDashboard() {
         ...parsedData,
         _xml: xmlString,
         dateRange: filters.dateRange?.from && filters.dateRange?.to ? `${filters.dateRange.from} - ${filters.dateRange.to}` : parsedData.dateRange,
-        collegeData: reportData.collegeData ?? collegeData,
-        authData: reportData.authData ?? [],
+        collegeData: reportData.collegeData,
+        authData: reportData.authData,
         trafficData: reportData.trafficChartData ?? trafficData,
-        visitorData: reportData.visitorData ?? [],
-        visitorLogs: reportData.visitorLogs ?? [],
-        metrics: metrics ?? {},
-        totalStudents: reportData.totalStudents ?? metrics?.totalStudents ?? 0,
-        currentOnCampus: reportData.currentOnCampus ?? metrics?.onCampus ?? 0,
-        totalEntries: reportData.totalEntries ?? 0,
-        studentLogs: reportData.studentLogs ?? [],
-        entryLogs: reportData.entryLogs ?? [],
-        exitLogs: reportData.exitLogs ?? [],
+        visitorData: reportData.visitorData,
+        visitorLogs: reportData.visitorLogs,
+        metrics: metrics,
+        totalStudents: reportData.totalStudents,
+        currentOnCampus: reportData.currentOnCampus,
+        totalEntries: reportData.totalEntries,
+        studentLogs: reportData.studentLogs,
+        entryLogs: reportData.entryLogs,
+        exitLogs: reportData.exitLogs,
       });
 
       setShowPdfPreview(true);
@@ -795,7 +827,7 @@ function SuperDashboard() {
         {/* ── HEADER ── */}
         <header className="campus-header">
           <div className="logo-area">
-            <img className="seal-placeholder" src="../logoplp.gif" alt="PLP Seal" />
+            <img className="seal-placeholder" src={logoUrl} alt="PLP Seal" />
             <div className="university-info">
               <h1>Pamantasan ng Lungsod ng Pasig</h1>
               <p>ENTRANCE AND EXIT MONITORING SYSTEM</p>

@@ -1,5 +1,5 @@
 // src/components/Sidebar.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import {
   FiHome,
@@ -12,14 +12,47 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import Swal from 'sweetalert2';
-import logo from "../assets/llogoplp.png";
+import defaultLogo from "../assets/llogoplp.png";
 import "../componentscss/Sidebar.css";
 import { useAuth } from "../context/AuthContext";
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
+  const [logoUrl, setLogoUrl] = useState(defaultLogo);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+
+  // Load logo from server
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('/api/settings/logo');
+        const data = await response.json();
+        if (data.logoUrl) {
+          setLogoUrl(data.logoUrl);
+        }
+      } catch (err) {
+        console.error('Failed to load logo:', err);
+      }
+    };
+    
+    loadLogo();
+
+    // Listen for logo updates from settings
+    const handleLogoUpdate = (event) => {
+      if (event.detail.logoUrl) {
+        setLogoUrl(event.detail.logoUrl);
+      } else {
+        setLogoUrl(defaultLogo);
+      }
+    };
+    
+    window.addEventListener('logoUpdated', handleLogoUpdate);
+    
+    return () => {
+      window.removeEventListener('logoUpdated', handleLogoUpdate);
+    };
+  }, []);
 
   const toggleSidebar = () => setIsOpen((prev) => !prev);
 
@@ -112,7 +145,7 @@ export default function Sidebar() {
         <div className="logo-container">
           {isOpen && (
             <div className="brand-text">
-              <img src={logo} alt="Logo" className="brand-image" />
+              <img src={logoUrl} alt="Logo" className="brand-image" />
               <h1 className="brand-title">
                 {user?.role === 'Super Admin' 
                   ? 'Smart Entrance, Exit, and Attendance'

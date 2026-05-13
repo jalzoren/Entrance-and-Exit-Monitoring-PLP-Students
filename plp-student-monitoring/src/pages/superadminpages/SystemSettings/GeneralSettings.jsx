@@ -2,6 +2,7 @@
 // Combines Gate Settings + Academic Year Settings side by side
 import React, { useState, useEffect } from 'react';
 import "../../../css/GeneralSettings.css";
+import LogoSettings from './LogoSettings';
 import Swal from 'sweetalert2';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -483,6 +484,7 @@ function AcademicYearSection() {
 function GeneralSettings() {
   return (
     <div className="general-settings-row">
+       <LogoSettings />
       <GateSettingsSection />
       <AcademicYearSection />
     </div>
