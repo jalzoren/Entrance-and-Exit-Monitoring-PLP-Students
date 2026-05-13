@@ -2,8 +2,7 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../src/db');
-const { getTodayPhRange, getPhTime } = require('../src/time');
-const { getGateStatus } = require('../src/gateUtils');
+const { getTodayPhRange } = require('../src/time');
 
 const formatStudentName = (row) => {
   const lastName = row.last_name?.trim();
@@ -737,12 +736,6 @@ router.get('/report', async (req, res) => {
 
     console.log('[analytics/report] Final range:', rangeStart, '→', rangeEnd);
 
-    const currentGateStatus = await getGateStatus('EXIT');
-    const { updated: gateClosedWarningsUpdated } = await markUnexitedStudentsAsGateClosedWarning(rangeStart, rangeEnd);
-    if (gateClosedWarningsUpdated > 0) {
-      console.log(`[analytics/report] Applied gate-closed warning to ${gateClosedWarningsUpdated} unmatched student entry log(s)`);
-    }
-
     // ── FOR VISITOR REPORTS ─────────────────────────────────────────────────
     if (reportType === 'visitors') {
       let visitorQuery = `
@@ -754,9 +747,7 @@ router.get('/report', async (req, res) => {
           other_reason,
           action,
           log_time,
-          qr_token,
-        gate_window_warning,
-        gate_window_reason
+          qr_token
         FROM visitor_logs vl
         WHERE log_time BETWEEN ? AND ?
       `;
@@ -779,9 +770,7 @@ router.get('/report', async (req, res) => {
         email: row.email || 'N/A',
         reason: row.reason === 'Other' ? row.other_reason : row.reason,
         action: row.action === 'ENTRY' ? 'Entrance' : 'Exit',
-        qrToken: row.qr_token || 'N/A',
-        gateWindowWarning: row.gate_window_warning === 1,
-        gateWindowReason: row.gate_window_reason || null
+        qrToken: row.qr_token || 'N/A'
       }));
       
       const entryLogs = visitorLogs.filter(log => log.action === 'Entrance');
@@ -801,8 +790,7 @@ router.get('/report', async (req, res) => {
         authData: [],
         methodData: [],
         trafficChartData: [],
-        studentLogs: [],
-        gateStatus: currentGateStatus
+        studentLogs: []
       });
     }
 
@@ -869,9 +857,7 @@ router.get('/report', async (req, res) => {
         COALESCE(s.section, 'N/A') AS section,
         a.method, 
         a.auth_status, 
-        a.accuracy,
-        eel.gate_window_warning,
-        eel.gate_window_reason
+        a.accuracy
       FROM entry_exit_logs eel
       LEFT JOIN students s ON s.student_id = eel.student_id
       LEFT JOIN programs p ON s.program_id = p.id
@@ -1047,11 +1033,9 @@ router.get('/report', async (req, res) => {
             : r.method === 'MANUAL' ? 'Manual Input'
             : r.method === 'QR' ? 'QR Scan'
             : 'Unknown',
-      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A',
-      gateWindowWarning: r.gate_window_warning === 1,
-      gateWindowReason: r.gate_window_reason || null
+      accuracy: r.accuracy ? `${r.accuracy}%` : 'N/A'
     }));
-
+    
     const entryLogs = studentLogs.filter(log => log.action === 'Entrance');
     const exitLogs = studentLogs.filter(log => log.action === 'Exit');
 
@@ -1068,12 +1052,11 @@ router.get('/report', async (req, res) => {
       trafficChartData: trafficChartData,
       trafficData: {
         highest: highestDay ? `${highestDay.date} (${highestDay.entrance} entries)` : 'N/A',
-        lowest: lowestDay ? `${lowestDay.date} (${highestDay.entrance} entries)` : 'N/A',
+        lowest: lowestDay ? `${lowestDay.date} (${lowestDay.entrance} entries)` : 'N/A',
       },
       studentLogs: studentLogs,
       entryLogs: entryLogs,
-      exitLogs: exitLogs,
-      gateStatus: currentGateStatus
+      exitLogs: exitLogs
     });
 
   } catch (err) {
@@ -1445,14 +1428,12 @@ router.get('/student-pairing', async (req, res) => {
         
         if (matchedEntry) {
           // Found matching entry - create a session
-          const isAutoExit = log.gate_window_reason && log.gate_window_reason.includes('Auto-exit');
-          const status = isAutoExit ? 'Auto Exit (Gate closed – no exit recorded)' : 'Left Campus';
           student.sessions.push({
             entryTime: matchedEntry.time,
             entryMethod: matchedEntry.method,
             exitTime: formattedTime,
             exitMethod: logMethod,
-            status
+            status: 'Left Campus'
           });
           // Remove the matched entry from queue
           student.entryQueue.splice(matchedIndex, 1);
@@ -1525,8 +1506,7 @@ router.get('/student-pairing', async (req, res) => {
     const stats = {
       completed: pairedRecords.filter(r => r.status === 'Left Campus').length,
       inside: pairedRecords.filter(r => r.status === 'Inside Campus').length,
-      exitOnly: pairedRecords.filter(r => r.status === 'Exit Only').length,
-      gateClosedNoExit: pairedRecords.filter(r => r.status === 'Auto Exit (Gate closed – no exit recorded)').length
+      exitOnly: pairedRecords.filter(r => r.status === 'Exit Only').length
     };
     
     console.log(`[analytics/student-pairing] Total sessions: ${pairedRecords.length}`);
